@@ -20,7 +20,18 @@ import {
   type DeliverableType,
   type DeliverableStatus,
 } from "@/lib/methodology";
+import { ReviewCycles } from "@/components/project/review-cycles";
 
+type Member = { id: string; name: string | null; email: string };
+type Review = {
+  id: string;
+  round: number;
+  reviewerId: string;
+  status: string;
+  dueDate: string | null;
+  feedback: string | null;
+  reviewer: Member;
+};
 type CardLink = { id: string; title: string; boardId: string; boardName: string };
 type Deliverable = {
   id: string;
@@ -29,6 +40,7 @@ type Deliverable = {
   status: string;
   phaseId: string | null;
   card: CardLink | null;
+  reviews: Review[];
 };
 type PhaseRef = { id: string; name: string };
 type LinkableCard = { id: string; title: string; boardName: string };
@@ -38,10 +50,12 @@ const control = "rounded-md border border-border-strong bg-transparent px-2 py-1
 export function DeliverablesSection({
   projectId,
   phases,
+  members,
   initial,
 }: {
   projectId: string;
   phases: PhaseRef[];
+  members: Member[];
   initial: Deliverable[];
 }) {
   const [items, setItems] = useState<Deliverable[]>(initial);
@@ -62,7 +76,7 @@ export function DeliverablesSection({
     const res = await createDeliverable(projectId, name, type);
     if ("deliverable" in res && res.deliverable) {
       const d = res.deliverable;
-      setItems((prev) => [...prev, { id: d.id, name: d.name, type: d.type, status: d.status, phaseId: d.phaseId, card: null }]);
+      setItems((prev) => [...prev, { id: d.id, name: d.name, type: d.type, status: d.status, phaseId: d.phaseId, card: null, reviews: [] }]);
     }
   }
 
@@ -166,6 +180,8 @@ export function DeliverablesSection({
                 </select>
               )}
             </div>
+
+            <ReviewCycles deliverableId={d.id} members={members} initial={d.reviews} />
           </div>
         ))}
       </div>

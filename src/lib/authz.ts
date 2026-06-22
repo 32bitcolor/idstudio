@@ -70,3 +70,12 @@ export async function getMilestoneForUser(milestoneId: string) {
     select: { id: true, projectId: true },
   });
 }
+
+export async function getReviewForUser(reviewId: string) {
+  const user = await getCurrentUser();
+  if (!user) return null;
+  return prisma.reviewCycle.findFirst({
+    where: { id: reviewId, deliverable: { project: { workspace: ownedByUser(user.id) } } },
+    select: { id: true, deliverable: { select: { projectId: true } } },
+  });
+}

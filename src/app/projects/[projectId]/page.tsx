@@ -35,6 +35,18 @@ export default async function ProjectPage({ params }: { params: Promise<{ projec
           card: {
             select: { id: true, title: true, column: { select: { board: { select: { id: true, name: true } } } } },
           },
+          reviewCycles: {
+            orderBy: { round: "asc" },
+            select: {
+              id: true,
+              round: true,
+              reviewerId: true,
+              status: true,
+              dueDate: true,
+              feedback: true,
+              reviewer: { select: { id: true, name: true, email: true } },
+            },
+          },
         },
       },
       milestones: {
@@ -44,6 +56,12 @@ export default async function ProjectPage({ params }: { params: Promise<{ projec
     },
   });
   if (!project) notFound();
+
+  const members = await prisma.user.findMany({
+    where: { memberships: { some: { workspaceId: access.workspaceId } } },
+    orderBy: { email: "asc" },
+    select: { id: true, name: true, email: true },
+  });
 
   const phases = project.phases.map((p) => ({
     id: p.id,
@@ -63,6 +81,15 @@ export default async function ProjectPage({ params }: { params: Promise<{ projec
     card: d.card
       ? { id: d.card.id, title: d.card.title, boardId: d.card.column.board.id, boardName: d.card.column.board.name }
       : null,
+    reviews: d.reviewCycles.map((rc) => ({
+      id: rc.id,
+      round: rc.round,
+      reviewerId: rc.reviewerId,
+      status: rc.status,
+      dueDate: rc.dueDate ? rc.dueDate.toISOString() : null,
+      feedback: rc.feedback,
+      reviewer: rc.reviewer,
+    })),
   }));
 
   const milestones = project.milestones.map((m) => ({
@@ -84,6 +111,7 @@ export default async function ProjectPage({ params }: { params: Promise<{ projec
       initialPhases={phases}
       initialDeliverables={deliverables}
       initialMilestones={milestones}
+      members={members}
     />
   );
 }

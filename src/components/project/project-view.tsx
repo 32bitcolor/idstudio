@@ -60,6 +60,16 @@ function move<T>(arr: T[], from: number, to: number) {
   return next;
 }
 
+type Member = { id: string; name: string | null; email: string };
+type ReviewInit = {
+  id: string;
+  round: number;
+  reviewerId: string;
+  status: string;
+  dueDate: string | null;
+  feedback: string | null;
+  reviewer: Member;
+};
 type DeliverableInit = {
   id: string;
   name: string;
@@ -67,6 +77,7 @@ type DeliverableInit = {
   status: string;
   phaseId: string | null;
   card: { id: string; title: string; boardId: string; boardName: string } | null;
+  reviews: ReviewInit[];
 };
 type MilestoneInit = { id: string; name: string; dueDate: string | null; completedAt: string | null };
 
@@ -75,11 +86,13 @@ export function ProjectView({
   initialPhases,
   initialDeliverables,
   initialMilestones,
+  members,
 }: {
   project: ProjectMeta;
   initialPhases: Phase[];
   initialDeliverables: DeliverableInit[];
   initialMilestones: MilestoneInit[];
+  members: Member[];
 }) {
   const [name, setName] = useState(project.name);
   const [description, setDescription] = useState(project.description ?? "");
@@ -252,6 +265,7 @@ export function ProjectView({
       <DeliverablesSection
         projectId={project.id}
         phases={phases.map((p) => ({ id: p.id, name: p.name }))}
+        members={members}
         initial={initialDeliverables}
       />
 

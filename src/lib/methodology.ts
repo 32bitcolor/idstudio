@@ -54,3 +54,13 @@ export const DELIVERABLE_STATUS_LABEL: Record<DeliverableStatus, string> = {
   in_review: "In review",
   complete: "Complete",
 };
+
+export const REVIEW_STATUSES = ["requested", "in_review", "changes_requested", "approved"] as const;
+export type ReviewStatus = (typeof REVIEW_STATUSES)[number];
+
+export const REVIEW_STATUS_LABEL: Record<ReviewStatus, string> = {
+  requested: "Requested",
+  in_review: "In review",
+  changes_requested: "Changes requested",
+  approved: "Approved",
+};
