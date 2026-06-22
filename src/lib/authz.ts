@@ -34,3 +34,21 @@ export async function getCardForUser(cardId: string) {
     select: { id: true, columnId: true, column: { select: { boardId: true } } },
   });
 }
+
+export async function getProjectForUser(projectId: string) {
+  const user = await getCurrentUser();
+  if (!user) return null;
+  return prisma.project.findFirst({
+    where: { id: projectId, workspace: ownedByUser(user.id) },
+    select: { id: true, name: true, workspaceId: true },
+  });
+}
+
+export async function getPhaseForUser(phaseId: string) {
+  const user = await getCurrentUser();
+  if (!user) return null;
+  return prisma.phase.findFirst({
+    where: { id: phaseId, project: { workspace: ownedByUser(user.id) } },
+    select: { id: true, projectId: true },
+  });
+}

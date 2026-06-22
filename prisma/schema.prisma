@@ -37,6 +37,7 @@ model Workspace {
   updatedAt DateTime     @updatedAt
   members   Membership[]
   boards    Board[]
+  projects  Project[]
 }
 
 // Role is per-workspace (on Membership), never global on User.
@@ -115,6 +116,42 @@ model Attachment {
   card         Card     @relation(fields: [cardId], references: [id], onDelete: Cascade)
 
   @@index([cardId])
+}
+
+// ── Project management (Phase 2) ─────────────────────────────────────────────
+
+enum Methodology {
+  ADDIE
+  SAM
+  CUSTOM
+}
+
+model Project {
+  id          String      @id @default(cuid())
+  workspaceId String
+  name        String
+  description String?
+  methodology Methodology @default(ADDIE)
+  status      String      @default("active") // active / on_hold / completed
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  workspace   Workspace   @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  phases      Phase[]
+
+  @@index([workspaceId])
+}
+
+model Phase {
+  id        String    @id @default(cuid())
+  projectId String
+  name      String
+  position  String
+  status    String    @default("not_started") // not_started / in_progress / done
+  startDate DateTime?
+  endDate   DateTime?
+  project   Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId, position])
 }
 
 model ChecklistItem {

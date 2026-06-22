@@ -9,7 +9,7 @@ export const metadata = { title: "Dashboard · IDStudio" };
 // Feature areas. `href` marks a module that's live; the rest are upcoming phases.
 const MODULES: { name: string; desc: string; phase: string; href?: string }[] = [
   { name: "Kanban Board", desc: "Boards, cards, drag & drop", phase: "Phase 1", href: "/boards" },
-  { name: "Project Management", desc: "ADDIE/SAM workflows, deliverables", phase: "Phase 2" },
+  { name: "Project Management", desc: "ADDIE/SAM workflows, deliverables", phase: "Phase 2", href: "/projects" },
   { name: "Storyboarding", desc: "Frame-by-frame course storyboards", phase: "Phase 3" },
   { name: "Certifications & Exams", desc: "Exam builder, question banks", phase: "Phase 4" },
   { name: "LMS Integration", desc: "Sync to LearnUpon", phase: "Phase 5" },
