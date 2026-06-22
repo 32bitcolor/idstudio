@@ -46,6 +46,8 @@ type Card = {
   dueDate: string | null;
   labels: Label[];
   assignees: Member[];
+  checklist: { total: number; done: number };
+  comments: number;
 };
 type Column = { id: string; name: string; position: string; cards: Card[] };
 
@@ -142,6 +144,8 @@ export function BoardView({
         dueDate: null,
         labels: [],
         assignees: [],
+        checklist: { total: 0, done: 0 },
+        comments: 0,
       };
       setColumns((prev) => prev.map((c) => (c.id === columnId ? { ...c, cards: [...c.cards, card] } : c)));
     }
@@ -407,15 +411,29 @@ function CardShell({
           </button>
         )}
       </div>
-      {(due || card.assignees.length > 0) && (
+      {(due || card.checklist.total > 0 || card.comments > 0 || card.assignees.length > 0) && (
         <div className="flex items-center justify-between gap-2">
-          {due ? (
-            <span className={`rounded px-1.5 py-0.5 text-xs ${due.overdue ? "bg-red-500/15 text-red-600" : "bg-black/[.05] text-foreground/60 dark:bg-white/[.08]"}`}>
-              {due.label}
-            </span>
-          ) : (
-            <span />
-          )}
+          <div className="flex items-center gap-1 text-xs text-foreground/60">
+            {due && (
+              <span className={`rounded px-1.5 py-0.5 ${due.overdue ? "bg-red-500/15 text-red-600" : "bg-black/[.05] dark:bg-white/[.08]"}`}>
+                {due.label}
+              </span>
+            )}
+            {card.checklist.total > 0 && (
+              <span
+                className={`rounded px-1.5 py-0.5 ${
+                  card.checklist.done === card.checklist.total
+                    ? "bg-green-500/15 text-green-600"
+                    : "bg-black/[.05] dark:bg-white/[.08]"
+                }`}
+              >
+                ✓ {card.checklist.done}/{card.checklist.total}
+              </span>
+            )}
+            {card.comments > 0 && (
+              <span className="rounded bg-black/[.05] px-1.5 py-0.5 dark:bg-white/[.08]">💬 {card.comments}</span>
+            )}
+          </div>
           {card.assignees.length > 0 && (
             <div className="flex -space-x-1">
               {card.assignees.slice(0, 3).map((a) => (

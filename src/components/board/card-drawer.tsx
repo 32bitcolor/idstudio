@@ -8,17 +8,31 @@ import {
   createLabel,
   toggleCardLabel,
   toggleCardAssignee,
+  addChecklistItem,
+  toggleChecklistItem,
+  deleteChecklistItem,
+  addComment,
+  deleteComment,
 } from "@/app/actions/cards";
 import { renameCard, deleteCard } from "@/app/actions/boards";
 import { DescriptionEditor } from "@/components/board/description-editor";
 
 export type LabelT = { id: string; name: string; color: string };
 export type MemberT = { id: string; name: string | null; email: string };
+type ChecklistItemT = { id: string; text: string; done: boolean; position: string };
+type CommentT = {
+  id: string;
+  body: string;
+  createdAt: string;
+  author: { id: string; name: string | null; email: string };
+};
 export type CardFacePatch = {
   title?: string;
   dueDate?: string | null;
   labels?: LabelT[];
   assignees?: { id: string; name: string | null; email: string }[];
+  checklist?: { total: number; done: number };
+  comments?: number;
 };
 
 const PALETTE = [
@@ -48,6 +62,10 @@ export function CardDrawer({
   const [members, setMembers] = useState<MemberT[]>([]);
   const [newLabelName, setNewLabelName] = useState("");
   const [newLabelColor, setNewLabelColor] = useState(PALETTE[4]);
+  const [checklist, setChecklist] = useState<ChecklistItemT[]>([]);
+  const [comments, setComments] = useState<CommentT[]>([]);
+  const [currentUserId, setCurrentUserId] = useState("");
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -62,6 +80,10 @@ export function CardDrawer({
       setAssigneeIds(new Set(d.card.assigneeIds));
       setBoardLabels(d.boardLabels);
       setMembers(d.members);
+      setChecklist(d.checklist);
+      setComments(d.comments);
+      setCurrentUserId(d.currentUserId);
+      setIsAdmin(d.isAdmin);
       setLoading(false);
     });
     return () => {
@@ -130,12 +152,57 @@ export function CardDrawer({
     onPatch(cardId, { assignees: members.filter((x) => next.has(x.id)) });
   }
 
+  function patchChecklistFace(items: ChecklistItemT[]) {
+    onPatch(cardId, { checklist: { total: items.length, done: items.filter((i) => i.done).length } });
+  }
+
+  async function addItem(text: string) {
+    const res = await addChecklistItem(cardId, text);
+    if ("item" in res && res.item) {
+      const next = [...checklist, res.item];
+      setChecklist(next);
+      patchChecklistFace(next);
+    }
+  }
+
+  function toggleItem(item: ChecklistItemT) {
+    const next = checklist.map((i) => (i.id === item.id ? { ...i, done: !i.done } : i));
+    setChecklist(next);
+    toggleChecklistItem(item.id, !item.done);
+    patchChecklistFace(next);
+  }
+
+  function removeItem(item: ChecklistItemT) {
+    const next = checklist.filter((i) => i.id !== item.id);
+    setChecklist(next);
+    deleteChecklistItem(item.id);
+    patchChecklistFace(next);
+  }
+
+  async function postComment(body: string) {
+    const res = await addComment(cardId, body);
+    if ("comment" in res && res.comment) {
+      const next = [...comments, res.comment];
+      setComments(next);
+      onPatch(cardId, { comments: next.length });
+    }
+  }
+
+  function removeComment(c: CommentT) {
+    const next = comments.filter((x) => x.id !== c.id);
+    setComments(next);
+    deleteComment(c.id);
+    onPatch(cardId, { comments: next.length });
+  }
+
   function handleDelete() {
     if (!confirm("Delete this card?")) return;
     deleteCard(cardId);
     onDeleted(cardId);
     onClose();
   }
+
+  const doneCount = checklist.filter((i) => i.done).length;
 
   return (
     <div className="fixed inset-0 z-40 flex justify-end">
@@ -219,8 +286,60 @@ export function CardDrawer({
               <AssigneePicker members={members} assigneeIds={assigneeIds} onToggle={toggleAssignee} />
             </Section>
 
+            <Section title={`Checklist${checklist.length ? ` · ${doneCount}/${checklist.length}` : ""}`}>
+              <div className="flex flex-col gap-1">
+                {checklist.map((item) => (
+                  <div key={item.id} className="group flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={item.done}
+                      onChange={() => toggleItem(item)}
+                      className="h-4 w-4 shrink-0"
+                    />
+                    <span className={`flex-1 text-sm ${item.done ? "text-foreground/40 line-through" : ""}`}>
+                      {item.text}
+                    </span>
+                    <button
+                      onClick={() => removeItem(item)}
+                      className="shrink-0 text-foreground/30 opacity-0 hover:text-red-600 group-hover:opacity-100"
+                      title="Remove"
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+              </div>
+              <InlineComposer placeholder="Add an item…" buttonLabel="Add" onSubmit={addItem} />
+            </Section>
+
             <Section title="Description">
               <DescriptionEditor key={cardId} initial={description} onSave={saveDescription} />
+            </Section>
+
+            <Section title="Comments">
+              <div className="flex flex-col gap-3">
+                {comments.length === 0 && <p className="text-sm text-foreground/40">No comments yet.</p>}
+                {comments.map((c) => (
+                  <div key={c.id} className="group">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-xs font-medium">{c.author.name ?? c.author.email}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-foreground/40">{formatTime(c.createdAt)}</span>
+                        {(c.author.id === currentUserId || isAdmin) && (
+                          <button
+                            onClick={() => removeComment(c)}
+                            className="text-xs text-foreground/40 opacity-0 hover:text-red-600 group-hover:opacity-100"
+                          >
+                            Delete
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                    <p className="mt-0.5 whitespace-pre-wrap text-sm">{c.body}</p>
+                  </div>
+                ))}
+              </div>
+              <InlineComposer placeholder="Write a comment…" buttonLabel="Comment" multiline onSubmit={postComment} />
             </Section>
 
             <div className="border-t border-black/10 dark:border-white/15 pt-4">
@@ -298,6 +417,74 @@ function AssigneePicker({
             })}
           </div>
         </>
+      )}
+    </div>
+  );
+}
+
+function formatTime(iso: string) {
+  return new Date(iso).toLocaleString(undefined, {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
+function InlineComposer({
+  placeholder,
+  buttonLabel,
+  multiline,
+  onSubmit,
+}: {
+  placeholder: string;
+  buttonLabel: string;
+  multiline?: boolean;
+  onSubmit: (text: string) => void;
+}) {
+  const [value, setValue] = useState("");
+
+  function submit() {
+    const v = value.trim();
+    if (!v) return;
+    onSubmit(v);
+    setValue("");
+  }
+
+  const cls =
+    "w-full rounded-md border border-black/15 dark:border-white/20 bg-transparent px-2 py-1.5 text-sm outline-none focus:border-foreground/60";
+
+  return (
+    <div className="mt-2 flex flex-col gap-1.5">
+      {multiline ? (
+        <textarea
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !e.shiftKey) {
+              e.preventDefault();
+              submit();
+            }
+          }}
+          rows={2}
+          placeholder={placeholder}
+          className={`resize-none ${cls}`}
+        />
+      ) : (
+        <input
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && submit()}
+          placeholder={placeholder}
+          className={cls}
+        />
+      )}
+      {value.trim() && (
+        <div>
+          <button onClick={submit} className="rounded-md bg-foreground px-3 py-1 text-xs font-medium text-background">
+            {buttonLabel}
+          </button>
+        </div>
       )}
     </div>
   );

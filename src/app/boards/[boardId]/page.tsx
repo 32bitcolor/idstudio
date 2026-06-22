@@ -28,6 +28,8 @@ export default async function BoardPage({ params }: { params: Promise<{ boardId:
           dueDate: true,
           labels: { select: { label: { select: { id: true, name: true, color: true } } } },
           assignees: { select: { user: { select: { id: true, name: true, email: true } } } },
+          checklist: { select: { done: true } },
+          _count: { select: { comments: true } },
         },
       },
     },
@@ -45,6 +47,8 @@ export default async function BoardPage({ params }: { params: Promise<{ boardId:
       dueDate: card.dueDate ? card.dueDate.toISOString() : null,
       labels: card.labels.map((l) => l.label),
       assignees: card.assignees.map((a) => a.user),
+      checklist: { total: card.checklist.length, done: card.checklist.filter((i) => i.done).length },
+      comments: card._count.comments,
     })),
   }));
 
