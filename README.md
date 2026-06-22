@@ -4,9 +4,10 @@ A self-hosted web app for instructional design teams: a full-featured Kanban boa
 ID-tailored project management (ADDIE/SAM), a storyboarding suite, a certification &
 exam builder, and LMS integration (LearnUpon). Built to run on your own Proxmox server.
 
-> **Status: Phase 0 (Foundation).** Auth, multi-user workspaces with roles, and the full
-> self-hosting stack are in place and verified. Feature modules ship in later phases — see
-> the roadmap in `.claude/plans/deep-jumping-treehouse.md`.
+> **Status: Phase 1 complete — Phase 2 next.** The foundation (auth, multi-user workspaces
+> with roles, and the self-hosting stack) and the full Kanban board (boards, drag-and-drop,
+> card details, checklists, comments, attachments, and filters) are built and verified.
+> Up next: project management. See the **[Roadmap](#roadmap)** below.
 
 ## Tech stack
 
@@ -91,6 +92,14 @@ and run `docker compose up -d`. Caddy provisions HTTPS, the `migrate` service ap
 and seeds the admin, then the app and worker start.
 
 ## Roadmap
-Phase 1 Kanban · Phase 2 Project management · Phase 3 Storyboarding ·
-Phase 4 Certifications & exams · Phase 5 LearnUpon integration.
+
+- ✅ **Phase 0 — Foundation:** auth, multi-user workspaces with roles, Docker/Proxmox stack
+- ✅ **Phase 1 — Kanban:** boards, drag-and-drop, card details (description, due date, labels,
+  assignees), checklists, comments, attachments, and filters
+- ⬜ **Phase 2 — Project management** *(next)* — ADDIE/SAM workflows, milestones, deliverables,
+  review cycles, time tracking
+- ⬜ **Phase 3 — Storyboarding suite**
+- ⬜ **Phase 4 — Certifications & exam builder**
+- ⬜ **Phase 5 — LearnUpon integration**
+
 Full detail in `.claude/plans/deep-jumping-treehouse.md`.
