@@ -268,16 +268,16 @@ export function CardDrawer({
   return (
     <div className="fixed inset-0 z-40 flex justify-end">
       <div className="absolute inset-0 bg-black/30" onClick={onClose} />
-      <div className="relative z-10 flex h-full w-full max-w-md flex-col overflow-y-auto border-l border-black/10 dark:border-white/15 bg-background shadow-xl">
-        <div className="flex items-start justify-between gap-2 border-b border-black/10 dark:border-white/15 px-4 py-3">
+      <div className="relative z-10 flex h-full w-full max-w-md flex-col overflow-y-auto border-l border-border bg-surface shadow-xl">
+        <div className="flex items-start justify-between gap-2 border-b border-border px-4 py-3">
           <textarea
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             onBlur={saveTitle}
             rows={1}
-            className="min-h-[2rem] flex-1 resize-none rounded bg-transparent px-1 text-base font-semibold outline-none hover:bg-black/[.04] focus:bg-black/[.04] dark:hover:bg-white/[.06]"
+            className="min-h-[2rem] flex-1 resize-none rounded bg-transparent px-1 text-base font-semibold outline-none hover:bg-hover focus:bg-hover"
           />
-          <button onClick={onClose} className="rounded px-2 py-1 text-foreground/60 hover:bg-black/[.06] dark:hover:bg-white/[.08]" title="Close">
+          <button onClick={onClose} className="rounded px-2 py-1 text-foreground/60 hover:bg-hover" title="Close">
             ✕
           </button>
         </div>
@@ -292,7 +292,7 @@ export function CardDrawer({
                   type="date"
                   value={dueDate ? dueDate.slice(0, 10) : ""}
                   onChange={(e) => changeDueDate(e.target.value)}
-                  className="rounded-md border border-black/15 dark:border-white/20 bg-transparent px-2 py-1 text-sm outline-none"
+                  className="rounded-md border border-border-strong bg-transparent px-2 py-1 text-sm outline-none"
                 />
                 {dueDate && (
                   <button onClick={() => changeDueDate("")} className="text-xs text-foreground/50 hover:underline">
@@ -324,7 +324,7 @@ export function CardDrawer({
                   onChange={(e) => setNewLabelName(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && addLabel()}
                   placeholder="New label…"
-                  className="w-32 rounded-md border border-black/15 dark:border-white/20 bg-transparent px-2 py-1 text-xs outline-none"
+                  className="w-32 rounded-md border border-border-strong bg-transparent px-2 py-1 text-xs outline-none"
                 />
                 <div className="flex gap-1">
                   {PALETTE.map((c) => (
@@ -337,7 +337,7 @@ export function CardDrawer({
                     />
                   ))}
                 </div>
-                <button onClick={addLabel} className="rounded-md bg-foreground px-2 py-1 text-xs font-medium text-background">
+                <button onClick={addLabel} className="rounded-md bg-accent px-2 py-1 text-xs font-medium text-accent-foreground">
                   Add
                 </button>
               </div>
@@ -383,7 +383,7 @@ export function CardDrawer({
                 {attachments.map((a) => (
                   <div
                     key={a.id}
-                    className="group flex items-center gap-2 rounded-md border border-black/10 dark:border-white/15 px-2 py-1.5"
+                    className="group flex items-center gap-2 rounded-md border border-border px-2 py-1.5"
                   >
                     <span className="flex-1 truncate text-sm" title={a.fileName}>
                       {a.fileName}
@@ -406,7 +406,7 @@ export function CardDrawer({
                 ))}
               </div>
               <div className="mt-2">
-                <label className="inline-block cursor-pointer rounded-md border border-black/15 dark:border-white/20 px-3 py-1 text-xs hover:bg-black/[.04] dark:hover:bg-white/[.06]">
+                <label className="inline-block cursor-pointer rounded-md border border-border-strong px-3 py-1 text-xs hover:bg-hover">
                   {uploading ? "Uploading…" : "+ Add file"}
                   <input
                     type="file"
@@ -449,7 +449,7 @@ export function CardDrawer({
               <InlineComposer placeholder="Write a comment…" buttonLabel="Comment" multiline onSubmit={postComment} />
             </Section>
 
-            <div className="border-t border-black/10 dark:border-white/15 pt-4">
+            <div className="border-t border-border pt-4">
               <button onClick={handleDelete} className="text-sm text-red-600 hover:underline">
                 Delete card
               </button>
@@ -488,17 +488,17 @@ function AssigneePicker({
         {selected.map((m) => (
           <span
             key={m.id}
-            className="flex items-center gap-1 rounded-full border border-foreground bg-foreground px-2 py-0.5 text-xs text-background"
+            className="flex items-center gap-1 rounded-full border border-foreground bg-accent px-2 py-0.5 text-xs text-accent-foreground"
           >
             {m.name ?? m.email}
-            <button onClick={() => onToggle(m)} className="text-background/70 hover:text-background" title="Remove">
+            <button onClick={() => onToggle(m)} className="text-accent-foreground/70 hover:text-accent-foreground" title="Remove">
               ×
             </button>
           </span>
         ))}
         <button
           onClick={() => setOpen((o) => !o)}
-          className="rounded-md border border-black/15 dark:border-white/20 px-2 py-0.5 text-xs text-foreground/70 hover:bg-black/[.04] dark:hover:bg-white/[.06]"
+          className="rounded-md border border-border-strong px-2 py-0.5 text-xs text-foreground/70 hover:bg-hover"
         >
           + Assign
         </button>
@@ -507,7 +507,7 @@ function AssigneePicker({
       {open && (
         <>
           <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
-          <div className="absolute z-20 mt-1 max-h-56 w-60 overflow-y-auto rounded-md border border-black/10 dark:border-white/15 bg-background py-1 shadow-lg">
+          <div className="absolute z-20 mt-1 max-h-56 w-60 overflow-y-auto rounded-md border border-border bg-surface py-1 shadow-lg">
             {members.length === 0 && <p className="px-3 py-1.5 text-sm text-foreground/50">No members</p>}
             {members.map((m) => {
               const on = assigneeIds.has(m.id);
@@ -515,7 +515,7 @@ function AssigneePicker({
                 <button
                   key={m.id}
                   onClick={() => onToggle(m)}
-                  className="flex w-full items-center justify-between gap-2 px-3 py-1.5 text-left text-sm hover:bg-black/[.04] dark:hover:bg-white/[.06]"
+                  className="flex w-full items-center justify-between gap-2 px-3 py-1.5 text-left text-sm hover:bg-hover"
                 >
                   <span className="truncate">{m.name ?? m.email}</span>
                   {on && <span className="shrink-0 text-foreground/70">✓</span>}
@@ -565,7 +565,7 @@ function InlineComposer({
   }
 
   const cls =
-    "w-full rounded-md border border-black/15 dark:border-white/20 bg-transparent px-2 py-1.5 text-sm outline-none focus:border-foreground/60";
+    "w-full rounded-md border border-border-strong bg-transparent px-2 py-1.5 text-sm outline-none focus:border-foreground/60";
 
   return (
     <div className="mt-2 flex flex-col gap-1.5">
@@ -594,7 +594,7 @@ function InlineComposer({
       )}
       {value.trim() && (
         <div>
-          <button onClick={submit} className="rounded-md bg-foreground px-3 py-1 text-xs font-medium text-background">
+          <button onClick={submit} className="rounded-md bg-accent px-3 py-1 text-xs font-medium text-accent-foreground">
             {buttonLabel}
           </button>
         </div>

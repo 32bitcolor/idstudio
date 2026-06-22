@@ -6,7 +6,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
           <h1 className="text-2xl font-semibold tracking-tight">IDStudio</h1>
           <p className="mt-1 text-sm text-foreground/60">Instructional Designer Workspace</p>
         </div>
-        <div className="rounded-xl border border-black/10 dark:border-white/15 p-6">{children}</div>
+        <div className="rounded-xl border border-border p-6">{children}</div>
       </div>
     </div>
   );

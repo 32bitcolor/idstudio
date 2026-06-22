@@ -2,6 +2,7 @@ import Link from "next/link";
 import { requireUser, getActiveMembership } from "@/lib/dal";
 import { logout } from "@/app/actions/auth";
 import { Role } from "@/generated/prisma/client";
+import { ThemeSwitcher } from "@/components/theme-switcher";
 
 export const metadata = { title: "Dashboard · IDStudio" };
 
@@ -28,25 +29,28 @@ export default async function DashboardPage() {
             Welcome, {user.name ?? user.email}
           </h1>
           <div className="mt-2 flex items-center gap-2 text-xs">
-            <span className="rounded-full border border-black/10 dark:border-white/15 px-2 py-0.5 text-foreground/70">
+            <span className="rounded-full border border-border px-2 py-0.5 text-foreground/70">
               {user.email}
             </span>
             <span
               className={`rounded-full px-2 py-0.5 font-medium ${
                 isAdmin
-                  ? "bg-foreground text-background"
-                  : "border border-black/10 dark:border-white/15 text-foreground/70"
+                  ? "bg-accent text-accent-foreground"
+                  : "border border-border text-foreground/70"
               }`}
             >
               {membership?.role ?? "—"}
             </span>
           </div>
         </div>
-        <form action={logout}>
-          <button className="rounded-md border border-black/10 dark:border-white/15 px-3 py-1.5 text-sm hover:bg-black/[.04] dark:hover:bg-white/[.06]">
-            Sign out
-          </button>
-        </form>
+        <div className="flex items-center gap-2">
+          <ThemeSwitcher />
+          <form action={logout}>
+            <button className="rounded-md border border-border px-3 py-1.5 text-sm hover:bg-hover">
+              Sign out
+            </button>
+          </form>
+        </div>
       </header>
 
       <section className="mt-10">
@@ -55,8 +59,8 @@ export default async function DashboardPage() {
           {MODULES.map((m) => {
             const className = `block rounded-xl border p-4 ${
               m.href
-                ? "border-black/10 dark:border-white/15 hover:border-foreground/40"
-                : "border-black/10 dark:border-white/15"
+                ? "border-border hover:border-foreground/40"
+                : "border-border"
             }`;
             const inner = (
               <>

@@ -38,7 +38,7 @@ export function FilterBar({
   total: number;
 }) {
   const input =
-    "rounded-md border border-black/15 dark:border-white/20 bg-transparent px-2 py-1 text-sm outline-none focus:border-foreground/60";
+    "rounded-md border border-border-strong bg-transparent px-2 py-1 text-sm outline-none focus:border-foreground/60";
 
   return (
     <div className="flex flex-wrap items-center gap-2 px-6 pb-3">
@@ -83,7 +83,7 @@ export function FilterBar({
         <>
           <button
             onClick={onClear}
-            className="rounded-md border border-black/15 dark:border-white/20 px-2 py-1 text-sm text-foreground/70 hover:bg-black/[.04] dark:hover:bg-white/[.06]"
+            className="rounded-md border border-border-strong px-2 py-1 text-sm text-foreground/70 hover:bg-hover"
           >
             Clear
           </button>
@@ -113,15 +113,15 @@ function Dropdown({
       <button
         onClick={() => !empty && setOpen((o) => !o)}
         disabled={empty}
-        className="rounded-md border border-black/15 dark:border-white/20 px-2 py-1 text-sm text-foreground/70 hover:bg-black/[.04] disabled:opacity-40 dark:hover:bg-white/[.06]"
+        className="rounded-md border border-border-strong px-2 py-1 text-sm text-foreground/70 hover:bg-hover disabled:opacity-40"
       >
         {label}
-        {count > 0 && <span className="ml-1 rounded bg-foreground px-1 text-xs text-background">{count}</span>}
+        {count > 0 && <span className="ml-1 rounded bg-accent px-1 text-xs text-accent-foreground">{count}</span>}
       </button>
       {open && (
         <>
           <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
-          <div className="absolute z-20 mt-1 max-h-60 w-56 overflow-y-auto rounded-md border border-black/10 dark:border-white/15 bg-background py-1 shadow-lg">
+          <div className="absolute z-20 mt-1 max-h-60 w-56 overflow-y-auto rounded-md border border-border bg-surface py-1 shadow-lg">
             {children}
           </div>
         </>
@@ -144,7 +144,7 @@ function CheckRow({
   return (
     <button
       onClick={onClick}
-      className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm hover:bg-black/[.04] dark:hover:bg-white/[.06]"
+      className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm hover:bg-hover"
     >
       <span className="w-3 shrink-0 text-foreground/70">{checked ? "✓" : ""}</span>
       {color && <span className="h-3 w-3 shrink-0 rounded-full" style={{ backgroundColor: color }} />}

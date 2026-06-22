@@ -6,7 +6,7 @@ import { login } from "@/app/actions/auth";
 import type { AuthState } from "@/lib/form-state";
 
 const inputClass =
-  "w-full rounded-md border border-black/15 dark:border-white/20 bg-transparent px-3 py-2 text-sm outline-none focus:border-foreground/60";
+  "w-full rounded-md border border-border-strong bg-transparent px-3 py-2 text-sm outline-none focus:border-foreground/60";
 
 export function LoginForm() {
   const [state, action, pending] = useActionState<AuthState, FormData>(login, undefined);
@@ -34,7 +34,7 @@ export function LoginForm() {
       <button
         type="submit"
         disabled={pending}
-        className="mt-2 rounded-md bg-foreground px-4 py-2 text-sm font-medium text-background disabled:opacity-60"
+        className="mt-2 rounded-md bg-accent px-4 py-2 text-sm font-medium text-accent-foreground disabled:opacity-60"
       >
         {pending ? "Signing in…" : "Sign in"}
       </button>

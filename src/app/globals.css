@@ -1,22 +1,128 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
+/* ── Semantic design tokens ───────────────────────────────────────────────────
+   Components use the utilities these expose (bg-surface, border-border,
+   bg-accent, hover:bg-hover, …). Each theme below just re-defines the raw vars. */
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-surface: var(--surface);
+  --color-surface-muted: var(--surface-muted);
+  --color-muted: var(--muted);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-hover: var(--hover);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
+/* Light (also the default for the "System" option in light mode) */
+:root {
+  color-scheme: light;
+  --background: #ffffff;
+  --foreground: #171717;
+  --surface: #ffffff;
+  --surface-muted: #fafafa;
+  --muted: #f1f1f3;
+  --border: #e6e6e8;
+  --border-strong: #d4d4d8;
+  --hover: #f4f4f5;
+  --accent: #171717;
+  --accent-foreground: #ffffff;
+}
+
+/* System dark: only when no explicit theme is chosen */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme]) {
+    color-scheme: dark;
     --background: #0a0a0a;
     --foreground: #ededed;
+    --surface: #141414;
+    --surface-muted: #101010;
+    --muted: #1f1f22;
+    --border: #2a2a2e;
+    --border-strong: #3a3a3f;
+    --hover: #1c1c20;
+    --accent: #ededed;
+    --accent-foreground: #0a0a0a;
   }
+}
+
+/* Explicit Light (forces light even on a dark OS) */
+[data-theme="light"] {
+  color-scheme: light;
+  --background: #ffffff;
+  --foreground: #171717;
+  --surface: #ffffff;
+  --surface-muted: #fafafa;
+  --muted: #f1f1f3;
+  --border: #e6e6e8;
+  --border-strong: #d4d4d8;
+  --hover: #f4f4f5;
+  --accent: #171717;
+  --accent-foreground: #ffffff;
+}
+
+/* Explicit Dark */
+[data-theme="dark"] {
+  color-scheme: dark;
+  --background: #0a0a0a;
+  --foreground: #ededed;
+  --surface: #141414;
+  --surface-muted: #101010;
+  --muted: #1f1f22;
+  --border: #2a2a2e;
+  --border-strong: #3a3a3f;
+  --hover: #1c1c20;
+  --accent: #ededed;
+  --accent-foreground: #0a0a0a;
+}
+
+/* Nord — arctic, frost accent */
+[data-theme="nord"] {
+  color-scheme: dark;
+  --background: #2e3440;
+  --foreground: #eceff4;
+  --surface: #3b4252;
+  --surface-muted: #353c4a;
+  --muted: #434c5e;
+  --border: #434c5e;
+  --border-strong: #4c566a;
+  --hover: #434c5e;
+  --accent: #88c0d0;
+  --accent-foreground: #2e3440;
+}
+
+/* Dracula — purple accent */
+[data-theme="dracula"] {
+  color-scheme: dark;
+  --background: #282a36;
+  --foreground: #f8f8f2;
+  --surface: #343746;
+  --surface-muted: #2d303e;
+  --muted: #44475a;
+  --border: #44475a;
+  --border-strong: #565a72;
+  --hover: #44475a;
+  --accent: #bd93f9;
+  --accent-foreground: #282a36;
+}
+
+/* Solarized Light — warm paper, blue accent */
+[data-theme="solarized"] {
+  color-scheme: light;
+  --background: #fdf6e3;
+  --foreground: #586e75;
+  --surface: #fbf3df;
+  --surface-muted: #f4ecd4;
+  --muted: #eee8d5;
+  --border: #e3dcc4;
+  --border-strong: #cdc4a8;
+  --hover: #eee8d5;
+  --accent: #268bd2;
+  --accent-foreground: #fdf6e3;
 }
 
 body {

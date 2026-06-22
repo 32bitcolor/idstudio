@@ -36,6 +36,7 @@ import {
 } from "@/app/actions/boards";
 import { CardDrawer, type CardFacePatch } from "@/components/board/card-drawer";
 import { FilterBar, type DueFilter } from "@/components/board/filter-bar";
+import { ThemeSwitcher } from "@/components/theme-switcher";
 
 type Label = { id: string; name: string; color: string };
 type Member = { id: string; name: string | null; email: string };
@@ -338,18 +339,21 @@ function BoardHeader({ boardId, boardName }: { boardId: string; boardName: strin
           onBlur={() => {
             if (name.trim() && name !== boardName) startTransition(() => void renameBoard(boardId, name));
           }}
-          className="rounded-md bg-transparent px-1 text-lg font-semibold tracking-tight outline-none hover:bg-black/[.04] focus:bg-black/[.04] dark:hover:bg-white/[.06] dark:focus:bg-white/[.06]"
+          className="rounded-md bg-transparent px-1 text-lg font-semibold tracking-tight outline-none hover:bg-hover focus:bg-hover"
         />
       </div>
-      <form
-        action={async () => {
-          if (confirm("Delete this entire board?")) await deleteBoard(boardId);
-        }}
-      >
-        <button className="rounded-md border border-black/10 dark:border-white/15 px-3 py-1.5 text-sm text-red-600 hover:bg-red-500/5">
-          Delete board
-        </button>
-      </form>
+      <div className="flex items-center gap-2">
+        <ThemeSwitcher />
+        <form
+          action={async () => {
+            if (confirm("Delete this entire board?")) await deleteBoard(boardId);
+          }}
+        >
+          <button className="rounded-md border border-border px-3 py-1.5 text-sm text-red-600 hover:bg-red-500/5">
+            Delete board
+          </button>
+        </form>
+      </div>
     </header>
   );
 }
@@ -381,19 +385,19 @@ function ColumnView({
   const [name, setName] = useState(column.name);
 
   return (
-    <div className="flex w-72 shrink-0 flex-col rounded-xl border border-black/10 dark:border-white/15 bg-black/[.015] dark:bg-white/[.02]">
+    <div className="flex w-72 shrink-0 flex-col rounded-xl border border-border bg-surface-muted">
       <div className="flex items-center gap-1 px-3 pt-3">
         <input
           value={name}
           onChange={(e) => setName(e.target.value)}
           onBlur={() => name.trim() && name !== column.name && onRename(column.id, name.trim())}
-          className="min-w-0 flex-1 rounded bg-transparent px-1 text-sm font-medium outline-none hover:bg-black/[.04] focus:bg-black/[.04] dark:hover:bg-white/[.06]"
+          className="min-w-0 flex-1 rounded bg-transparent px-1 text-sm font-medium outline-none hover:bg-hover focus:bg-hover"
         />
         <span className="shrink-0 text-xs text-foreground/40">{column.cards.length}</span>
-        <button disabled={!canMoveLeft} onClick={() => onMove(column.id, -1)} className="rounded px-1 text-foreground/50 hover:bg-black/[.06] disabled:opacity-25 dark:hover:bg-white/[.08]" title="Move left">
+        <button disabled={!canMoveLeft} onClick={() => onMove(column.id, -1)} className="rounded px-1 text-foreground/50 hover:bg-hover disabled:opacity-25" title="Move left">
           ◀
         </button>
-        <button disabled={!canMoveRight} onClick={() => onMove(column.id, 1)} className="rounded px-1 text-foreground/50 hover:bg-black/[.06] disabled:opacity-25 dark:hover:bg-white/[.08]" title="Move right">
+        <button disabled={!canMoveRight} onClick={() => onMove(column.id, 1)} className="rounded px-1 text-foreground/50 hover:bg-hover disabled:opacity-25" title="Move right">
           ▶
         </button>
         <button onClick={() => onDelete(column.id)} className="rounded px-1 text-foreground/50 hover:bg-red-500/10 hover:text-red-600" title="Delete column">
@@ -482,7 +486,7 @@ function CardShell({
   return (
     <div
       onClick={onOpen}
-      className={`group flex flex-col gap-2 rounded-lg border border-black/10 dark:border-white/15 bg-background px-3 py-2 text-sm shadow-sm ${
+      className={`group flex flex-col gap-2 rounded-lg border border-border bg-surface px-3 py-2 text-sm shadow-sm ${
         dragging ? "rotate-1 shadow-md" : "cursor-pointer active:cursor-grabbing"
       }`}
     >
@@ -517,7 +521,7 @@ function CardShell({
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-1 text-xs text-foreground/60">
             {due && (
-              <span className={`rounded px-1.5 py-0.5 ${due.overdue ? "bg-red-500/15 text-red-600" : "bg-black/[.05] dark:bg-white/[.08]"}`}>
+              <span className={`rounded px-1.5 py-0.5 ${due.overdue ? "bg-red-500/15 text-red-600" : "bg-muted"}`}>
                 {due.label}
               </span>
             )}
@@ -526,17 +530,17 @@ function CardShell({
                 className={`rounded px-1.5 py-0.5 ${
                   card.checklist.done === card.checklist.total
                     ? "bg-green-500/15 text-green-600"
-                    : "bg-black/[.05] dark:bg-white/[.08]"
+                    : "bg-muted"
                 }`}
               >
                 ✓ {card.checklist.done}/{card.checklist.total}
               </span>
             )}
             {card.comments > 0 && (
-              <span className="rounded bg-black/[.05] px-1.5 py-0.5 dark:bg-white/[.08]">💬 {card.comments}</span>
+              <span className="rounded bg-muted px-1.5 py-0.5">💬 {card.comments}</span>
             )}
             {card.attachments > 0 && (
-              <span className="rounded bg-black/[.05] px-1.5 py-0.5 dark:bg-white/[.08]">📎 {card.attachments}</span>
+              <span className="rounded bg-muted px-1.5 py-0.5">📎 {card.attachments}</span>
             )}
           </div>
           {card.assignees.length > 0 && (
@@ -544,7 +548,7 @@ function CardShell({
               {card.assignees.slice(0, 3).map((a) => (
                 <span
                   key={a.id}
-                  className="flex h-5 w-5 items-center justify-center rounded-full border border-background bg-foreground text-[10px] font-medium text-background"
+                  className="flex h-5 w-5 items-center justify-center rounded-full border border-background bg-accent text-[10px] font-medium text-accent-foreground"
                   title={a.name ?? a.email}
                 >
                   {initials(a)}
@@ -564,7 +568,7 @@ function CardComposer({ onAdd }: { onAdd: (title: string) => void }) {
 
   if (!open) {
     return (
-      <button onClick={() => setOpen(true)} className="rounded-lg px-2 py-1.5 text-left text-sm text-foreground/50 hover:bg-black/[.04] dark:hover:bg-white/[.06]">
+      <button onClick={() => setOpen(true)} className="rounded-lg px-2 py-1.5 text-left text-sm text-foreground/50 hover:bg-hover">
         + Add a card
       </button>
     );
@@ -595,13 +599,13 @@ function CardComposer({ onAdd }: { onAdd: (title: string) => void }) {
         }}
         rows={2}
         placeholder="Card title…"
-        className="resize-none rounded-lg border border-black/15 dark:border-white/20 bg-background px-3 py-2 text-sm outline-none focus:border-foreground/60"
+        className="resize-none rounded-lg border border-border-strong bg-surface px-3 py-2 text-sm outline-none focus:border-foreground/60"
       />
       <div className="flex gap-2">
-        <button onClick={submit} className="rounded-md bg-foreground px-3 py-1 text-xs font-medium text-background">
+        <button onClick={submit} className="rounded-md bg-accent px-3 py-1 text-xs font-medium text-accent-foreground">
           Add
         </button>
-        <button onClick={() => { setValue(""); setOpen(false); }} className="rounded-md px-2 py-1 text-xs text-foreground/60 hover:bg-black/[.04] dark:hover:bg-white/[.06]">
+        <button onClick={() => { setValue(""); setOpen(false); }} className="rounded-md px-2 py-1 text-xs text-foreground/60 hover:bg-hover">
           Cancel
         </button>
       </div>
@@ -615,7 +619,7 @@ function AddColumn({ onAdd }: { onAdd: (name: string) => void }) {
 
   if (!open) {
     return (
-      <button onClick={() => setOpen(true)} className="w-72 shrink-0 rounded-xl border border-dashed border-black/15 dark:border-white/20 px-3 py-3 text-left text-sm text-foreground/50 hover:border-foreground/40">
+      <button onClick={() => setOpen(true)} className="w-72 shrink-0 rounded-xl border border-dashed border-border-strong px-3 py-3 text-left text-sm text-foreground/50 hover:border-foreground/40">
         + Add a column
       </button>
     );
@@ -629,7 +633,7 @@ function AddColumn({ onAdd }: { onAdd: (name: string) => void }) {
   }
 
   return (
-    <div className="flex w-72 shrink-0 flex-col gap-1.5 rounded-xl border border-black/10 dark:border-white/15 p-3">
+    <div className="flex w-72 shrink-0 flex-col gap-1.5 rounded-xl border border-border p-3">
       <input
         autoFocus
         value={value}
@@ -639,13 +643,13 @@ function AddColumn({ onAdd }: { onAdd: (name: string) => void }) {
           if (e.key === "Escape") { setValue(""); setOpen(false); }
         }}
         placeholder="Column name…"
-        className="rounded-md border border-black/15 dark:border-white/20 bg-background px-3 py-2 text-sm outline-none focus:border-foreground/60"
+        className="rounded-md border border-border-strong bg-surface px-3 py-2 text-sm outline-none focus:border-foreground/60"
       />
       <div className="flex gap-2">
-        <button onClick={submit} className="rounded-md bg-foreground px-3 py-1 text-xs font-medium text-background">
+        <button onClick={submit} className="rounded-md bg-accent px-3 py-1 text-xs font-medium text-accent-foreground">
           Add column
         </button>
-        <button onClick={() => { setValue(""); setOpen(false); }} className="rounded-md px-2 py-1 text-xs text-foreground/60 hover:bg-black/[.04] dark:hover:bg-white/[.06]">
+        <button onClick={() => { setValue(""); setOpen(false); }} className="rounded-md px-2 py-1 text-xs text-foreground/60 hover:bg-hover">
           Cancel
         </button>
       </div>

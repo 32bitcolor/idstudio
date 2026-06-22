@@ -34,9 +34,9 @@ export default async function BoardsPage() {
           required
           maxLength={120}
           placeholder="New board name…"
-          className="w-72 rounded-md border border-black/15 dark:border-white/20 bg-transparent px-3 py-2 text-sm outline-none focus:border-foreground/60"
+          className="w-72 rounded-md border border-border-strong bg-transparent px-3 py-2 text-sm outline-none focus:border-foreground/60"
         />
-        <button className="rounded-md bg-foreground px-4 py-2 text-sm font-medium text-background">
+        <button className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-accent-foreground">
           Create board
         </button>
       </form>
@@ -49,7 +49,7 @@ export default async function BoardsPage() {
             <li key={b.id}>
               <Link
                 href={`/boards/${b.id}`}
-                className="block rounded-xl border border-black/10 dark:border-white/15 p-4 hover:border-foreground/40"
+                className="block rounded-xl border border-border p-4 hover:border-foreground/40"
               >
                 <h2 className="font-medium">{b.name}</h2>
                 <p className="mt-1 text-sm text-foreground/50">{b._count.columns} columns</p>

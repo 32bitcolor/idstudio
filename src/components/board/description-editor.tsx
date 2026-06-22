@@ -31,7 +31,7 @@ export function DescriptionEditor({
   });
 
   return (
-    <div className="rounded-md border border-black/15 dark:border-white/20">
+    <div className="rounded-md border border-border-strong">
       {editor && <Toolbar editor={editor} />}
       <div className="px-3 py-2">
         <EditorContent editor={editor} />
@@ -43,11 +43,11 @@ export function DescriptionEditor({
 function Toolbar({ editor }: { editor: Editor }) {
   const btn = (active: boolean) =>
     `rounded px-2 py-0.5 text-xs ${
-      active ? "bg-foreground text-background" : "text-foreground/70 hover:bg-black/[.06] dark:hover:bg-white/[.08]"
+      active ? "bg-accent text-accent-foreground" : "text-foreground/70 hover:bg-hover"
     }`;
 
   return (
-    <div className="flex flex-wrap gap-1 border-b border-black/10 dark:border-white/15 px-2 py-1.5">
+    <div className="flex flex-wrap gap-1 border-b border-border px-2 py-1.5">
       <button type="button" onClick={() => editor.chain().focus().toggleBold().run()} className={btn(editor.isActive("bold"))}>
         B
       </button>
