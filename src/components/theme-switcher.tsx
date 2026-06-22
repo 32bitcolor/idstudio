@@ -9,6 +9,12 @@ const THEMES = [
   { id: "nord", label: "Nord" },
   { id: "dracula", label: "Dracula" },
   { id: "solarized", label: "Solarized Light" },
+  { id: "tokyo-night", label: "Tokyo Night" },
+  { id: "catppuccin-mocha", label: "Catppuccin Mocha" },
+  { id: "catppuccin-latte", label: "Catppuccin Latte" },
+  { id: "gruvbox", label: "Gruvbox" },
+  { id: "monokai", label: "Monokai" },
+  { id: "synthwave", label: "Synthwave" },
 ] as const;
 
 const STORAGE_KEY = "idstudio-theme";
@@ -46,7 +52,7 @@ export function ThemeSwitcher() {
       {open && (
         <>
           <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
-          <div className="absolute right-0 z-20 mt-1 w-44 rounded-md border border-border bg-surface py-1 shadow-lg">
+          <div className="absolute right-0 z-20 mt-1 max-h-80 w-44 overflow-y-auto rounded-md border border-border bg-surface py-1 shadow-lg">
             {THEMES.map((t) => (
               <button
                 key={t.id}

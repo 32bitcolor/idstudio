@@ -125,6 +125,96 @@
   --accent-foreground: #fdf6e3;
 }
 
+/* Tokyo Night — deep indigo, blue accent */
+[data-theme="tokyo-night"] {
+  color-scheme: dark;
+  --background: #1a1b26;
+  --foreground: #c0caf5;
+  --surface: #24283b;
+  --surface-muted: #1f2335;
+  --muted: #292e42;
+  --border: #2f344d;
+  --border-strong: #3b4261;
+  --hover: #292e42;
+  --accent: #7aa2f7;
+  --accent-foreground: #1a1b26;
+}
+
+/* Catppuccin Mocha — dark pastel, mauve accent */
+[data-theme="catppuccin-mocha"] {
+  color-scheme: dark;
+  --background: #1e1e2e;
+  --foreground: #cdd6f4;
+  --surface: #313244;
+  --surface-muted: #181825;
+  --muted: #45475a;
+  --border: #45475a;
+  --border-strong: #585b70;
+  --hover: #313244;
+  --accent: #cba6f7;
+  --accent-foreground: #1e1e2e;
+}
+
+/* Catppuccin Latte — light pastel, mauve accent */
+[data-theme="catppuccin-latte"] {
+  color-scheme: light;
+  --background: #eff1f5;
+  --foreground: #4c4f69;
+  --surface: #ffffff;
+  --surface-muted: #e6e9ef;
+  --muted: #dce0e8;
+  --border: #ccd0da;
+  --border-strong: #bcc0cc;
+  --hover: #e6e9ef;
+  --accent: #8839ef;
+  --accent-foreground: #eff1f5;
+}
+
+/* Gruvbox — warm retro, orange accent */
+[data-theme="gruvbox"] {
+  color-scheme: dark;
+  --background: #282828;
+  --foreground: #ebdbb2;
+  --surface: #32302f;
+  --surface-muted: #1d2021;
+  --muted: #3c3836;
+  --border: #504945;
+  --border-strong: #665c54;
+  --hover: #3c3836;
+  --accent: #fe8019;
+  --accent-foreground: #282828;
+}
+
+/* Monokai — vivid, magenta accent */
+[data-theme="monokai"] {
+  color-scheme: dark;
+  --background: #272822;
+  --foreground: #f8f8f2;
+  --surface: #31322c;
+  --surface-muted: #1f201b;
+  --muted: #3e3d32;
+  --border: #49483e;
+  --border-strong: #5a594a;
+  --hover: #3e3d32;
+  --accent: #f92672;
+  --accent-foreground: #ffffff;
+}
+
+/* Synthwave — neon, hot-pink accent */
+[data-theme="synthwave"] {
+  color-scheme: dark;
+  --background: #241b35;
+  --foreground: #f5edff;
+  --surface: #2e2243;
+  --surface-muted: #1c1528;
+  --muted: #3a2c52;
+  --border: #463366;
+  --border-strong: #5a4080;
+  --hover: #3a2c52;
+  --accent: #ff7edb;
+  --accent-foreground: #241b35;
+}
+
 body {
   background: var(--background);
   color: var(--foreground);
