@@ -216,24 +216,7 @@ export function CardDrawer({
             </Section>
 
             <Section title="Assignees">
-              <div className="flex flex-wrap gap-1.5">
-                {members.map((m) => {
-                  const on = assigneeIds.has(m.id);
-                  return (
-                    <button
-                      key={m.id}
-                      onClick={() => toggleAssignee(m)}
-                      className={`rounded-full border px-2 py-0.5 text-xs ${
-                        on
-                          ? "border-foreground bg-foreground text-background"
-                          : "border-black/15 dark:border-white/20 text-foreground/70"
-                      }`}
-                    >
-                      {m.name ?? m.email}
-                    </button>
-                  );
-                })}
-              </div>
+              <AssigneePicker members={members} assigneeIds={assigneeIds} onToggle={toggleAssignee} />
             </Section>
 
             <Section title="Description">
@@ -258,5 +241,64 @@ function Section({ title, children }: { title: string; children: React.ReactNode
       <h3 className="mb-2 text-xs font-medium uppercase tracking-wide text-foreground/50">{title}</h3>
       {children}
     </section>
+  );
+}
+
+function AssigneePicker({
+  members,
+  assigneeIds,
+  onToggle,
+}: {
+  members: MemberT[];
+  assigneeIds: Set<string>;
+  onToggle: (m: MemberT) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const selected = members.filter((m) => assigneeIds.has(m.id));
+
+  return (
+    <div className="relative">
+      <div className="flex flex-wrap items-center gap-1.5">
+        {selected.map((m) => (
+          <span
+            key={m.id}
+            className="flex items-center gap-1 rounded-full border border-foreground bg-foreground px-2 py-0.5 text-xs text-background"
+          >
+            {m.name ?? m.email}
+            <button onClick={() => onToggle(m)} className="text-background/70 hover:text-background" title="Remove">
+              ×
+            </button>
+          </span>
+        ))}
+        <button
+          onClick={() => setOpen((o) => !o)}
+          className="rounded-md border border-black/15 dark:border-white/20 px-2 py-0.5 text-xs text-foreground/70 hover:bg-black/[.04] dark:hover:bg-white/[.06]"
+        >
+          + Assign
+        </button>
+      </div>
+
+      {open && (
+        <>
+          <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
+          <div className="absolute z-20 mt-1 max-h-56 w-60 overflow-y-auto rounded-md border border-black/10 dark:border-white/15 bg-background py-1 shadow-lg">
+            {members.length === 0 && <p className="px-3 py-1.5 text-sm text-foreground/50">No members</p>}
+            {members.map((m) => {
+              const on = assigneeIds.has(m.id);
+              return (
+                <button
+                  key={m.id}
+                  onClick={() => onToggle(m)}
+                  className="flex w-full items-center justify-between gap-2 px-3 py-1.5 text-left text-sm hover:bg-black/[.04] dark:hover:bg-white/[.06]"
+                >
+                  <span className="truncate">{m.name ?? m.email}</span>
+                  {on && <span className="shrink-0 text-foreground/70">✓</span>}
+                </button>
+              );
+            })}
+          </div>
+        </>
+      )}
+    </div>
   );
 }
