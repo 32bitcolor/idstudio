@@ -15,11 +15,18 @@ import {
   deleteComment,
 } from "@/app/actions/cards";
 import { renameCard, deleteCard } from "@/app/actions/boards";
+import {
+  requestUpload,
+  finalizeUpload,
+  getDownloadUrl,
+  deleteAttachment,
+} from "@/app/actions/attachments";
 import { DescriptionEditor } from "@/components/board/description-editor";
 
 export type LabelT = { id: string; name: string; color: string };
 export type MemberT = { id: string; name: string | null; email: string };
 type ChecklistItemT = { id: string; text: string; done: boolean; position: string };
+type AttachmentT = { id: string; fileName: string; mimeType: string; sizeBytes: number; createdAt: string };
 type CommentT = {
   id: string;
   body: string;
@@ -33,6 +40,7 @@ export type CardFacePatch = {
   assignees?: { id: string; name: string | null; email: string }[];
   checklist?: { total: number; done: number };
   comments?: number;
+  attachments?: number;
 };
 
 const PALETTE = [
@@ -64,6 +72,9 @@ export function CardDrawer({
   const [newLabelColor, setNewLabelColor] = useState(PALETTE[4]);
   const [checklist, setChecklist] = useState<ChecklistItemT[]>([]);
   const [comments, setComments] = useState<CommentT[]>([]);
+  const [attachments, setAttachments] = useState<AttachmentT[]>([]);
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
   const [currentUserId, setCurrentUserId] = useState("");
   const [isAdmin, setIsAdmin] = useState(false);
 
@@ -82,6 +93,7 @@ export function CardDrawer({
       setMembers(d.members);
       setChecklist(d.checklist);
       setComments(d.comments);
+      setAttachments(d.attachments);
       setCurrentUserId(d.currentUserId);
       setIsAdmin(d.isAdmin);
       setLoading(false);
@@ -193,6 +205,55 @@ export function CardDrawer({
     setComments(next);
     deleteComment(c.id);
     onPatch(cardId, { comments: next.length });
+  }
+
+  async function handleFile(file: File) {
+    setUploadError(null);
+    if (file.size > 25 * 1024 * 1024) {
+      setUploadError("File exceeds the 25 MB limit.");
+      return;
+    }
+    setUploading(true);
+    try {
+      const req = await requestUpload(cardId, file.name, file.type, file.size);
+      if ("error" in req) {
+        setUploadError(req.error ?? "Upload failed.");
+        return;
+      }
+      const put = await fetch(req.uploadUrl, {
+        method: "PUT",
+        body: file,
+        headers: { "Content-Type": req.contentType },
+      });
+      if (!put.ok) {
+        setUploadError("Upload failed.");
+        return;
+      }
+      const fin = await finalizeUpload(cardId, req.key, file.name, file.type, file.size);
+      if ("attachment" in fin && fin.attachment) {
+        const next = [...attachments, fin.attachment];
+        setAttachments(next);
+        onPatch(cardId, { attachments: next.length });
+      } else if ("error" in fin) {
+        setUploadError(fin.error ?? "Upload failed.");
+      }
+    } catch {
+      setUploadError("Upload failed.");
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  async function downloadAttachment(a: AttachmentT) {
+    const res = await getDownloadUrl(a.id);
+    if ("url" in res) window.open(res.url, "_blank");
+  }
+
+  function removeAttachment(a: AttachmentT) {
+    const next = attachments.filter((x) => x.id !== a.id);
+    setAttachments(next);
+    deleteAttachment(a.id);
+    onPatch(cardId, { attachments: next.length });
   }
 
   function handleDelete() {
@@ -316,6 +377,52 @@ export function CardDrawer({
               <DescriptionEditor key={cardId} initial={description} onSave={saveDescription} />
             </Section>
 
+            <Section title="Attachments">
+              <div className="flex flex-col gap-1.5">
+                {attachments.length === 0 && <p className="text-sm text-foreground/40">No attachments.</p>}
+                {attachments.map((a) => (
+                  <div
+                    key={a.id}
+                    className="group flex items-center gap-2 rounded-md border border-black/10 dark:border-white/15 px-2 py-1.5"
+                  >
+                    <span className="flex-1 truncate text-sm" title={a.fileName}>
+                      {a.fileName}
+                    </span>
+                    <span className="shrink-0 text-xs text-foreground/40">{formatBytes(a.sizeBytes)}</span>
+                    <button
+                      onClick={() => downloadAttachment(a)}
+                      className="shrink-0 text-xs text-foreground/60 hover:underline"
+                    >
+                      Download
+                    </button>
+                    <button
+                      onClick={() => removeAttachment(a)}
+                      className="shrink-0 text-foreground/30 opacity-0 hover:text-red-600 group-hover:opacity-100"
+                      title="Remove"
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+              </div>
+              <div className="mt-2">
+                <label className="inline-block cursor-pointer rounded-md border border-black/15 dark:border-white/20 px-3 py-1 text-xs hover:bg-black/[.04] dark:hover:bg-white/[.06]">
+                  {uploading ? "Uploading…" : "+ Add file"}
+                  <input
+                    type="file"
+                    className="hidden"
+                    disabled={uploading}
+                    onChange={(e) => {
+                      const f = e.target.files?.[0];
+                      if (f) handleFile(f);
+                      e.target.value = "";
+                    }}
+                  />
+                </label>
+                {uploadError && <p className="mt-1 text-xs text-red-600">{uploadError}</p>}
+              </div>
+            </Section>
+
             <Section title="Comments">
               <div className="flex flex-col gap-3">
                 {comments.length === 0 && <p className="text-sm text-foreground/40">No comments yet.</p>}
@@ -429,6 +536,12 @@ function formatTime(iso: string) {
     hour: "numeric",
     minute: "2-digit",
   });
+}
+
+function formatBytes(n: number) {
+  if (n < 1024) return `${n} B`;
+  if (n < 1024 * 1024) return `${(n / 1024).toFixed(0)} KB`;
+  return `${(n / 1024 / 1024).toFixed(1)} MB`;
 }
 
 function InlineComposer({

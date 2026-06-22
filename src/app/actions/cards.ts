@@ -52,6 +52,10 @@ export async function getCardDetail(cardId: string) {
             author: { select: { id: true, name: true, email: true } },
           },
         },
+        attachments: {
+          orderBy: { createdAt: "asc" },
+          select: { id: true, fileName: true, mimeType: true, sizeBytes: true, createdAt: true },
+        },
       },
     }),
     prisma.label.findMany({
@@ -91,6 +95,13 @@ export async function getCardDetail(cardId: string) {
       body: c.body,
       createdAt: c.createdAt.toISOString(),
       author: c.author,
+    })),
+    attachments: card.attachments.map((a) => ({
+      id: a.id,
+      fileName: a.fileName,
+      mimeType: a.mimeType,
+      sizeBytes: a.sizeBytes,
+      createdAt: a.createdAt.toISOString(),
     })),
   };
 }

@@ -97,8 +97,24 @@ model Card {
   assignees   CardAssignee[]
   checklist   ChecklistItem[]
   comments    Comment[]
+  attachments Attachment[]
 
   @@index([columnId, position])
+}
+
+model Attachment {
+  id           String   @id @default(cuid())
+  cardId       String
+  workspaceId  String
+  fileName     String
+  mimeType     String
+  sizeBytes    Int
+  storageKey   String   @unique
+  uploadedById String
+  createdAt    DateTime @default(now())
+  card         Card     @relation(fields: [cardId], references: [id], onDelete: Cascade)
+
+  @@index([cardId])
 }
 
 model ChecklistItem {

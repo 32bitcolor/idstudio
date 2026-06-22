@@ -29,7 +29,7 @@ export default async function BoardPage({ params }: { params: Promise<{ boardId:
           labels: { select: { label: { select: { id: true, name: true, color: true } } } },
           assignees: { select: { user: { select: { id: true, name: true, email: true } } } },
           checklist: { select: { done: true } },
-          _count: { select: { comments: true } },
+          _count: { select: { comments: true, attachments: true } },
         },
       },
     },
@@ -49,6 +49,7 @@ export default async function BoardPage({ params }: { params: Promise<{ boardId:
       assignees: card.assignees.map((a) => a.user),
       checklist: { total: card.checklist.length, done: card.checklist.filter((i) => i.done).length },
       comments: card._count.comments,
+      attachments: card._count.attachments,
     })),
   }));
 

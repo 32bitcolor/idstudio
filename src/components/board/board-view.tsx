@@ -48,6 +48,7 @@ type Card = {
   assignees: Member[];
   checklist: { total: number; done: number };
   comments: number;
+  attachments: number;
 };
 type Column = { id: string; name: string; position: string; cards: Card[] };
 
@@ -146,6 +147,7 @@ export function BoardView({
         assignees: [],
         checklist: { total: 0, done: 0 },
         comments: 0,
+        attachments: 0,
       };
       setColumns((prev) => prev.map((c) => (c.id === columnId ? { ...c, cards: [...c.cards, card] } : c)));
     }
@@ -411,7 +413,11 @@ function CardShell({
           </button>
         )}
       </div>
-      {(due || card.checklist.total > 0 || card.comments > 0 || card.assignees.length > 0) && (
+      {(due ||
+        card.checklist.total > 0 ||
+        card.comments > 0 ||
+        card.attachments > 0 ||
+        card.assignees.length > 0) && (
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-1 text-xs text-foreground/60">
             {due && (
@@ -432,6 +438,9 @@ function CardShell({
             )}
             {card.comments > 0 && (
               <span className="rounded bg-black/[.05] px-1.5 py-0.5 dark:bg-white/[.08]">💬 {card.comments}</span>
+            )}
+            {card.attachments > 0 && (
+              <span className="rounded bg-black/[.05] px-1.5 py-0.5 dark:bg-white/[.08]">📎 {card.attachments}</span>
             )}
           </div>
           {card.assignees.length > 0 && (

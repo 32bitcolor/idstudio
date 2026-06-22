@@ -42,8 +42,8 @@ services:
     volumes:
       - miniodata:/data
     ports:
-      # Console (9001) handy during setup; API (9000) used by the app in Phase 1.
-      - "9001:9001"
+      - "9000:9000" # S3 API — used by the browser for presigned uploads/downloads
+      - "9001:9001" # web console
 
   # One-shot: apply migrations then seed the first admin, then exit.
   migrate:
@@ -69,6 +69,11 @@ services:
       SESSION_SECRET: ${SESSION_SECRET}
       REDIS_URL: redis://redis:6379
       NODE_ENV: production
+      S3_ENDPOINT: http://minio:9000
+      S3_PUBLIC_ENDPOINT: ${S3_PUBLIC_ENDPOINT:-http://localhost:9000}
+      S3_BUCKET: ${S3_BUCKET:-idstudio}
+      S3_ACCESS_KEY: ${MINIO_ROOT_USER}
+      S3_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
     depends_on:
       postgres:
         condition: service_healthy
