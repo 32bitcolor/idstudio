@@ -23,11 +23,23 @@ exam builder, and LMS integration (LearnUpon). Built to run on your own Proxmox 
 
 ![Dashboard](docs/screenshots/dashboard.png)
 
-**Color themes** — the whole UI re-themes instantly (the same board in Dracula and Nord):
+**Projects** — ID-tailored project management: each project carries its methodology (ADDIE/SAM/Custom) and phase progress:
 
-| Dracula | Nord |
-| :-----: | :--: |
-| ![Dracula theme](docs/screenshots/board-dracula.png) | ![Nord theme](docs/screenshots/board-nord.png) |
+![Projects list](docs/screenshots/projects.png)
+
+**Project detail** — methodology phases with status and dates, deliverables (linked to board cards) with SME/stakeholder review cycles, milestones, and time tracking:
+
+![Project detail](docs/screenshots/project-detail.png)
+
+**Color themes** — the whole UI re-themes instantly (the same board across six of the built-in themes):
+
+| Dracula | Nord | Synthwave |
+| :-----: | :--: | :-------: |
+| ![Dracula theme](docs/screenshots/board-dracula.png) | ![Nord theme](docs/screenshots/board-nord.png) | ![Synthwave theme](docs/screenshots/board-synthwave.png) |
+
+| Catppuccin Mocha | Tokyo Night | Gruvbox |
+| :--------------: | :---------: | :-----: |
+| ![Catppuccin Mocha theme](docs/screenshots/board-catppuccin-mocha.png) | ![Tokyo Night theme](docs/screenshots/board-tokyo-night.png) | ![Gruvbox theme](docs/screenshots/board-gruvbox.png) |
 
 ## Tech stack
 
