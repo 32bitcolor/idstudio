@@ -34,8 +34,19 @@ import {
   renameBoard,
   deleteBoard,
 } from "@/app/actions/boards";
+import { CardDrawer, type CardFacePatch } from "@/components/board/card-drawer";
 
-type Card = { id: string; title: string; description: string | null; position: string };
+type Label = { id: string; name: string; color: string };
+type Member = { id: string; name: string | null; email: string };
+type Card = {
+  id: string;
+  title: string;
+  description: string | null;
+  position: string;
+  dueDate: string | null;
+  labels: Label[];
+  assignees: Member[];
+};
 type Column = { id: string; name: string; position: string; cards: Card[] };
 
 export function BoardView({
@@ -49,6 +60,7 @@ export function BoardView({
 }) {
   const [columns, setColumns] = useState<Column[]>(initialColumns);
   const [activeCard, setActiveCard] = useState<Card | null>(null);
+  const [openCardId, setOpenCardId] = useState<string | null>(null);
   const [, startTransition] = useTransition();
 
   const sensors = useSensors(
@@ -61,11 +73,9 @@ export function BoardView({
 
   function onDragStart(e: DragStartEvent) {
     const id = String(e.active.id);
-    const card = colOfCard(id, columns)?.cards.find((c) => c.id === id) ?? null;
-    setActiveCard(card);
+    setActiveCard(colOfCard(id, columns)?.cards.find((c) => c.id === id) ?? null);
   }
 
-  // Live-move a card into another column as you drag over it.
   function onDragOver(e: DragOverEvent) {
     const { active, over } = e;
     if (!over) return;
@@ -116,27 +126,39 @@ export function BoardView({
 
     const finalCol = colOfCard(activeId, working)!;
     const finalIndex = finalCol.cards.findIndex((c) => c.id === activeId);
-    startTransition(() => {
-      moveCard(activeId, finalCol.id, finalIndex);
-    });
+    startTransition(() => void moveCard(activeId, finalCol.id, finalIndex));
   }
 
-  // ── Column / card mutations (optimistic local state + persisted server action) ──
+  // ── Mutations (optimistic local state + persisted server action) ──
 
   async function handleAddCard(columnId: string, title: string) {
     const res = await createCard(columnId, title);
     if ("card" in res && res.card) {
-      setColumns((prev) =>
-        prev.map((c) => (c.id === columnId ? { ...c, cards: [...c.cards, res.card] } : c)),
-      );
+      const card: Card = {
+        id: res.card.id,
+        title: res.card.title,
+        description: res.card.description,
+        position: res.card.position,
+        dueDate: null,
+        labels: [],
+        assignees: [],
+      };
+      setColumns((prev) => prev.map((c) => (c.id === columnId ? { ...c, cards: [...c.cards, card] } : c)));
     }
   }
 
   function handleDeleteCard(cardId: string) {
     setColumns((prev) => prev.map((c) => ({ ...c, cards: c.cards.filter((x) => x.id !== cardId) })));
-    startTransition(() => {
-      deleteCard(cardId);
-    });
+    startTransition(() => void deleteCard(cardId));
+  }
+
+  function patchCard(cardId: string, patch: CardFacePatch) {
+    setColumns((prev) =>
+      prev.map((col) => ({
+        ...col,
+        cards: col.cards.map((card) => (card.id === cardId ? { ...card, ...patch } : card)),
+      })),
+    );
   }
 
   async function handleAddColumn(name: string) {
@@ -148,28 +170,21 @@ export function BoardView({
 
   function handleRenameColumn(columnId: string, name: string) {
     setColumns((prev) => prev.map((c) => (c.id === columnId ? { ...c, name } : c)));
-    startTransition(() => {
-      renameColumn(columnId, name);
-    });
+    startTransition(() => void renameColumn(columnId, name));
   }
 
   function handleDeleteColumn(columnId: string) {
     if (!confirm("Delete this column and all its cards?")) return;
     setColumns((prev) => prev.filter((c) => c.id !== columnId));
-    startTransition(() => {
-      deleteColumn(columnId);
-    });
+    startTransition(() => void deleteColumn(columnId));
   }
 
   function handleMoveColumn(columnId: string, dir: -1 | 1) {
     const index = columns.findIndex((c) => c.id === columnId);
     const newIndex = index + dir;
     if (newIndex < 0 || newIndex >= columns.length) return;
-    const reordered = arrayMove(columns, index, newIndex);
-    setColumns(reordered);
-    startTransition(() => {
-      moveColumn(columnId, newIndex);
-    });
+    setColumns(arrayMove(columns, index, newIndex));
+    startTransition(() => void moveColumn(columnId, newIndex));
   }
 
   return (
@@ -192,6 +207,7 @@ export function BoardView({
               canMoveRight={i < columns.length - 1}
               onAddCard={handleAddCard}
               onDeleteCard={handleDeleteCard}
+              onOpenCard={setOpenCardId}
               onRename={handleRenameColumn}
               onDelete={handleDeleteColumn}
               onMove={handleMoveColumn}
@@ -200,10 +216,17 @@ export function BoardView({
           <AddColumn onAdd={handleAddColumn} />
         </div>
 
-        <DragOverlay>
-          {activeCard ? <CardShell title={activeCard.title} dragging /> : null}
-        </DragOverlay>
+        <DragOverlay>{activeCard ? <CardShell card={activeCard} dragging /> : null}</DragOverlay>
       </DndContext>
+
+      {openCardId && (
+        <CardDrawer
+          cardId={openCardId}
+          onClose={() => setOpenCardId(null)}
+          onPatch={patchCard}
+          onDeleted={handleDeleteCard}
+        />
+      )}
     </div>
   );
 }
@@ -246,6 +269,7 @@ function ColumnView({
   canMoveRight,
   onAddCard,
   onDeleteCard,
+  onOpenCard,
   onRename,
   onDelete,
   onMove,
@@ -255,6 +279,7 @@ function ColumnView({
   canMoveRight: boolean;
   onAddCard: (columnId: string, title: string) => void;
   onDeleteCard: (cardId: string) => void;
+  onOpenCard: (cardId: string) => void;
   onRename: (columnId: string, name: string) => void;
   onDelete: (columnId: string) => void;
   onMove: (columnId: string, dir: -1 | 1) => void;
@@ -272,27 +297,13 @@ function ColumnView({
           className="min-w-0 flex-1 rounded bg-transparent px-1 text-sm font-medium outline-none hover:bg-black/[.04] focus:bg-black/[.04] dark:hover:bg-white/[.06]"
         />
         <span className="shrink-0 text-xs text-foreground/40">{column.cards.length}</span>
-        <button
-          disabled={!canMoveLeft}
-          onClick={() => onMove(column.id, -1)}
-          className="rounded px-1 text-foreground/50 hover:bg-black/[.06] disabled:opacity-25 dark:hover:bg-white/[.08]"
-          title="Move left"
-        >
+        <button disabled={!canMoveLeft} onClick={() => onMove(column.id, -1)} className="rounded px-1 text-foreground/50 hover:bg-black/[.06] disabled:opacity-25 dark:hover:bg-white/[.08]" title="Move left">
           ◀
         </button>
-        <button
-          disabled={!canMoveRight}
-          onClick={() => onMove(column.id, 1)}
-          className="rounded px-1 text-foreground/50 hover:bg-black/[.06] disabled:opacity-25 dark:hover:bg-white/[.08]"
-          title="Move right"
-        >
+        <button disabled={!canMoveRight} onClick={() => onMove(column.id, 1)} className="rounded px-1 text-foreground/50 hover:bg-black/[.06] disabled:opacity-25 dark:hover:bg-white/[.08]" title="Move right">
           ▶
         </button>
-        <button
-          onClick={() => onDelete(column.id)}
-          className="rounded px-1 text-foreground/50 hover:bg-red-500/10 hover:text-red-600"
-          title="Delete column"
-        >
+        <button onClick={() => onDelete(column.id)} className="rounded px-1 text-foreground/50 hover:bg-red-500/10 hover:text-red-600" title="Delete column">
           ×
         </button>
       </div>
@@ -300,7 +311,7 @@ function ColumnView({
       <div ref={setNodeRef} className="flex flex-col gap-2 p-3">
         <SortableContext items={column.cards.map((c) => c.id)} strategy={verticalListSortingStrategy}>
           {column.cards.map((card) => (
-            <SortableCard key={card.id} card={card} onDelete={onDeleteCard} />
+            <SortableCard key={card.id} card={card} onDelete={onDeleteCard} onOpen={onOpenCard} />
           ))}
         </SortableContext>
         <CardComposer onAdd={(title) => onAddCard(column.id, title)} />
@@ -309,7 +320,15 @@ function ColumnView({
   );
 }
 
-function SortableCard({ card, onDelete }: { card: Card; onDelete: (id: string) => void }) {
+function SortableCard({
+  card,
+  onDelete,
+  onOpen,
+}: {
+  card: Card;
+  onDelete: (id: string) => void;
+  onOpen: (id: string) => void;
+}) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: card.id,
     data: { type: "card" },
@@ -321,36 +340,96 @@ function SortableCard({ card, onDelete }: { card: Card; onDelete: (id: string) =
   };
   return (
     <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
-      <CardShell title={card.title} onDelete={() => onDelete(card.id)} />
+      <CardShell card={card} onDelete={() => onDelete(card.id)} onOpen={() => onOpen(card.id)} />
     </div>
   );
 }
 
+function initials(m: Member) {
+  const base = m.name?.trim() || m.email;
+  const parts = base.split(/[\s@.]+/).filter(Boolean);
+  return ((parts[0]?.[0] ?? "") + (parts[1]?.[0] ?? "")).toUpperCase() || base[0]?.toUpperCase();
+}
+
+function dueInfo(iso: string) {
+  // Due dates are calendar dates stored as UTC midnight — format/compare in UTC
+  // so the displayed day doesn't shift with the viewer's timezone.
+  const ymd = iso.slice(0, 10);
+  const [y, m, day] = ymd.split("-").map(Number);
+  const label = new Date(Date.UTC(y, m - 1, day)).toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+    timeZone: "UTC",
+  });
+  const overdue = ymd < new Date().toISOString().slice(0, 10);
+  return { label, overdue };
+}
+
 function CardShell({
-  title,
+  card,
   onDelete,
+  onOpen,
   dragging,
 }: {
-  title: string;
+  card: Card;
   onDelete?: () => void;
+  onOpen?: () => void;
   dragging?: boolean;
 }) {
+  const due = card.dueDate ? dueInfo(card.dueDate) : null;
   return (
     <div
-      className={`group flex items-start justify-between gap-2 rounded-lg border border-black/10 dark:border-white/15 bg-background px-3 py-2 text-sm shadow-sm ${
-        dragging ? "rotate-1 shadow-md" : "cursor-grab active:cursor-grabbing"
+      onClick={onOpen}
+      className={`group flex flex-col gap-2 rounded-lg border border-black/10 dark:border-white/15 bg-background px-3 py-2 text-sm shadow-sm ${
+        dragging ? "rotate-1 shadow-md" : "cursor-pointer active:cursor-grabbing"
       }`}
     >
-      <span className="whitespace-pre-wrap break-words">{title}</span>
-      {onDelete && (
-        <button
-          onPointerDown={(e) => e.stopPropagation()}
-          onClick={onDelete}
-          className="shrink-0 rounded px-1 text-foreground/30 opacity-0 hover:bg-red-500/10 hover:text-red-600 group-hover:opacity-100"
-          title="Delete card"
-        >
-          ×
-        </button>
+      {card.labels.length > 0 && (
+        <div className="flex flex-wrap gap-1">
+          {card.labels.map((l) => (
+            <span key={l.id} className="h-2 w-8 rounded-full" style={{ backgroundColor: l.color }} title={l.name} />
+          ))}
+        </div>
+      )}
+      <div className="flex items-start justify-between gap-2">
+        <span className="whitespace-pre-wrap break-words">{card.title}</span>
+        {onDelete && (
+          <button
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={(e) => {
+              e.stopPropagation();
+              onDelete();
+            }}
+            className="shrink-0 rounded px-1 text-foreground/30 opacity-0 hover:bg-red-500/10 hover:text-red-600 group-hover:opacity-100"
+            title="Delete card"
+          >
+            ×
+          </button>
+        )}
+      </div>
+      {(due || card.assignees.length > 0) && (
+        <div className="flex items-center justify-between gap-2">
+          {due ? (
+            <span className={`rounded px-1.5 py-0.5 text-xs ${due.overdue ? "bg-red-500/15 text-red-600" : "bg-black/[.05] text-foreground/60 dark:bg-white/[.08]"}`}>
+              {due.label}
+            </span>
+          ) : (
+            <span />
+          )}
+          {card.assignees.length > 0 && (
+            <div className="flex -space-x-1">
+              {card.assignees.slice(0, 3).map((a) => (
+                <span
+                  key={a.id}
+                  className="flex h-5 w-5 items-center justify-center rounded-full border border-background bg-foreground text-[10px] font-medium text-background"
+                  title={a.name ?? a.email}
+                >
+                  {initials(a)}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
       )}
     </div>
   );
@@ -362,10 +441,7 @@ function CardComposer({ onAdd }: { onAdd: (title: string) => void }) {
 
   if (!open) {
     return (
-      <button
-        onClick={() => setOpen(true)}
-        className="rounded-lg px-2 py-1.5 text-left text-sm text-foreground/50 hover:bg-black/[.04] dark:hover:bg-white/[.06]"
-      >
+      <button onClick={() => setOpen(true)} className="rounded-lg px-2 py-1.5 text-left text-sm text-foreground/50 hover:bg-black/[.04] dark:hover:bg-white/[.06]">
         + Add a card
       </button>
     );
@@ -402,13 +478,7 @@ function CardComposer({ onAdd }: { onAdd: (title: string) => void }) {
         <button onClick={submit} className="rounded-md bg-foreground px-3 py-1 text-xs font-medium text-background">
           Add
         </button>
-        <button
-          onClick={() => {
-            setValue("");
-            setOpen(false);
-          }}
-          className="rounded-md px-2 py-1 text-xs text-foreground/60 hover:bg-black/[.04] dark:hover:bg-white/[.06]"
-        >
+        <button onClick={() => { setValue(""); setOpen(false); }} className="rounded-md px-2 py-1 text-xs text-foreground/60 hover:bg-black/[.04] dark:hover:bg-white/[.06]">
           Cancel
         </button>
       </div>
@@ -422,10 +492,7 @@ function AddColumn({ onAdd }: { onAdd: (name: string) => void }) {
 
   if (!open) {
     return (
-      <button
-        onClick={() => setOpen(true)}
-        className="w-72 shrink-0 rounded-xl border border-dashed border-black/15 dark:border-white/20 px-3 py-3 text-left text-sm text-foreground/50 hover:border-foreground/40"
-      >
+      <button onClick={() => setOpen(true)} className="w-72 shrink-0 rounded-xl border border-dashed border-black/15 dark:border-white/20 px-3 py-3 text-left text-sm text-foreground/50 hover:border-foreground/40">
         + Add a column
       </button>
     );
@@ -446,10 +513,7 @@ function AddColumn({ onAdd }: { onAdd: (name: string) => void }) {
         onChange={(e) => setValue(e.target.value)}
         onKeyDown={(e) => {
           if (e.key === "Enter") submit();
-          if (e.key === "Escape") {
-            setValue("");
-            setOpen(false);
-          }
+          if (e.key === "Escape") { setValue(""); setOpen(false); }
         }}
         placeholder="Column name…"
         className="rounded-md border border-black/15 dark:border-white/20 bg-background px-3 py-2 text-sm outline-none focus:border-foreground/60"
@@ -458,13 +522,7 @@ function AddColumn({ onAdd }: { onAdd: (name: string) => void }) {
         <button onClick={submit} className="rounded-md bg-foreground px-3 py-1 text-xs font-medium text-background">
           Add column
         </button>
-        <button
-          onClick={() => {
-            setValue("");
-            setOpen(false);
-          }}
-          className="rounded-md px-2 py-1 text-xs text-foreground/60 hover:bg-black/[.04] dark:hover:bg-white/[.06]"
-        >
+        <button onClick={() => { setValue(""); setOpen(false); }} className="rounded-md px-2 py-1 text-xs text-foreground/60 hover:bg-black/[.04] dark:hover:bg-white/[.06]">
           Cancel
         </button>
       </div>

@@ -11,7 +11,7 @@ export default async function BoardPage({ params }: { params: Promise<{ boardId:
   const board = await getBoardForUser(boardId);
   if (!board) notFound();
 
-  const columns = await prisma.column.findMany({
+  const raw = await prisma.column.findMany({
     where: { boardId },
     orderBy: { position: "asc" },
     select: {
@@ -20,10 +20,33 @@ export default async function BoardPage({ params }: { params: Promise<{ boardId:
       position: true,
       cards: {
         orderBy: { position: "asc" },
-        select: { id: true, title: true, description: true, position: true },
+        select: {
+          id: true,
+          title: true,
+          description: true,
+          position: true,
+          dueDate: true,
+          labels: { select: { label: { select: { id: true, name: true, color: true } } } },
+          assignees: { select: { user: { select: { id: true, name: true, email: true } } } },
+        },
       },
     },
   });
+
+  const columns = raw.map((c) => ({
+    id: c.id,
+    name: c.name,
+    position: c.position,
+    cards: c.cards.map((card) => ({
+      id: card.id,
+      title: card.title,
+      description: card.description,
+      position: card.position,
+      dueDate: card.dueDate ? card.dueDate.toISOString() : null,
+      labels: card.labels.map((l) => l.label),
+      assignees: card.assignees.map((a) => a.user),
+    })),
+  }));
 
   return <BoardView boardId={boardId} boardName={board.name} initialColumns={columns} />;
 }

@@ -24,3 +24,36 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* TipTap editor content (Tailwind preflight resets these). */
+.tiptap:focus {
+  outline: none;
+}
+.tiptap p {
+  margin: 0.25rem 0;
+}
+.tiptap ul {
+  list-style: disc;
+  padding-left: 1.25rem;
+}
+.tiptap ol {
+  list-style: decimal;
+  padding-left: 1.25rem;
+}
+.tiptap h1 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin: 0.4rem 0;
+}
+.tiptap h2 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin: 0.35rem 0;
+}
+.tiptap p.is-editor-empty:first-child::before {
+  content: "Add a description…";
+  color: color-mix(in srgb, currentColor 40%, transparent);
+  float: left;
+  height: 0;
+  pointer-events: none;
+}
