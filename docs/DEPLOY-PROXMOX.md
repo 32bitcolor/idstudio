@@ -38,12 +38,21 @@ Verify: `docker version` and `docker compose version`.
 
 ## 3. Get the code onto the VM
 
-Either `git clone` your repository, or copy this project directory to the VM (e.g. with `scp`/`rsync`):
+Clone the repository onto the VM:
 
 ```bash
-git clone <your-repo-url> idstudio   # or copy the folder
+git clone https://github.com/32bitcolor/idstudio.git
 cd idstudio
 ```
+
+> The repo is **private**, so the clone will ask you to authenticate. The easiest way
+> is to install the GitHub CLI and log in first:
+> ```bash
+> sudo apt-get install -y gh        # or: see https://cli.github.com
+> gh auth login                     # choose GitHub.com → HTTPS → login with a browser
+> ```
+> Then `git clone` works without prompting. (Alternatively, copy the project folder to
+> the VM directly with `scp`/`rsync`.)
 
 ## 4. Configure environment
 
