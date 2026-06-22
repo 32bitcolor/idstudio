@@ -34,6 +34,7 @@ model Workspace {
   createdAt DateTime     @default(now())
   updatedAt DateTime     @updatedAt
   members   Membership[]
+  boards    Board[]
 }
 
 // Role is per-workspace (on Membership), never global on User.
@@ -49,4 +50,45 @@ model Membership {
 
   @@unique([userId, workspaceId])
   @@index([workspaceId])
+}
+
+// ── Kanban (Phase 1) ─────────────────────────────────────────────────────────
+// Ordering uses fractional-index strings (`position`): inserting between two
+// items computes a key between their keys — a single-row update, no renumbering.
+
+model Board {
+  id          String    @id @default(cuid())
+  workspaceId String
+  name        String
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  columns     Column[]
+
+  @@index([workspaceId])
+}
+
+model Column {
+  id        String   @id @default(cuid())
+  boardId   String
+  name      String
+  position  String
+  createdAt DateTime @default(now())
+  board     Board    @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  cards     Card[]
+
+  @@index([boardId, position])
+}
+
+model Card {
+  id          String   @id @default(cuid())
+  columnId    String
+  title       String
+  description String?
+  position    String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  column      Column   @relation(fields: [columnId], references: [id], onDelete: Cascade)
+
+  @@index([columnId, position])
 }

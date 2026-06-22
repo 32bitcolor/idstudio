@@ -1,12 +1,13 @@
+import Link from "next/link";
 import { requireUser, getActiveMembership } from "@/lib/dal";
 import { logout } from "@/app/actions/auth";
 import { Role } from "@/generated/prisma/client";
 
 export const metadata = { title: "Dashboard · IDStudio" };
 
-// Future feature areas — placeholders so the skeleton shows the intended shape.
-const MODULES = [
-  { name: "Kanban Board", desc: "Boards, cards, drag & drop", phase: "Phase 1" },
+// Feature areas. `href` marks a module that's live; the rest are upcoming phases.
+const MODULES: { name: string; desc: string; phase: string; href?: string }[] = [
+  { name: "Kanban Board", desc: "Boards, cards, drag & drop", phase: "Phase 1", href: "/boards" },
   { name: "Project Management", desc: "ADDIE/SAM workflows, deliverables", phase: "Phase 2" },
   { name: "Storyboarding", desc: "Frame-by-frame course storyboards", phase: "Phase 3" },
   { name: "Certifications & Exams", desc: "Exam builder, question banks", phase: "Phase 4" },
@@ -51,19 +52,34 @@ export default async function DashboardPage() {
       <section className="mt-10">
         <h2 className="text-sm font-medium uppercase tracking-wide text-foreground/50">Modules</h2>
         <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {MODULES.map((m) => (
-            <div
-              key={m.name}
-              className="rounded-xl border border-black/10 dark:border-white/15 p-4"
-            >
-              <div className="flex items-center justify-between">
-                <h3 className="font-medium">{m.name}</h3>
-                <span className="text-xs text-foreground/50">{m.phase}</span>
+          {MODULES.map((m) => {
+            const className = `block rounded-xl border p-4 ${
+              m.href
+                ? "border-black/10 dark:border-white/15 hover:border-foreground/40"
+                : "border-black/10 dark:border-white/15"
+            }`;
+            const inner = (
+              <>
+                <div className="flex items-center justify-between">
+                  <h3 className="font-medium">{m.name}</h3>
+                  <span className="text-xs text-foreground/50">{m.phase}</span>
+                </div>
+                <p className="mt-1 text-sm text-foreground/60">{m.desc}</p>
+                <p className={`mt-3 text-xs ${m.href ? "text-foreground/70" : "text-foreground/40"}`}>
+                  {m.href ? "Open →" : "Coming soon"}
+                </p>
+              </>
+            );
+            return m.href ? (
+              <Link key={m.name} href={m.href} className={className}>
+                {inner}
+              </Link>
+            ) : (
+              <div key={m.name} className={className}>
+                {inner}
               </div>
-              <p className="mt-1 text-sm text-foreground/60">{m.desc}</p>
-              <p className="mt-3 text-xs text-foreground/40">Coming soon</p>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </section>
 
