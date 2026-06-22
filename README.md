@@ -9,6 +9,26 @@ exam builder, and LMS integration (LearnUpon). Built to run on your own Proxmox 
 > card details, checklists, comments, attachments, and filters) are built and verified.
 > Up next: project management. See the **[Roadmap](#roadmap)** below.
 
+## Screenshots
+
+**Kanban board** — columns, cards with labels, due dates, assignees, and checklist / comment / attachment badges:
+
+![Kanban board](docs/screenshots/board.png)
+
+**Card detail** — rich-text description, due date, labels, assignees, checklist, attachments, and comments:
+
+![Card detail drawer](docs/screenshots/card-drawer.png)
+
+**Dashboard** — workspace, role, and feature modules:
+
+![Dashboard](docs/screenshots/dashboard.png)
+
+**Color themes** — the whole UI re-themes instantly (the same board in Dracula and Nord):
+
+| Dracula | Nord |
+| :-----: | :--: |
+| ![Dracula theme](docs/screenshots/board-dracula.png) | ![Nord theme](docs/screenshots/board-nord.png) |
+
 ## Tech stack
 
 | Layer        | Choice |
