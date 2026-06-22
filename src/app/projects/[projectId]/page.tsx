@@ -23,6 +23,24 @@ export default async function ProjectPage({ params }: { params: Promise<{ projec
         orderBy: { position: "asc" },
         select: { id: true, name: true, status: true, position: true, startDate: true, endDate: true },
       },
+      deliverables: {
+        orderBy: { position: "asc" },
+        select: {
+          id: true,
+          name: true,
+          type: true,
+          status: true,
+          phaseId: true,
+          cardId: true,
+          card: {
+            select: { id: true, title: true, column: { select: { board: { select: { id: true, name: true } } } } },
+          },
+        },
+      },
+      milestones: {
+        orderBy: { position: "asc" },
+        select: { id: true, name: true, dueDate: true, completedAt: true },
+      },
     },
   });
   if (!project) notFound();
@@ -36,6 +54,24 @@ export default async function ProjectPage({ params }: { params: Promise<{ projec
     endDate: p.endDate ? p.endDate.toISOString() : null,
   }));
 
+  const deliverables = project.deliverables.map((d) => ({
+    id: d.id,
+    name: d.name,
+    type: d.type,
+    status: d.status,
+    phaseId: d.phaseId,
+    card: d.card
+      ? { id: d.card.id, title: d.card.title, boardId: d.card.column.board.id, boardName: d.card.column.board.name }
+      : null,
+  }));
+
+  const milestones = project.milestones.map((m) => ({
+    id: m.id,
+    name: m.name,
+    dueDate: m.dueDate ? m.dueDate.toISOString() : null,
+    completedAt: m.completedAt ? m.completedAt.toISOString() : null,
+  }));
+
   return (
     <ProjectView
       project={{
@@ -46,6 +82,8 @@ export default async function ProjectPage({ params }: { params: Promise<{ projec
         status: project.status,
       }}
       initialPhases={phases}
+      initialDeliverables={deliverables}
+      initialMilestones={milestones}
     />
   );
 }

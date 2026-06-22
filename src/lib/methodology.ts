@@ -23,3 +23,34 @@ export const PROJECT_STATUS_LABEL: Record<ProjectStatus, string> = {
   on_hold: "On hold",
   completed: "Completed",
 };
+
+export const DELIVERABLE_TYPES = [
+  "storyboard",
+  "course",
+  "assessment",
+  "job_aid",
+  "video",
+  "document",
+  "other",
+] as const;
+export type DeliverableType = (typeof DELIVERABLE_TYPES)[number];
+
+export const DELIVERABLE_TYPE_LABEL: Record<DeliverableType, string> = {
+  storyboard: "Storyboard",
+  course: "Course",
+  assessment: "Assessment",
+  job_aid: "Job aid",
+  video: "Video",
+  document: "Document",
+  other: "Other",
+};
+
+export const DELIVERABLE_STATUSES = ["not_started", "in_progress", "in_review", "complete"] as const;
+export type DeliverableStatus = (typeof DELIVERABLE_STATUSES)[number];
+
+export const DELIVERABLE_STATUS_LABEL: Record<DeliverableStatus, string> = {
+  not_started: "Not started",
+  in_progress: "In progress",
+  in_review: "In review",
+  complete: "Complete",
+};

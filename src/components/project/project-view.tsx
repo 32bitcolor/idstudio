@@ -22,6 +22,8 @@ import {
   type ProjectStatus,
 } from "@/lib/methodology";
 import { ThemeSwitcher } from "@/components/theme-switcher";
+import { DeliverablesSection } from "@/components/project/deliverables-section";
+import { MilestonesSection } from "@/components/project/milestones-section";
 
 type Phase = {
   id: string;
@@ -58,7 +60,27 @@ function move<T>(arr: T[], from: number, to: number) {
   return next;
 }
 
-export function ProjectView({ project, initialPhases }: { project: ProjectMeta; initialPhases: Phase[] }) {
+type DeliverableInit = {
+  id: string;
+  name: string;
+  type: string;
+  status: string;
+  phaseId: string | null;
+  card: { id: string; title: string; boardId: string; boardName: string } | null;
+};
+type MilestoneInit = { id: string; name: string; dueDate: string | null; completedAt: string | null };
+
+export function ProjectView({
+  project,
+  initialPhases,
+  initialDeliverables,
+  initialMilestones,
+}: {
+  project: ProjectMeta;
+  initialPhases: Phase[];
+  initialDeliverables: DeliverableInit[];
+  initialMilestones: MilestoneInit[];
+}) {
   const [name, setName] = useState(project.name);
   const [description, setDescription] = useState(project.description ?? "");
   const [status, setStatus] = useState(project.status);
@@ -78,7 +100,8 @@ export function ProjectView({ project, initialPhases }: { project: ProjectMeta; 
   }
 
   function commitPhaseName(p: Phase, value: string) {
-    if (value.trim() && value !== p.name) startTransition(() => void renamePhase(p.id, value.trim()));
+    // input is bound to the live phase name, so save whenever it's non-empty
+    if (value.trim()) startTransition(() => void renamePhase(p.id, value.trim()));
   }
 
   function changeDate(p: Phase, which: "start" | "end", value: string) {
@@ -225,6 +248,14 @@ export function ProjectView({ project, initialPhases }: { project: ProjectMeta; 
         </div>
         <PhaseComposer onAdd={addPhase} />
       </section>
+
+      <DeliverablesSection
+        projectId={project.id}
+        phases={phases.map((p) => ({ id: p.id, name: p.name }))}
+        initial={initialDeliverables}
+      />
+
+      <MilestonesSection projectId={project.id} initial={initialMilestones} />
 
       <div className="mt-10 border-t border-border pt-4">
         <form

@@ -52,3 +52,21 @@ export async function getPhaseForUser(phaseId: string) {
     select: { id: true, projectId: true },
   });
 }
+
+export async function getDeliverableForUser(deliverableId: string) {
+  const user = await getCurrentUser();
+  if (!user) return null;
+  return prisma.deliverable.findFirst({
+    where: { id: deliverableId, project: { workspace: ownedByUser(user.id) } },
+    select: { id: true, projectId: true },
+  });
+}
+
+export async function getMilestoneForUser(milestoneId: string) {
+  const user = await getCurrentUser();
+  if (!user) return null;
+  return prisma.milestone.findFirst({
+    where: { id: milestoneId, project: { workspace: ownedByUser(user.id) } },
+    select: { id: true, projectId: true },
+  });
+}
