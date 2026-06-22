@@ -4,10 +4,10 @@ A self-hosted web app for instructional design teams: a full-featured Kanban boa
 ID-tailored project management (ADDIE/SAM), a storyboarding suite, a certification &
 exam builder, and LMS integration (LearnUpon). Built to run on your own Proxmox server.
 
-> **Status: Phase 1 complete — Phase 2 next.** The foundation (auth, multi-user workspaces
-> with roles, and the self-hosting stack) and the full Kanban board (boards, drag-and-drop,
-> card details, checklists, comments, attachments, and filters) are built and verified.
-> Up next: project management. See the **[Roadmap](#roadmap)** below.
+> **Status: Phase 2 complete — Phase 3 next.** The foundation, the full Kanban board, and
+> project management (projects with ADDIE/SAM phases, deliverables linked to board cards,
+> milestones, SME/stakeholder review cycles, and time tracking) are built and verified.
+> Up next: the storyboarding suite. See the **[Roadmap](#roadmap)** below.
 
 ## Screenshots
 
@@ -116,9 +116,9 @@ and seeds the admin, then the app and worker start.
 - ✅ **Phase 0 — Foundation:** auth, multi-user workspaces with roles, Docker/Proxmox stack
 - ✅ **Phase 1 — Kanban:** boards, drag-and-drop, card details (description, due date, labels,
   assignees), checklists, comments, attachments, and filters
-- ⬜ **Phase 2 — Project management** *(next)* — ADDIE/SAM workflows, milestones, deliverables,
-  review cycles, time tracking
-- ⬜ **Phase 3 — Storyboarding suite**
+- ✅ **Phase 2 — Project management:** projects with ADDIE/SAM phases, deliverables (linked to
+  board cards), milestones, SME/stakeholder review cycles, and time tracking
+- ⬜ **Phase 3 — Storyboarding suite** *(next)*
 - ⬜ **Phase 4 — Certifications & exam builder**
 - ⬜ **Phase 5 — LearnUpon integration**
 
