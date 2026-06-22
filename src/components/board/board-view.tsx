@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useMemo } from "react";
 import Link from "next/link";
 import {
   DndContext,
@@ -35,6 +35,7 @@ import {
   deleteBoard,
 } from "@/app/actions/boards";
 import { CardDrawer, type CardFacePatch } from "@/components/board/card-drawer";
+import { FilterBar, type DueFilter } from "@/components/board/filter-bar";
 
 type Label = { id: string; name: string; color: string };
 type Member = { id: string; name: string | null; email: string };
@@ -65,6 +66,72 @@ export function BoardView({
   const [activeCard, setActiveCard] = useState<Card | null>(null);
   const [openCardId, setOpenCardId] = useState<string | null>(null);
   const [, startTransition] = useTransition();
+
+  // ── Filters: a client-side view over the already-loaded cards ──
+  const [fLabels, setFLabels] = useState<Set<string>>(new Set());
+  const [fAssignees, setFAssignees] = useState<Set<string>>(new Set());
+  const [fDue, setFDue] = useState<DueFilter>("any");
+  const [search, setSearch] = useState("");
+
+  const availableLabels = useMemo(() => {
+    const map = new Map<string, Label>();
+    columns.forEach((c) => c.cards.forEach((card) => card.labels.forEach((l) => map.set(l.id, l))));
+    return [...map.values()].sort((a, b) => a.name.localeCompare(b.name));
+  }, [columns]);
+
+  const availableMembers = useMemo(() => {
+    const map = new Map<string, Member>();
+    columns.forEach((c) => c.cards.forEach((card) => card.assignees.forEach((a) => map.set(a.id, a))));
+    return [...map.values()].sort((a, b) => (a.name ?? a.email).localeCompare(b.name ?? b.email));
+  }, [columns]);
+
+  const filtersActive = fLabels.size > 0 || fAssignees.size > 0 || fDue !== "any" || search.trim() !== "";
+
+  const filteredColumns = useMemo(() => {
+    if (!filtersActive) return columns;
+    const today = new Date().toISOString().slice(0, 10);
+    const weekEnd = (() => {
+      const d = new Date();
+      d.setUTCDate(d.getUTCDate() + 7);
+      return d.toISOString().slice(0, 10);
+    })();
+    const q = search.trim().toLowerCase();
+    const match = (card: Card) => {
+      if (fLabels.size > 0 && !card.labels.some((l) => fLabels.has(l.id))) return false;
+      if (fAssignees.size > 0 && !card.assignees.some((a) => fAssignees.has(a.id))) return false;
+      if (fDue !== "any") {
+        const ymd = card.dueDate ? card.dueDate.slice(0, 10) : null;
+        if (fDue === "none" && ymd) return false;
+        if (fDue === "overdue" && !(ymd && ymd < today)) return false;
+        if (fDue === "week" && !(ymd && ymd >= today && ymd <= weekEnd)) return false;
+      }
+      if (q && !card.title.toLowerCase().includes(q)) return false;
+      return true;
+    };
+    return columns.map((c) => ({ ...c, cards: c.cards.filter(match) }));
+  }, [columns, fLabels, fAssignees, fDue, search, filtersActive]);
+
+  const totalCount = useMemo(() => columns.reduce((n, c) => n + c.cards.length, 0), [columns]);
+  const visibleCount = useMemo(
+    () => filteredColumns.reduce((n, c) => n + c.cards.length, 0),
+    [filteredColumns],
+  );
+
+  function toggleSet(setter: React.Dispatch<React.SetStateAction<Set<string>>>, id: string) {
+    setter((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function clearFilters() {
+    setFLabels(new Set());
+    setFAssignees(new Set());
+    setFDue("any");
+    setSearch("");
+  }
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -197,6 +264,23 @@ export function BoardView({
     <div className="flex h-full min-h-screen flex-col">
       <BoardHeader boardId={boardId} boardName={boardName} />
 
+      <FilterBar
+        labels={availableLabels}
+        members={availableMembers}
+        selectedLabels={fLabels}
+        onToggleLabel={(id) => toggleSet(setFLabels, id)}
+        selectedAssignees={fAssignees}
+        onToggleAssignee={(id) => toggleSet(setFAssignees, id)}
+        due={fDue}
+        onDue={setFDue}
+        search={search}
+        onSearch={setSearch}
+        active={filtersActive}
+        onClear={clearFilters}
+        visible={visibleCount}
+        total={totalCount}
+      />
+
       <DndContext
         sensors={sensors}
         collisionDetection={closestCorners}
@@ -205,12 +289,13 @@ export function BoardView({
         onDragEnd={onDragEnd}
       >
         <div className="flex flex-1 items-start gap-4 overflow-x-auto px-6 pb-10">
-          {columns.map((col, i) => (
+          {filteredColumns.map((col, i) => (
             <ColumnView
               key={col.id}
               column={col}
               canMoveLeft={i > 0}
-              canMoveRight={i < columns.length - 1}
+              canMoveRight={i < filteredColumns.length - 1}
+              dragDisabled={filtersActive}
               onAddCard={handleAddCard}
               onDeleteCard={handleDeleteCard}
               onOpenCard={setOpenCardId}
@@ -273,6 +358,7 @@ function ColumnView({
   column,
   canMoveLeft,
   canMoveRight,
+  dragDisabled,
   onAddCard,
   onDeleteCard,
   onOpenCard,
@@ -283,6 +369,7 @@ function ColumnView({
   column: Column;
   canMoveLeft: boolean;
   canMoveRight: boolean;
+  dragDisabled: boolean;
   onAddCard: (columnId: string, title: string) => void;
   onDeleteCard: (cardId: string) => void;
   onOpenCard: (cardId: string) => void;
@@ -317,7 +404,13 @@ function ColumnView({
       <div ref={setNodeRef} className="flex flex-col gap-2 p-3">
         <SortableContext items={column.cards.map((c) => c.id)} strategy={verticalListSortingStrategy}>
           {column.cards.map((card) => (
-            <SortableCard key={card.id} card={card} onDelete={onDeleteCard} onOpen={onOpenCard} />
+            <SortableCard
+              key={card.id}
+              card={card}
+              disabled={dragDisabled}
+              onDelete={onDeleteCard}
+              onOpen={onOpenCard}
+            />
           ))}
         </SortableContext>
         <CardComposer onAdd={(title) => onAddCard(column.id, title)} />
@@ -328,16 +421,19 @@ function ColumnView({
 
 function SortableCard({
   card,
+  disabled,
   onDelete,
   onOpen,
 }: {
   card: Card;
+  disabled: boolean;
   onDelete: (id: string) => void;
   onOpen: (id: string) => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: card.id,
     data: { type: "card" },
+    disabled,
   });
   const style = {
     transform: CSS.Translate.toString(transform),
