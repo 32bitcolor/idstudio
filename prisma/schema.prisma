@@ -28,6 +28,7 @@ model User {
   assignedCards CardAssignee[]
   comments     Comment[]
   reviewCycles ReviewCycle[]
+  timeEntries  TimeEntry[]
 }
 
 model Workspace {
@@ -141,6 +142,7 @@ model Project {
   phases       Phase[]
   deliverables Deliverable[]
   milestones   Milestone[]
+  timeEntries  TimeEntry[]
 
   @@index([workspaceId])
 }
@@ -173,6 +175,7 @@ model Deliverable {
   phase        Phase?        @relation(fields: [phaseId], references: [id], onDelete: SetNull)
   card         Card?         @relation(fields: [cardId], references: [id], onDelete: SetNull)
   reviewCycles ReviewCycle[]
+  timeEntries  TimeEntry[]
 
   @@index([projectId, position])
 }
@@ -191,6 +194,22 @@ model ReviewCycle {
   reviewer      User        @relation(fields: [reviewerId], references: [id], onDelete: Cascade)
 
   @@index([deliverableId])
+}
+
+model TimeEntry {
+  id            String       @id @default(cuid())
+  projectId     String
+  deliverableId String?
+  userId        String
+  minutes       Int
+  note          String?
+  loggedFor     DateTime
+  createdAt     DateTime     @default(now())
+  project       Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  deliverable   Deliverable? @relation(fields: [deliverableId], references: [id], onDelete: SetNull)
+  user          User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
 }
 
 model Milestone {

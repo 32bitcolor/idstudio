@@ -24,6 +24,7 @@ import {
 import { ThemeSwitcher } from "@/components/theme-switcher";
 import { DeliverablesSection } from "@/components/project/deliverables-section";
 import { MilestonesSection } from "@/components/project/milestones-section";
+import { TimeTracking } from "@/components/project/time-tracking";
 
 type Phase = {
   id: string;
@@ -80,18 +81,28 @@ type DeliverableInit = {
   reviews: ReviewInit[];
 };
 type MilestoneInit = { id: string; name: string; dueDate: string | null; completedAt: string | null };
+type TimeEntryInit = {
+  id: string;
+  minutes: number;
+  note: string | null;
+  loggedFor: string;
+  user: Member;
+  deliverable: { id: string; name: string } | null;
+};
 
 export function ProjectView({
   project,
   initialPhases,
   initialDeliverables,
   initialMilestones,
+  initialTimeEntries,
   members,
 }: {
   project: ProjectMeta;
   initialPhases: Phase[];
   initialDeliverables: DeliverableInit[];
   initialMilestones: MilestoneInit[];
+  initialTimeEntries: TimeEntryInit[];
   members: Member[];
 }) {
   const [name, setName] = useState(project.name);
@@ -270,6 +281,12 @@ export function ProjectView({
       />
 
       <MilestonesSection projectId={project.id} initial={initialMilestones} />
+
+      <TimeTracking
+        projectId={project.id}
+        deliverables={initialDeliverables.map((d) => ({ id: d.id, name: d.name }))}
+        initial={initialTimeEntries}
+      />
 
       <div className="mt-10 border-t border-border pt-4">
         <form

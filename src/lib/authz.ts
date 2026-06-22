@@ -79,3 +79,12 @@ export async function getReviewForUser(reviewId: string) {
     select: { id: true, deliverable: { select: { projectId: true } } },
   });
 }
+
+export async function getTimeEntryForUser(timeEntryId: string) {
+  const user = await getCurrentUser();
+  if (!user) return null;
+  return prisma.timeEntry.findFirst({
+    where: { id: timeEntryId, project: { workspace: ownedByUser(user.id) } },
+    select: { id: true, projectId: true },
+  });
+}

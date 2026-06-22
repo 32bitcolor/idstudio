@@ -53,6 +53,17 @@ export default async function ProjectPage({ params }: { params: Promise<{ projec
         orderBy: { position: "asc" },
         select: { id: true, name: true, dueDate: true, completedAt: true },
       },
+      timeEntries: {
+        orderBy: { loggedFor: "desc" },
+        select: {
+          id: true,
+          minutes: true,
+          note: true,
+          loggedFor: true,
+          user: { select: { id: true, name: true, email: true } },
+          deliverable: { select: { id: true, name: true } },
+        },
+      },
     },
   });
   if (!project) notFound();
@@ -99,6 +110,15 @@ export default async function ProjectPage({ params }: { params: Promise<{ projec
     completedAt: m.completedAt ? m.completedAt.toISOString() : null,
   }));
 
+  const timeEntries = project.timeEntries.map((t) => ({
+    id: t.id,
+    minutes: t.minutes,
+    note: t.note,
+    loggedFor: t.loggedFor.toISOString(),
+    user: t.user,
+    deliverable: t.deliverable,
+  }));
+
   return (
     <ProjectView
       project={{
@@ -111,6 +131,7 @@ export default async function ProjectPage({ params }: { params: Promise<{ projec
       initialPhases={phases}
       initialDeliverables={deliverables}
       initialMilestones={milestones}
+      initialTimeEntries={timeEntries}
       members={members}
     />
   );
