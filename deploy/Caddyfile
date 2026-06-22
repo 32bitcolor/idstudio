@@ -1,0 +1,9 @@
+# IDStudio reverse proxy.
+# - Public domain  → Caddy auto-provisions a Let's Encrypt certificate.
+# - DOMAIN=localhost → Caddy serves HTTPS with its built-in internal CA.
+# For production, optionally add a global `email {$ACME_EMAIL}` block for ACME notices.
+
+{$DOMAIN:localhost} {
+	encode gzip
+	reverse_proxy app:3000
+}
