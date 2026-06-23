@@ -4,10 +4,12 @@ A self-hosted web app for instructional design teams: a full-featured Kanban boa
 ID-tailored project management (ADDIE/SAM), a storyboarding suite, a certification &
 exam builder, and LMS integration (LearnUpon). Built to run on your own Proxmox server.
 
-> **Status: Phase 2 complete — Phase 3 next.** The foundation, the full Kanban board, and
+> **Status: Phase 3 complete — Phase 4 next.** The foundation, the full Kanban board,
 > project management (projects with ADDIE/SAM phases, deliverables linked to board cards,
-> milestones, SME/stakeholder review cycles, and time tracking) are built and verified.
-> Up next: the storyboarding suite. See the **[Roadmap](#roadmap)** below.
+> milestones, SME/stakeholder review cycles, and time tracking), and the storyboarding
+> suite (screen-by-screen storyboards with rich-text fields, linked to project
+> deliverables) are built and verified. Up next: the certification & exam builder.
+> See the **[Roadmap](#roadmap)** below.
 
 ## Screenshots
 
@@ -130,8 +132,10 @@ and seeds the admin, then the app and worker start.
   assignees), checklists, comments, attachments, and filters
 - ✅ **Phase 2 — Project management:** projects with ADDIE/SAM phases, deliverables (linked to
   board cards), milestones, SME/stakeholder review cycles, and time tracking
-- ⬜ **Phase 3 — Storyboarding suite** *(next)*
-- ⬜ **Phase 4 — Certifications & exam builder**
+- ✅ **Phase 3 — Storyboarding suite:** workspace-scoped storyboards with ordered screens, per-screen
+  type and rich-text fields (on-screen text, narration, visual/interaction/developer notes),
+  optionally linked to a project's storyboard deliverable
+- ⬜ **Phase 4 — Certifications & exam builder** *(next)*
 - ⬜ **Phase 5 — LearnUpon integration**
 
 Full detail in `.claude/plans/deep-jumping-treehouse.md`.
