@@ -88,3 +88,21 @@ export async function getTimeEntryForUser(timeEntryId: string) {
     select: { id: true, projectId: true },
   });
 }
+
+export async function getStoryboardForUser(storyboardId: string) {
+  const user = await getCurrentUser();
+  if (!user) return null;
+  return prisma.storyboard.findFirst({
+    where: { id: storyboardId, workspace: ownedByUser(user.id) },
+    select: { id: true, workspaceId: true },
+  });
+}
+
+export async function getScreenForUser(screenId: string) {
+  const user = await getCurrentUser();
+  if (!user) return null;
+  return prisma.screen.findFirst({
+    where: { id: screenId, storyboard: { workspace: ownedByUser(user.id) } },
+    select: { id: true, storyboardId: true },
+  });
+}

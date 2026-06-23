@@ -37,9 +37,10 @@ model Workspace {
   slug      String       @unique
   createdAt DateTime     @default(now())
   updatedAt DateTime     @updatedAt
-  members   Membership[]
-  boards    Board[]
-  projects  Project[]
+  members     Membership[]
+  boards      Board[]
+  projects    Project[]
+  storyboards Storyboard[]
 }
 
 // Role is per-workspace (on Membership), never global on User.
@@ -176,6 +177,7 @@ model Deliverable {
   card         Card?         @relation(fields: [cardId], references: [id], onDelete: SetNull)
   reviewCycles ReviewCycle[]
   timeEntries  TimeEntry[]
+  storyboard   Storyboard?
 
   @@index([projectId, position])
 }
@@ -223,6 +225,44 @@ model Milestone {
   project     Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
   @@index([projectId, position])
+}
+
+// ── Storyboarding (Phase 3) ──────────────────────────────────────────────────
+// A storyboard is workspace-scoped (like a Board) and may optionally be linked to
+// a project Deliverable of type "storyboard". It holds an ordered list of Screens.
+
+model Storyboard {
+  id            String       @id @default(cuid())
+  workspaceId   String
+  deliverableId String?      @unique
+  title         String
+  description   String?
+  status        String       @default("draft") // draft / in_review / approved
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  workspace     Workspace    @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  deliverable   Deliverable? @relation(fields: [deliverableId], references: [id], onDelete: SetNull)
+  screens       Screen[]
+
+  @@index([workspaceId])
+}
+
+model Screen {
+  id               String     @id @default(cuid())
+  storyboardId     String
+  title            String
+  screenType       String     @default("content") // intro / content / video / knowledge_check / interaction / assessment / summary
+  position         String
+  onScreenText     String? // TipTap document, stored as JSON string
+  narration        String? // TipTap document — voiceover / audio script
+  visualNotes      String? // TipTap document — visuals, media, layout
+  interactionNotes String? // TipTap document — interactions, branching, programming
+  developerNotes   String? // TipTap document — production / developer notes
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
+  storyboard       Storyboard @relation(fields: [storyboardId], references: [id], onDelete: Cascade)
+
+  @@index([storyboardId, position])
 }
 
 model ChecklistItem {
