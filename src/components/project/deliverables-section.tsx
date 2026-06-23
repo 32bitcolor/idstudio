@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   createDeliverable,
   renameDeliverable,
@@ -12,6 +13,7 @@ import {
   deleteDeliverable,
   listLinkableCards,
 } from "@/app/actions/deliverables";
+import { createStoryboardForDeliverable } from "@/app/actions/storyboards";
 import {
   DELIVERABLE_TYPES,
   DELIVERABLE_TYPE_LABEL,
@@ -33,6 +35,7 @@ type Review = {
   reviewer: Member;
 };
 type CardLink = { id: string; title: string; boardId: string; boardName: string };
+type StoryboardLink = { id: string; title: string };
 type Deliverable = {
   id: string;
   name: string;
@@ -40,6 +43,7 @@ type Deliverable = {
   status: string;
   phaseId: string | null;
   card: CardLink | null;
+  storyboard: StoryboardLink | null;
   reviews: Review[];
 };
 type PhaseRef = { id: string; name: string };
@@ -61,6 +65,7 @@ export function DeliverablesSection({
   const [items, setItems] = useState<Deliverable[]>(initial);
   const [linkable, setLinkable] = useState<LinkableCard[] | null>(null);
   const [, startTransition] = useTransition();
+  const router = useRouter();
 
   async function ensureCards() {
     if (linkable) return;
@@ -76,13 +81,25 @@ export function DeliverablesSection({
     const res = await createDeliverable(projectId, name, type);
     if ("deliverable" in res && res.deliverable) {
       const d = res.deliverable;
-      setItems((prev) => [...prev, { id: d.id, name: d.name, type: d.type, status: d.status, phaseId: d.phaseId, card: null, reviews: [] }]);
+      setItems((prev) => [...prev, { id: d.id, name: d.name, type: d.type, status: d.status, phaseId: d.phaseId, card: null, storyboard: null, reviews: [] }]);
     }
   }
 
   async function link(d: Deliverable, cardId: string) {
     const res = await linkDeliverableCard(d.id, cardId || null);
     if ("card" in res) patch(d.id, { card: res.card });
+  }
+
+  async function openStoryboard(d: Deliverable) {
+    if (d.storyboard) {
+      router.push(`/storyboards/${d.storyboard.id}`);
+      return;
+    }
+    const res = await createStoryboardForDeliverable(d.id);
+    if ("storyboard" in res && res.storyboard) {
+      patch(d.id, { storyboard: res.storyboard });
+      router.push(`/storyboards/${res.storyboard.id}`);
+    }
   }
 
   function remove(id: string) {
@@ -178,6 +195,16 @@ export function DeliverablesSection({
                     <option key={c.id} value={c.id}>{c.boardName}: {c.title}</option>
                   ))}
                 </select>
+              )}
+
+              {d.type === "storyboard" && (
+                <button
+                  onClick={() => openStoryboard(d)}
+                  className="flex items-center gap-1 rounded-md bg-muted px-2 py-1 text-xs hover:bg-hover"
+                  title={d.storyboard ? "Open the linked storyboard" : "Create a storyboard for this deliverable"}
+                >
+                  🎬 {d.storyboard ? "Open storyboard" : "Create storyboard"}
+                </button>
               )}
             </div>
 

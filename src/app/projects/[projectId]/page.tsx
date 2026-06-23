@@ -35,6 +35,7 @@ export default async function ProjectPage({ params }: { params: Promise<{ projec
           card: {
             select: { id: true, title: true, column: { select: { board: { select: { id: true, name: true } } } } },
           },
+          storyboard: { select: { id: true, title: true } },
           reviewCycles: {
             orderBy: { round: "asc" },
             select: {
@@ -92,6 +93,7 @@ export default async function ProjectPage({ params }: { params: Promise<{ projec
     card: d.card
       ? { id: d.card.id, title: d.card.title, boardId: d.card.column.board.id, boardName: d.card.column.board.name }
       : null,
+    storyboard: d.storyboard ? { id: d.storyboard.id, title: d.storyboard.title } : null,
     reviews: d.reviewCycles.map((rc) => ({
       id: rc.id,
       round: rc.round,

@@ -6,7 +6,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { Prisma } from "@/generated/prisma/client";
 import { getActiveMembership } from "@/lib/dal";
-import { getStoryboardForUser, getScreenForUser } from "@/lib/authz";
+import { getStoryboardForUser, getScreenForUser, getDeliverableForUser } from "@/lib/authz";
 import { positionBetween, positionForIndex } from "@/lib/ordering";
 import { STORYBOARD_STATUSES, SCREEN_TYPES, SCREEN_FIELDS, type ScreenFieldKey } from "@/lib/storyboard";
 
@@ -70,6 +70,33 @@ export async function deleteStoryboard(storyboardId: string) {
   if (!sb) return { error: "Storyboard not found." };
   await prisma.storyboard.delete({ where: { id: storyboardId } });
   redirect("/storyboards");
+}
+
+/**
+ * Create a storyboard linked to a project deliverable (titled after it). If one
+ * is already linked, returns the existing storyboard instead of creating another.
+ */
+export async function createStoryboardForDeliverable(deliverableId: string) {
+  const access = await getDeliverableForUser(deliverableId);
+  if (!access) return { error: "Deliverable not found." };
+  const deliverable = await prisma.deliverable.findUnique({
+    where: { id: deliverableId },
+    select: {
+      name: true,
+      project: { select: { workspaceId: true } },
+      storyboard: { select: { id: true, title: true } },
+    },
+  });
+  if (!deliverable) return { error: "Deliverable not found." };
+  if (deliverable.storyboard) return { storyboard: deliverable.storyboard };
+
+  const storyboard = await prisma.storyboard.create({
+    data: { workspaceId: deliverable.project.workspaceId, deliverableId, title: deliverable.name },
+    select: { id: true, title: true },
+  });
+  revalidatePath(`/projects/${access.projectId}`);
+  revalidatePath("/storyboards");
+  return { storyboard };
 }
 
 // ── Screens ──────────────────────────────────────────────────────────────────
