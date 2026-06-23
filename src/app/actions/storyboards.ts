@@ -4,11 +4,15 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
+import { Prisma } from "@/generated/prisma/client";
 import { getActiveMembership } from "@/lib/dal";
-import { getStoryboardForUser } from "@/lib/authz";
-import { STORYBOARD_STATUSES } from "@/lib/storyboard";
+import { getStoryboardForUser, getScreenForUser } from "@/lib/authz";
+import { positionBetween, positionForIndex } from "@/lib/ordering";
+import { STORYBOARD_STATUSES, SCREEN_TYPES, SCREEN_FIELDS, type ScreenFieldKey } from "@/lib/storyboard";
 
 const Title = z.string().trim().min(1, "Required").max(180);
+const ScreenTitle = z.string().trim().min(1, "Required").max(200);
+const ScreenField = z.enum(SCREEN_FIELDS.map((f) => f.key) as [ScreenFieldKey, ...ScreenFieldKey[]]);
 
 function storyboardPath(storyboardId: string) {
   return `/storyboards/${storyboardId}`;
@@ -66,4 +70,89 @@ export async function deleteStoryboard(storyboardId: string) {
   if (!sb) return { error: "Storyboard not found." };
   await prisma.storyboard.delete({ where: { id: storyboardId } });
   redirect("/storyboards");
+}
+
+// ── Screens ──────────────────────────────────────────────────────────────────
+
+const SCREEN_SELECT = {
+  id: true,
+  title: true,
+  screenType: true,
+  position: true,
+  onScreenText: true,
+  narration: true,
+  visualNotes: true,
+  interactionNotes: true,
+  developerNotes: true,
+} satisfies Prisma.ScreenSelect;
+
+export async function createScreen(storyboardId: string, title: string) {
+  const sb = await getStoryboardForUser(storyboardId);
+  if (!sb) return { error: "Storyboard not found." };
+  const parsed = ScreenTitle.safeParse(title);
+  if (!parsed.success) return { error: "Screen title is required." };
+
+  const last = await prisma.screen.findFirst({
+    where: { storyboardId },
+    orderBy: { position: "desc" },
+    select: { position: true },
+  });
+  const screen = await prisma.screen.create({
+    data: { storyboardId, title: parsed.data, position: positionBetween(last?.position ?? null, null) },
+    select: SCREEN_SELECT,
+  });
+  revalidatePath(storyboardPath(storyboardId));
+  return { screen };
+}
+
+export async function renameScreen(id: string, title: string) {
+  const s = await getScreenForUser(id);
+  if (!s) return { error: "Screen not found." };
+  const parsed = ScreenTitle.safeParse(title);
+  if (!parsed.success) return { error: "Screen title is required." };
+  await prisma.screen.update({ where: { id }, data: { title: parsed.data } });
+  revalidatePath(storyboardPath(s.storyboardId));
+}
+
+export async function setScreenType(id: string, screenType: string) {
+  const s = await getScreenForUser(id);
+  if (!s) return { error: "Screen not found." };
+  const parsed = z.enum(SCREEN_TYPES).safeParse(screenType);
+  if (!parsed.success) return { error: "Invalid screen type." };
+  await prisma.screen.update({ where: { id }, data: { screenType: parsed.data } });
+  revalidatePath(storyboardPath(s.storyboardId));
+}
+
+/** Save one of the screen's rich-text fields (TipTap JSON, or null when empty). */
+export async function updateScreenField(id: string, field: string, value: string | null) {
+  const s = await getScreenForUser(id);
+  if (!s) return { error: "Screen not found." };
+  const parsedField = ScreenField.safeParse(field);
+  if (!parsedField.success) return { error: "Invalid field." };
+  const content = value && value.trim() ? value : null;
+  await prisma.screen.update({
+    where: { id },
+    data: { [parsedField.data]: content } as Prisma.ScreenUpdateInput,
+  });
+  revalidatePath(storyboardPath(s.storyboardId));
+}
+
+export async function moveScreen(id: string, targetIndex: number) {
+  const s = await getScreenForUser(id);
+  if (!s) return { error: "Screen not found." };
+  const siblings = await prisma.screen.findMany({
+    where: { storyboardId: s.storyboardId, id: { not: id } },
+    orderBy: { position: "asc" },
+    select: { position: true },
+  });
+  const position = positionForIndex(siblings.map((x) => x.position), targetIndex);
+  await prisma.screen.update({ where: { id }, data: { position } });
+  revalidatePath(storyboardPath(s.storyboardId));
+}
+
+export async function deleteScreen(id: string) {
+  const s = await getScreenForUser(id);
+  if (!s) return { error: "Screen not found." };
+  await prisma.screen.delete({ where: { id } });
+  revalidatePath(storyboardPath(s.storyboardId));
 }

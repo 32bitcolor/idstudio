@@ -14,16 +14,18 @@ function safeParse(s: string): object | string {
 export function DescriptionEditor({
   initial,
   onSave,
+  editorClass = "min-h-[120px] text-sm",
 }: {
   initial: string | null;
   onSave: (json: string | null) => void;
+  editorClass?: string;
 }) {
   const editor = useEditor({
     extensions: [StarterKit],
     content: initial ? safeParse(initial) : "",
     immediatelyRender: false, // required for Next.js SSR (no hydration mismatch)
     editorProps: {
-      attributes: { class: "tiptap min-h-[120px] text-sm" },
+      attributes: { class: `tiptap ${editorClass}` },
     },
     onBlur: ({ editor }) => {
       onSave(editor.isEmpty ? null : JSON.stringify(editor.getJSON()));

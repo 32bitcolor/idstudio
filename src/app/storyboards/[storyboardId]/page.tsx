@@ -21,6 +21,20 @@ export default async function StoryboardPage({ params }: { params: Promise<{ sto
       deliverable: {
         select: { id: true, name: true, projectId: true, project: { select: { name: true } } },
       },
+      screens: {
+        orderBy: { position: "asc" },
+        select: {
+          id: true,
+          title: true,
+          screenType: true,
+          position: true,
+          onScreenText: true,
+          narration: true,
+          visualNotes: true,
+          interactionNotes: true,
+          developerNotes: true,
+        },
+      },
     },
   });
   if (!storyboard) notFound();
@@ -41,6 +55,7 @@ export default async function StoryboardPage({ params }: { params: Promise<{ sto
             }
           : null,
       }}
+      initialScreens={storyboard.screens}
     />
   );
 }

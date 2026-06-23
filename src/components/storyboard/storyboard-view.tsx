@@ -10,6 +10,7 @@ import {
 } from "@/app/actions/storyboards";
 import { STORYBOARD_STATUSES, STORYBOARD_STATUS_LABEL, type StoryboardStatus } from "@/lib/storyboard";
 import { ThemeSwitcher } from "@/components/theme-switcher";
+import { ScreensSection, type ScreenInit } from "@/components/storyboard/screens-section";
 
 type StoryboardMeta = {
   id: string;
@@ -19,7 +20,7 @@ type StoryboardMeta = {
   deliverable: { id: string; name: string; projectId: string; projectName: string } | null;
 };
 
-export function StoryboardView({ storyboard }: { storyboard: StoryboardMeta }) {
+export function StoryboardView({ storyboard, initialScreens }: { storyboard: StoryboardMeta; initialScreens: ScreenInit[] }) {
   const [title, setTitle] = useState(storyboard.title);
   const [description, setDescription] = useState(storyboard.description ?? "");
   const [status, setStatus] = useState(storyboard.status);
@@ -82,11 +83,7 @@ export function StoryboardView({ storyboard }: { storyboard: StoryboardMeta }) {
         className="mt-4 w-full resize-none rounded-md border border-border-strong bg-transparent px-3 py-2 text-sm outline-none focus:border-foreground/60"
       />
 
-      {/* Screens editor lands here in the next slice. */}
-      <section className="mt-8">
-        <h2 className="text-sm font-medium uppercase tracking-wide text-foreground/50">Screens</h2>
-        <p className="mt-3 text-sm text-foreground/40">No screens yet.</p>
-      </section>
+      <ScreensSection storyboardId={storyboard.id} initial={initialScreens} />
 
       <div className="mt-10 border-t border-border pt-4">
         <form
