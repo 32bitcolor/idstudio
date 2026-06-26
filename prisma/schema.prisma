@@ -41,6 +41,7 @@ model Workspace {
   boards      Board[]
   projects    Project[]
   storyboards Storyboard[]
+  exams       Exam[]
 }
 
 // Role is per-workspace (on Membership), never global on User.
@@ -178,6 +179,7 @@ model Deliverable {
   reviewCycles ReviewCycle[]
   timeEntries  TimeEntry[]
   storyboard   Storyboard?
+  exam         Exam?
 
   @@index([projectId, position])
 }
@@ -263,6 +265,58 @@ model Screen {
   storyboard       Storyboard @relation(fields: [storyboardId], references: [id], onDelete: Cascade)
 
   @@index([storyboardId, position])
+}
+
+// ── Certifications & exams (Phase 4) ─────────────────────────────────────────
+// An Exam is workspace-scoped (like a Storyboard) and may optionally be linked to
+// a project Deliverable of type "assessment". It holds an ordered list of Questions,
+// each carrying ordered options for the choice-based question types.
+
+model Exam {
+  id               String       @id @default(cuid())
+  workspaceId      String
+  deliverableId    String?      @unique
+  title            String
+  description      String?
+  status           String       @default("draft") // draft / published / archived
+  passingScore     Int          @default(80) // percent (0–100) required to pass
+  timeLimitMinutes Int? // null = untimed
+  maxAttempts      Int? // null = unlimited attempts
+  shuffleQuestions Boolean      @default(false)
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+  workspace        Workspace    @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  deliverable      Deliverable? @relation(fields: [deliverableId], references: [id], onDelete: SetNull)
+  questions        Question[]
+
+  @@index([workspaceId])
+}
+
+model Question {
+  id          String           @id @default(cuid())
+  examId      String
+  type        String           @default("multiple_choice") // multiple_choice / multi_select / true_false / short_answer
+  prompt      String? // TipTap document, stored as JSON string
+  points      Int              @default(1)
+  explanation String? // shown after answering — TipTap JSON
+  position    String
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  exam        Exam             @relation(fields: [examId], references: [id], onDelete: Cascade)
+  options     QuestionOption[]
+
+  @@index([examId, position])
+}
+
+model QuestionOption {
+  id         String   @id @default(cuid())
+  questionId String
+  text       String
+  isCorrect  Boolean  @default(false)
+  position   String
+  question   Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@index([questionId, position])
 }
 
 model ChecklistItem {

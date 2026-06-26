@@ -11,7 +11,7 @@ const MODULES: { name: string; desc: string; phase: string; href?: string }[] = 
   { name: "Kanban Board", desc: "Boards, cards, drag & drop", phase: "Phase 1", href: "/boards" },
   { name: "Project Management", desc: "ADDIE/SAM workflows, deliverables", phase: "Phase 2", href: "/projects" },
   { name: "Storyboarding", desc: "Frame-by-frame course storyboards", phase: "Phase 3", href: "/storyboards" },
-  { name: "Certifications & Exams", desc: "Exam builder, question banks", phase: "Phase 4" },
+  { name: "Certifications & Exams", desc: "Exam builder, question banks", phase: "Phase 4", href: "/exams" },
   { name: "LMS Integration", desc: "Sync to LearnUpon", phase: "Phase 5" },
 ];
 

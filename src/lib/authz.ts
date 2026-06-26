@@ -106,3 +106,30 @@ export async function getScreenForUser(screenId: string) {
     select: { id: true, storyboardId: true },
   });
 }
+
+export async function getExamForUser(examId: string) {
+  const user = await getCurrentUser();
+  if (!user) return null;
+  return prisma.exam.findFirst({
+    where: { id: examId, workspace: ownedByUser(user.id) },
+    select: { id: true, workspaceId: true },
+  });
+}
+
+export async function getQuestionForUser(questionId: string) {
+  const user = await getCurrentUser();
+  if (!user) return null;
+  return prisma.question.findFirst({
+    where: { id: questionId, exam: { workspace: ownedByUser(user.id) } },
+    select: { id: true, examId: true, type: true },
+  });
+}
+
+export async function getOptionForUser(optionId: string) {
+  const user = await getCurrentUser();
+  if (!user) return null;
+  return prisma.questionOption.findFirst({
+    where: { id: optionId, question: { exam: { workspace: ownedByUser(user.id) } } },
+    select: { id: true, questionId: true, question: { select: { examId: true, type: true } } },
+  });
+}
