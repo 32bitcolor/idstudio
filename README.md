@@ -4,11 +4,13 @@ A self-hosted web app for instructional design teams: a full-featured Kanban boa
 ID-tailored project management (ADDIE/SAM), a storyboarding suite, a certification &
 exam builder, and LMS integration (LearnUpon). Built to run on your own Proxmox server.
 
-> **Status: Phase 3 complete — Phase 4 next.** The foundation, the full Kanban board,
-> project management (projects with ADDIE/SAM phases, deliverables linked to board cards,
-> milestones, SME/stakeholder review cycles, and time tracking), and the storyboarding
-> suite (screen-by-screen storyboards with rich-text fields, linked to project
-> deliverables) are built and verified. Up next: the certification & exam builder.
+> **Status: Phase 4 in progress (exam builder shipped).** The foundation, the full Kanban
+> board, project management (projects with ADDIE/SAM phases, deliverables linked to board
+> cards, milestones, SME/stakeholder review cycles, and time tracking), and the storyboarding
+> suite (screen-by-screen storyboards with rich-text fields, linked to project deliverables)
+> are built and verified. Phase 4's first slice — the **exam builder** (workspace-scoped exams
+> with ordered questions, four question types, answer options, and per-exam settings) — is
+> built and verified. Up next in Phase 4: exam taking & auto-scoring, then certifications.
 > See the **[Roadmap](#roadmap)** below.
 
 ## Screenshots
@@ -135,7 +137,14 @@ and seeds the admin, then the app and worker start.
 - ✅ **Phase 3 — Storyboarding suite:** workspace-scoped storyboards with ordered screens, per-screen
   type and rich-text fields (on-screen text, narration, visual/interaction/developer notes),
   optionally linked to a project's storyboard deliverable
-- ⬜ **Phase 4 — Certifications & exam builder** *(next)*
+- 🔨 **Phase 4 — Certifications & exam builder** *(in progress)*
+  - ✅ Slice 1 — exam builder: workspace-scoped exams (optionally linked to an `assessment`
+    deliverable) with ordered questions, four question types (multiple choice, multiple answer,
+    true/false, short answer), answer options, and per-exam settings (passing score, time
+    limit, max attempts, shuffle)
+  - ⬜ Slice 2 — exam taking & auto-scoring (attempts)
+  - ⬜ Slice 3 — certifications (issuance, expiry)
+  - ⬜ Slice 4 — reusable question banks
 - ⬜ **Phase 5 — LearnUpon integration**
 
 Full detail in `.claude/plans/deep-jumping-treehouse.md`.

@@ -1,7 +1,14 @@
 # IDStudio reverse proxy.
 # - Public domain  → Caddy auto-provisions a Let's Encrypt certificate.
 # - DOMAIN=localhost → Caddy serves HTTPS with its built-in internal CA.
+# - DOMAIN=<bare IP> → internal CA cert; the global `default_sni` makes Caddy serve
+#   that cert to clients which omit SNI (browsers omit SNI for raw IP addresses),
+#   so an internal-only deployment reachable by IP still works over HTTPS.
 # For production, optionally add a global `email {$ACME_EMAIL}` block for ACME notices.
+
+{
+	default_sni {$DOMAIN:localhost}
+}
 
 {$DOMAIN:localhost} {
 	encode gzip
