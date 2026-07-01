@@ -51,9 +51,9 @@ publishes to the LMS and pulls completion/impact data back).
   roles and email/password auth. Admins manage members (create users with an initial password,
   reset passwords, change roles, remove members) and organize them into groups; every user can
   change their own password from **Settings → Account**.
-- **Group-based access control** — boards, storyboards, and projects are visible to all members
-  by default, but can be restricted to specific groups (admins always retain access). Enforced
-  everywhere — lists, the dashboard, and direct links — not just hidden in the UI.
+- **Group-based access control** — boards, storyboards, projects, and whiteboards are visible to
+  all members by default, but can be restricted to specific groups (admins always retain access).
+  Enforced everywhere — lists, the dashboard, and direct links — not just hidden in the UI.
 - **Boards** — a full Kanban: columns, drag-and-drop, card details (rich-text description, due
   date, labels, assignees), checklists, comments, attachments, and filters.
 - **Projects** — ID-tailored project management: ADDIE / SAM / custom methodologies, phases with
@@ -62,6 +62,11 @@ publishes to the LMS and pulls completion/impact data back).
 - **Storyboards** — screen-by-screen course design with per-screen type and rich-text fields
   (on-screen text, narration, visual / interaction / developer notes), optionally linked to a
   project's storyboard deliverable.
+- **Whiteboards** — collaborative Excalidraw canvases for sketching workflows, wireframes, and
+  ideas; autosaved, and optionally linked to a storyboard.
+- **My Work** — a personal hub of everything waiting on you: reviews awaiting your decision
+  (approve / request changes inline), reviews you've requested, assigned cards, and upcoming
+  milestones — plus a **Review History** tab with outcomes, feedback, and undo.
 - **Home dashboard** — your workspace at a glance: active projects with phase progress, items
   awaiting your review, and upcoming milestones.
 
@@ -70,6 +75,10 @@ publishes to the LMS and pulls completion/impact data back).
 **Home dashboard** — active projects with phase progress, your review queue, and upcoming milestones:
 
 ![Dashboard](docs/screenshots/dashboard.png)
+
+**My Work** — a personal hub: reviews awaiting your decision (approve / request changes inline), reviews you've requested, assigned action items, and upcoming milestones — with a Review History tab:
+
+![My Work](docs/screenshots/my-work.png)
 
 **Boards** — a full Kanban for your production pipeline:
 
@@ -82,6 +91,10 @@ publishes to the LMS and pulls completion/impact data back).
 **Project detail** — ADDIE/SAM phases with status and dates, deliverables, milestones, and time tracking:
 
 ![Project detail](docs/screenshots/project-detail.png)
+
+**Whiteboards** — collaborative Excalidraw canvases for sketching workflows, wireframes, and ideas, optionally linked to a storyboard:
+
+![Whiteboard](docs/screenshots/whiteboards.png)
 
 **13 built-in themes** — the whole UI re-themes instantly (the dashboard across three of them):
 
