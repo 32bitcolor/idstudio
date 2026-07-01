@@ -13,7 +13,8 @@ import { SectionHeader } from "@/components/shared/page";
 
 type Person = { id: string; email: string; name: string | null };
 type Resource = { id: string; name: string; granted: boolean };
-type Resources = { board: Resource[]; storyboard: Resource[]; project: Resource[] };
+type ResourceKind = "board" | "storyboard" | "project" | "whiteboard";
+type Resources = Record<ResourceKind, Resource[]>;
 
 const selectClass =
   "h-9 rounded-md border border-input bg-transparent px-2 text-sm outline-none focus:border-ring";
@@ -137,10 +138,11 @@ export function GroupDetail({
           restricted to its groups (and admins); anything left unchecked by every group stays
           visible to all members.
         </p>
-        <div className="grid gap-4 md:grid-cols-3">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <ResourceColumn groupId={group.id} kind="board" title="Boards" items={resources.board} />
           <ResourceColumn groupId={group.id} kind="storyboard" title="Storyboards" items={resources.storyboard} />
           <ResourceColumn groupId={group.id} kind="project" title="Projects" items={resources.project} />
+          <ResourceColumn groupId={group.id} kind="whiteboard" title="Whiteboards" items={resources.whiteboard} />
         </div>
       </div>
     </div>
@@ -154,7 +156,7 @@ function ResourceColumn({
   items,
 }: {
   groupId: string;
-  kind: "board" | "storyboard" | "project";
+  kind: ResourceKind;
   title: string;
   items: Resource[];
 }) {
@@ -180,7 +182,7 @@ function ResourceToggle({
   resource,
 }: {
   groupId: string;
-  kind: "board" | "storyboard" | "project";
+  kind: ResourceKind;
   resource: Resource;
 }) {
   const [granted, setGranted] = useState(resource.granted);

@@ -23,7 +23,7 @@ export default async function GroupDetailPage({ params }: { params: Promise<{ gr
   });
   if (!group) notFound();
 
-  const [workspaceMembers, boards, storyboards, projects] = await Promise.all([
+  const [workspaceMembers, boards, storyboards, projects, whiteboards] = await Promise.all([
     prisma.membership.findMany({
       where: { workspaceId: membership.workspaceId },
       orderBy: { createdAt: "asc" },
@@ -44,6 +44,11 @@ export default async function GroupDetailPage({ params }: { params: Promise<{ gr
       orderBy: { name: "asc" },
       select: { id: true, name: true, groupAccess: { where: { groupId }, select: { groupId: true } } },
     }),
+    prisma.whiteboard.findMany({
+      where: { workspaceId: membership.workspaceId },
+      orderBy: { title: "asc" },
+      select: { id: true, title: true, groupAccess: { where: { groupId }, select: { groupId: true } } },
+    }),
   ]);
 
   const inGroupIds = new Set(group.members.map((m) => m.user.id));
@@ -54,6 +59,7 @@ export default async function GroupDetailPage({ params }: { params: Promise<{ gr
     board: boards.map((b) => ({ id: b.id, name: b.name, granted: b.groupAccess.length > 0 })),
     storyboard: storyboards.map((s) => ({ id: s.id, name: s.title, granted: s.groupAccess.length > 0 })),
     project: projects.map((p) => ({ id: p.id, name: p.name, granted: p.groupAccess.length > 0 })),
+    whiteboard: whiteboards.map((w) => ({ id: w.id, name: w.title, granted: w.groupAccess.length > 0 })),
   };
 
   return (

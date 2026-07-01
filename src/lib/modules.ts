@@ -4,6 +4,7 @@ import {
   Columns3,
   FolderKanban,
   Film,
+  Shapes,
   type LucideIcon,
 } from "lucide-react";
 
@@ -57,6 +58,13 @@ export const MODULES: ModuleDef[] = [
     href: "/storyboards",
     icon: Film,
     tagline: "Screen-by-screen course design",
+  },
+  {
+    key: "whiteboards",
+    name: "Whiteboards",
+    href: "/whiteboards",
+    icon: Shapes,
+    tagline: "Sketch workflows, wireframes & ideas together",
   },
   // Future pillar: an "Integrations" capability (publish/sync to an LMS, pull
   // completion & assessment data back for impact reporting). Reintroduced as a

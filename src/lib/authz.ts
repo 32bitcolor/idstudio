@@ -59,6 +59,15 @@ function projectAccessOR(ctx: Ctx): Prisma.ProjectWhereInput {
     ],
   };
 }
+function whiteboardAccessOR(ctx: Ctx): Prisma.WhiteboardWhereInput {
+  return {
+    OR: [
+      { workspaceId: { in: ctx.adminWorkspaceIds } },
+      { groupAccess: { none: {} } },
+      { groupAccess: { some: { groupId: { in: ctx.groupIds } } } },
+    ],
+  };
+}
 
 // Visibility `where` fragments for list/dashboard queries (which query Prisma
 // directly instead of going through the getters). Spread alongside `workspaceId`.
@@ -73,6 +82,10 @@ export async function storyboardVisibilityWhere(): Promise<Prisma.StoryboardWher
 export async function projectVisibilityWhere(): Promise<Prisma.ProjectWhereInput> {
   const ctx = await getAccessContext();
   return ctx ? projectAccessOR(ctx) : { id: { in: [] } };
+}
+export async function whiteboardVisibilityWhere(): Promise<Prisma.WhiteboardWhereInput> {
+  const ctx = await getAccessContext();
+  return ctx ? whiteboardAccessOR(ctx) : { id: { in: [] } };
 }
 
 // ── Boards ───────────────────────────────────────────────────────────────────
@@ -177,5 +190,16 @@ export async function getScreenForUser(screenId: string) {
   return prisma.screen.findFirst({
     where: { id: screenId, storyboard: { workspace: ownedByUser(ctx.userId), ...storyboardAccessOR(ctx) } },
     select: { id: true, storyboardId: true },
+  });
+}
+
+// ── Whiteboards ──────────────────────────────────────────────────────────────
+
+export async function getWhiteboardForUser(whiteboardId: string) {
+  const ctx = await getAccessContext();
+  if (!ctx) return null;
+  return prisma.whiteboard.findFirst({
+    where: { id: whiteboardId, workspace: ownedByUser(ctx.userId), ...whiteboardAccessOR(ctx) },
+    select: { id: true, workspaceId: true },
   });
 }

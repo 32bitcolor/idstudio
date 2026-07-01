@@ -12,7 +12,7 @@ async function adminGuard() {
   return m;
 }
 
-const Kind = z.enum(["board", "storyboard", "project"]);
+const Kind = z.enum(["board", "storyboard", "project", "whiteboard"]);
 
 /**
  * Grant or revoke a group's access to a single resource. Because access is
@@ -65,7 +65,7 @@ export async function setGroupResourceAccess(
     }
     revalidatePath(`/storyboards/${resourceId}`);
     revalidatePath("/storyboards");
-  } else {
+  } else if (parsedKind.data === "project") {
     const project = await prisma.project.findFirst({ where: { id: resourceId, workspaceId: admin.workspaceId }, select: { id: true } });
     if (!project) return { error: "Project not found." };
     if (granted) {
@@ -79,6 +79,20 @@ export async function setGroupResourceAccess(
     }
     revalidatePath(`/projects/${resourceId}`);
     revalidatePath("/projects");
+  } else {
+    const wb = await prisma.whiteboard.findFirst({ where: { id: resourceId, workspaceId: admin.workspaceId }, select: { id: true } });
+    if (!wb) return { error: "Whiteboard not found." };
+    if (granted) {
+      await prisma.whiteboardGroup.upsert({
+        where: { whiteboardId_groupId: { whiteboardId: resourceId, groupId } },
+        create: { whiteboardId: resourceId, groupId },
+        update: {},
+      });
+    } else {
+      await prisma.whiteboardGroup.delete({ where: { whiteboardId_groupId: { whiteboardId: resourceId, groupId } } }).catch(() => null);
+    }
+    revalidatePath(`/whiteboards/${resourceId}`);
+    revalidatePath("/whiteboards");
   }
 
   revalidatePath(`/settings/groups/${groupId}`);

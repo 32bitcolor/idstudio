@@ -43,6 +43,7 @@ model Workspace {
   boards      Board[]
   projects    Project[]
   storyboards Storyboard[]
+  whiteboards Whiteboard[]
   groups      Group[]
 }
 
@@ -253,6 +254,7 @@ model Storyboard {
   deliverable   Deliverable? @relation(fields: [deliverableId], references: [id], onDelete: SetNull)
   screens       Screen[]
   groupAccess   StoryboardGroup[]
+  whiteboards   Whiteboard[]
 
   @@index([workspaceId])
 }
@@ -347,6 +349,7 @@ model Group {
   boards      BoardGroup[]
   storyboards StoryboardGroup[]
   projects    ProjectGroup[]
+  whiteboards WhiteboardGroup[]
 
   @@unique([workspaceId, name])
   @@index([workspaceId])
@@ -392,5 +395,37 @@ model ProjectGroup {
   group     Group   @relation(fields: [groupId], references: [id], onDelete: Cascade)
 
   @@id([projectId, groupId])
+  @@index([groupId])
+}
+
+// ── Whiteboards ──────────────────────────────────────────────────────────────
+// A collaborative sketch canvas (Excalidraw). Workspace-scoped like a Board, may
+// optionally be linked to a Storyboard. `scene` holds the serialized Excalidraw
+// document (elements + files + a little appState) as a JSON string. Persisted /
+// autosaved (last-write-wins); realtime multi-cursor is a future addition.
+
+model Whiteboard {
+  id           String            @id @default(cuid())
+  workspaceId  String
+  storyboardId String?
+  title        String
+  scene        String? // Excalidraw scene JSON
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+  workspace    Workspace         @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  storyboard   Storyboard?       @relation(fields: [storyboardId], references: [id], onDelete: SetNull)
+  groupAccess  WhiteboardGroup[]
+
+  @@index([workspaceId])
+  @@index([storyboardId])
+}
+
+model WhiteboardGroup {
+  whiteboardId String
+  groupId      String
+  whiteboard   Whiteboard @relation(fields: [whiteboardId], references: [id], onDelete: Cascade)
+  group        Group      @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@id([whiteboardId, groupId])
   @@index([groupId])
 }
