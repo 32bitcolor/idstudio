@@ -9,8 +9,9 @@ Built for instructional designers, learning-experience designers, eLearning deve
 L&D / enablement teams. Runs on your own Proxmox server.
 
 > **Status — core modules shipped; the workflow layer is next.** Multi-user workspaces, a
-> full Kanban board, ID-tailored project management (ADDIE/SAM), and a storyboarding suite are
-> built and verified, all inside one unified app shell (collapsible left-nav + breadcrumbs) on a
+> full Kanban board, ID-tailored project management (ADDIE/SAM), a storyboarding suite, and
+> team & access management (members, groups, and group-based resource access) are built and
+> verified, all inside one unified app shell (collapsible left-nav + breadcrumbs) on a
 > consistent shadcn/ui design system driving 13 themes. We're now building outward toward the
 > full ID operating system — see **[The vision](#the-vision)**.
 
@@ -46,7 +47,13 @@ publishes to the LMS and pulls completion/impact data back).
 
 - **Unified app shell** — collapsible left-nav sidebar, header breadcrumbs, and instant theme
   switching across 13 built-in themes, on a single shadcn/ui design system.
-- **Workspaces & roles** — multi-user, per-workspace ADMIN / MEMBER roles, email/password auth.
+- **Workspaces, members & groups** — multi-user workspaces with per-workspace ADMIN / MEMBER
+  roles and email/password auth. Admins manage members (create users with an initial password,
+  reset passwords, change roles, remove members) and organize them into groups; every user can
+  change their own password from **Settings → Account**.
+- **Group-based access control** — boards, storyboards, and projects are visible to all members
+  by default, but can be restricted to specific groups (admins always retain access). Enforced
+  everywhere — lists, the dashboard, and direct links — not just hidden in the UI.
 - **Boards** — a full Kanban: columns, drag-and-drop, card details (rich-text description, due
   date, labels, assignees), checklists, comments, attachments, and filters.
 - **Projects** — ID-tailored project management: ADDIE / SAM / custom methodologies, phases with
@@ -141,8 +148,9 @@ src/
       layout.tsx                   Auth gate + collapsible sidebar + header/breadcrumbs
       loading | error | not-found  In-shell route boundaries
       dashboard, boards, projects, storyboards
-    actions/                       Server Actions (auth, boards, cards, projects,
-                                   deliverables, storyboards, …)
+      settings/                    Account (all users) + Members & Groups (admin)
+    actions/                       Server Actions (auth, account, members, groups,
+                                   access, boards, cards, projects, storyboards, …)
   components/
     app-shell/                     Sidebar + header breadcrumbs
     shared/                        Cross-cutting UI: PageContainer, PageHeader, EmptyState,
@@ -154,11 +162,11 @@ src/
     modules.ts   Single module registry — feeds the sidebar, breadcrumbs, and dashboard
     dal.ts       Data Access Layer: getCurrentUser / requireUser / active membership
     db.ts        Prisma client (singleton, pg adapter)
-    authz.ts     Resource authorization helpers
+    authz.ts     Resource authorization + group-based access (default-open) helpers
     session.ts / password.ts / validation.ts / methodology.ts / storyboard.ts / utils.ts
   generated/prisma   Generated Prisma client (gitignored)
 prisma/
-  schema.prisma  Data model (workspaces, boards, projects, storyboards, …)
+  schema.prisma  Data model (workspaces, members, groups, boards, projects, storyboards, …)
   migrations/    SQL migrations (applied via `prisma migrate deploy`)
   seed.ts        Idempotent first-admin seed
 worker/index.ts  BullMQ worker (LMS sync will land here)
