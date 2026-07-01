@@ -1,38 +1,25 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Check, ClipboardCheck, Columns3, Flag, RotateCcw, Send } from "lucide-react";
+import { ClipboardCheck, Columns3, Flag, Send } from "lucide-react";
 
 import { prisma } from "@/lib/db";
 import { requireUser, getActiveMembership } from "@/lib/dal";
 import { projectVisibilityWhere, boardVisibilityWhere } from "@/lib/authz";
 import { dueMeta, dueToneClass } from "@/lib/due";
 import { REVIEW_STATUS_LABEL, type ReviewStatus } from "@/lib/methodology";
-import { PageContainer, PageHeader, SectionHeader } from "@/components/shared/page";
+import { SectionHeader } from "@/components/shared/page";
 import { EmptyState } from "@/components/shared/empty-state";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { Card } from "@/components/ui/card";
 import { ReviewInbox, type InboxReview } from "@/components/my-work/review-inbox";
+import { artifactLink, DELIVERABLE_SELECT } from "@/components/my-work/artifact";
 
 export const metadata = { title: "My Work · IDStudio" };
 
 // Reviewer's actionable queue vs. the requester's open loops. Resolved reviews
-// (approved / changes-requested) move to the read-only history section.
+// (approved / changes-requested) live on the Review History tab.
 const REVIEWER_OPEN = ["requested", "in_review"] as const;
 const REQUESTER_OPEN = ["requested", "in_review"] as const;
-const RESOLVED = ["approved", "changes_requested"] as const;
-
-const historyDate = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric" });
-
-// Resolve the most specific artifact a review points at (storyboard > card > project).
-function artifactLink(d: {
-  project: { id: string; name: string };
-  storyboard: { id: string; title: string } | null;
-  card: { title: string; column: { board: { id: string; name: string } } } | null;
-}): { href: string; label: string } {
-  if (d.storyboard) return { href: `/storyboards/${d.storyboard.id}`, label: `Storyboard · ${d.storyboard.title}` };
-  if (d.card) return { href: `/boards/${d.card.column.board.id}`, label: `Card · ${d.card.title}` };
-  return { href: `/projects/${d.project.id}`, label: `Project · ${d.project.name}` };
-}
 
 export default async function MyWorkPage() {
   const me = await requireUser();
@@ -42,15 +29,7 @@ export default async function MyWorkPage() {
 
   const [projectVis, boardVis] = await Promise.all([projectVisibilityWhere(), boardVisibilityWhere()]);
 
-  const deliverableSelect = {
-    id: true,
-    name: true,
-    project: { select: { id: true, name: true } },
-    storyboard: { select: { id: true, title: true } },
-    card: { select: { title: true, column: { select: { board: { select: { id: true, name: true } } } } } },
-  } as const;
-
-  const [toReview, requested, cards, milestones, history] = await Promise.all([
+  const [toReview, requested, cards, milestones] = await Promise.all([
     prisma.reviewCycle.findMany({
       where: {
         reviewerId: me.id,
@@ -61,7 +40,7 @@ export default async function MyWorkPage() {
       select: {
         id: true, round: true, status: true, dueDate: true, feedback: true,
         requestedBy: { select: { name: true, email: true } },
-        deliverable: { select: deliverableSelect },
+        deliverable: { select: DELIVERABLE_SELECT },
       },
     }),
     prisma.reviewCycle.findMany({
@@ -75,7 +54,7 @@ export default async function MyWorkPage() {
       select: {
         id: true, status: true, dueDate: true,
         reviewer: { select: { name: true, email: true } },
-        deliverable: { select: deliverableSelect },
+        deliverable: { select: DELIVERABLE_SELECT },
       },
     }),
     prisma.card.findMany({
@@ -88,22 +67,6 @@ export default async function MyWorkPage() {
       orderBy: { dueDate: "asc" },
       take: 8,
       select: { id: true, name: true, dueDate: true, project: { select: { id: true, name: true } } },
-    }),
-    // Review history — resolved reviews I either decided (reviewer) or requested.
-    prisma.reviewCycle.findMany({
-      where: {
-        OR: [{ reviewerId: me.id }, { requestedById: me.id }],
-        status: { in: [...RESOLVED] },
-        deliverable: { project: { workspaceId: wsId, ...projectVis } },
-      },
-      orderBy: { updatedAt: "desc" },
-      take: 20,
-      select: {
-        id: true, round: true, status: true, updatedAt: true, reviewerId: true,
-        reviewer: { select: { name: true, email: true } },
-        requestedBy: { select: { name: true, email: true } },
-        deliverable: { select: deliverableSelect },
-      },
     }),
   ]);
 
@@ -121,156 +84,111 @@ export default async function MyWorkPage() {
   }));
 
   const totalOpen = inbox.length + requested.length + cards.length + milestones.length;
-  const hasAnything = totalOpen > 0 || history.length > 0;
+
+  if (totalOpen === 0) {
+    return (
+      <EmptyState
+        className="mt-4"
+        icon={ClipboardCheck}
+        title="You're all caught up"
+        description="No open reviews, assigned cards, or upcoming milestones right now."
+      />
+    );
+  }
 
   return (
-    <PageContainer>
-      <PageHeader
-        eyebrow={membership.workspace.name}
-        title="My Work"
-        description="Everything waiting on you — reviews, action items, and what's coming due."
-      />
+    <div className="flex flex-col gap-10">
+      {/* Awaiting my review — interactive */}
+      <section>
+        <SectionHeader>Awaiting my review · {inbox.length}</SectionHeader>
+        {inbox.length === 0 ? (
+          <p className="text-sm text-muted-foreground">Nothing needs your review right now.</p>
+        ) : (
+          <ReviewInbox reviews={inbox} />
+        )}
+      </section>
 
-      {!hasAnything ? (
-        <EmptyState
-          className="mt-10"
-          icon={ClipboardCheck}
-          title="You're all caught up"
-          description="No open reviews, assigned cards, or upcoming milestones right now."
-        />
-      ) : (
-        <div className="mt-8 flex flex-col gap-10">
-          {/* Awaiting my review — interactive */}
-          <section>
-            <SectionHeader>Awaiting my review · {inbox.length}</SectionHeader>
-            {inbox.length === 0 ? (
-              <p className="text-sm text-muted-foreground">Nothing needs your review right now.</p>
-            ) : (
-              <ReviewInbox reviews={inbox} />
-            )}
-          </section>
-
-          {/* I'm waiting on — reviews I requested */}
-          <section>
-            <SectionHeader>I&apos;m waiting on · {requested.length}</SectionHeader>
-            {requested.length === 0 ? (
-              <p className="text-sm text-muted-foreground">You haven&apos;t requested any open reviews.</p>
-            ) : (
-              <Card className="divide-y divide-border p-0">
-                {requested.map((r) => {
-                  const link = artifactLink(r.deliverable);
-                  const due = dueMeta(r.dueDate);
-                  return (
-                    <div key={r.id} className="flex flex-wrap items-center gap-3 px-5 py-3">
-                      <Send className="size-4 shrink-0 text-muted-foreground" />
-                      <div className="min-w-0 flex-1">
-                        <Link href={link.href} className="truncate font-medium hover:underline">
-                          {r.deliverable.name}
-                        </Link>
-                        <div className="truncate text-sm text-muted-foreground">
-                          {r.deliverable.project.name} · reviewer: {r.reviewer.name ?? r.reviewer.email}
-                        </div>
-                      </div>
-                      <StatusBadge tone={r.status === "changes_requested" ? "warning" : "info"}>
-                        {REVIEW_STATUS_LABEL[r.status as ReviewStatus] ?? r.status}
-                      </StatusBadge>
-                      {due && <span className={`text-xs ${dueToneClass[due.tone]}`}>{due.label}</span>}
-                    </div>
-                  );
-                })}
-              </Card>
-            )}
-          </section>
-
-          {/* My action items — assigned cards */}
-          <section>
-            <SectionHeader>My action items · {cards.length}</SectionHeader>
-            {cards.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No cards are assigned to you.</p>
-            ) : (
-              <Card className="divide-y divide-border p-0">
-                {cards.map((c) => {
-                  const due = dueMeta(c.dueDate);
-                  return (
-                    <Link key={c.id} href={`/boards/${c.column.board.id}`} className="flex flex-wrap items-center gap-3 px-5 py-3 hover:bg-muted/50">
-                      <Columns3 className="size-4 shrink-0 text-muted-foreground" />
-                      <div className="min-w-0 flex-1">
-                        <div className="truncate font-medium">{c.title}</div>
-                        <div className="truncate text-sm text-muted-foreground">
-                          {c.column.board.name} · {c.column.name}
-                        </div>
-                      </div>
-                      {due && <span className={`text-xs ${dueToneClass[due.tone]}`}>{due.label}</span>}
+      {/* I'm waiting on — reviews I requested */}
+      <section>
+        <SectionHeader>I&apos;m waiting on · {requested.length}</SectionHeader>
+        {requested.length === 0 ? (
+          <p className="text-sm text-muted-foreground">You haven&apos;t requested any open reviews.</p>
+        ) : (
+          <Card className="divide-y divide-border p-0">
+            {requested.map((r) => {
+              const link = artifactLink(r.deliverable);
+              const due = dueMeta(r.dueDate);
+              return (
+                <div key={r.id} className="flex flex-wrap items-center gap-3 px-5 py-3">
+                  <Send className="size-4 shrink-0 text-muted-foreground" />
+                  <div className="min-w-0 flex-1">
+                    <Link href={link.href} className="truncate font-medium hover:underline">
+                      {r.deliverable.name}
                     </Link>
-                  );
-                })}
-              </Card>
-            )}
-          </section>
-
-          {/* Upcoming milestones */}
-          <section>
-            <SectionHeader>Upcoming milestones · {milestones.length}</SectionHeader>
-            {milestones.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No milestones coming due.</p>
-            ) : (
-              <Card className="divide-y divide-border p-0">
-                {milestones.map((m) => {
-                  const due = dueMeta(m.dueDate);
-                  return (
-                    <Link key={m.id} href={`/projects/${m.project.id}`} className="flex flex-wrap items-center gap-3 px-5 py-3 hover:bg-muted/50">
-                      <Flag className="size-4 shrink-0 text-muted-foreground" />
-                      <div className="min-w-0 flex-1">
-                        <div className="truncate font-medium">{m.name}</div>
-                        <div className="truncate text-sm text-muted-foreground">{m.project.name}</div>
-                      </div>
-                      {due && <span className={`text-xs ${dueToneClass[due.tone]}`}>{due.label}</span>}
-                    </Link>
-                  );
-                })}
-              </Card>
-            )}
-          </section>
-
-          {/* Review history — resolved reviews I decided or requested */}
-          {history.length > 0 && (
-            <section>
-              <SectionHeader>Review history · {history.length}</SectionHeader>
-              <Card className="divide-y divide-border p-0">
-                {history.map((r) => {
-                  const link = artifactLink(r.deliverable);
-                  const iReviewed = r.reviewerId === me.id;
-                  const other = iReviewed
-                    ? (r.requestedBy?.name ?? r.requestedBy?.email ?? null)
-                    : (r.reviewer?.name ?? r.reviewer?.email ?? null);
-                  const approved = r.status === "approved";
-                  return (
-                    <div key={r.id} className="flex flex-wrap items-center gap-3 px-5 py-3">
-                      {approved
-                        ? <Check className="size-4 shrink-0 text-green-600" />
-                        : <RotateCcw className="size-4 shrink-0 text-amber-600" />}
-                      <div className="min-w-0 flex-1">
-                        <Link href={link.href} className="truncate font-medium hover:underline">
-                          {r.deliverable.name}
-                        </Link>
-                        <div className="truncate text-sm text-muted-foreground">
-                          {r.deliverable.project.name} · round {r.round} ·{" "}
-                          {iReviewed ? "you reviewed" : "you requested"}
-                          {other ? ` · ${iReviewed ? "for" : "reviewer"} ${other}` : ""}
-                        </div>
-                      </div>
-                      <StatusBadge tone={approved ? "success" : "warning"}>
-                        {approved ? "Approved" : "Changes requested"}
-                      </StatusBadge>
-                      <span className="text-xs text-muted-foreground">{historyDate.format(r.updatedAt)}</span>
+                    <div className="truncate text-sm text-muted-foreground">
+                      {r.deliverable.project.name} · reviewer: {r.reviewer.name ?? r.reviewer.email}
                     </div>
-                  );
-                })}
-              </Card>
-            </section>
-          )}
-        </div>
-      )}
-    </PageContainer>
+                  </div>
+                  <StatusBadge tone={r.status === "changes_requested" ? "warning" : "info"}>
+                    {REVIEW_STATUS_LABEL[r.status as ReviewStatus] ?? r.status}
+                  </StatusBadge>
+                  {due && <span className={`text-xs ${dueToneClass[due.tone]}`}>{due.label}</span>}
+                </div>
+              );
+            })}
+          </Card>
+        )}
+      </section>
+
+      {/* My action items — assigned cards */}
+      <section>
+        <SectionHeader>My action items · {cards.length}</SectionHeader>
+        {cards.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No cards are assigned to you.</p>
+        ) : (
+          <Card className="divide-y divide-border p-0">
+            {cards.map((c) => {
+              const due = dueMeta(c.dueDate);
+              return (
+                <Link key={c.id} href={`/boards/${c.column.board.id}`} className="flex flex-wrap items-center gap-3 px-5 py-3 hover:bg-muted/50">
+                  <Columns3 className="size-4 shrink-0 text-muted-foreground" />
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate font-medium">{c.title}</div>
+                    <div className="truncate text-sm text-muted-foreground">
+                      {c.column.board.name} · {c.column.name}
+                    </div>
+                  </div>
+                  {due && <span className={`text-xs ${dueToneClass[due.tone]}`}>{due.label}</span>}
+                </Link>
+              );
+            })}
+          </Card>
+        )}
+      </section>
+
+      {/* Upcoming milestones */}
+      <section>
+        <SectionHeader>Upcoming milestones · {milestones.length}</SectionHeader>
+        {milestones.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No milestones coming due.</p>
+        ) : (
+          <Card className="divide-y divide-border p-0">
+            {milestones.map((m) => {
+              const due = dueMeta(m.dueDate);
+              return (
+                <Link key={m.id} href={`/projects/${m.project.id}`} className="flex flex-wrap items-center gap-3 px-5 py-3 hover:bg-muted/50">
+                  <Flag className="size-4 shrink-0 text-muted-foreground" />
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate font-medium">{m.name}</div>
+                    <div className="truncate text-sm text-muted-foreground">{m.project.name}</div>
+                  </div>
+                  {due && <span className={`text-xs ${dueToneClass[due.tone]}`}>{due.label}</span>}
+                </Link>
+              );
+            })}
+          </Card>
+        )}
+      </section>
+    </div>
   );
 }
