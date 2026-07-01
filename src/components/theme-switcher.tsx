@@ -1,6 +1,18 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Palette } from "lucide-react";
+
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 const THEMES = [
   { id: "system", label: "System" },
@@ -21,7 +33,6 @@ const STORAGE_KEY = "idstudio-theme";
 
 export function ThemeSwitcher() {
   const [theme, setTheme] = useState<string>("system");
-  const [open, setOpen] = useState(false);
 
   useEffect(() => {
     setTheme(localStorage.getItem(STORAGE_KEY) ?? "system");
@@ -29,7 +40,6 @@ export function ThemeSwitcher() {
 
   function apply(id: string) {
     setTheme(id);
-    setOpen(false);
     try {
       localStorage.setItem(STORAGE_KEY, id);
     } catch {
@@ -42,30 +52,24 @@ export function ThemeSwitcher() {
   const current = THEMES.find((t) => t.id === theme) ?? THEMES[0];
 
   return (
-    <div className="relative">
-      <button
-        onClick={() => setOpen((o) => !o)}
-        className="rounded-md border border-border px-3 py-1.5 text-sm text-foreground/70 hover:bg-hover"
-      >
-        Theme: {current.label}
-      </button>
-      {open && (
-        <>
-          <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
-          <div className="absolute right-0 z-20 mt-1 max-h-80 w-44 overflow-y-auto rounded-md border border-border bg-surface py-1 shadow-lg">
-            {THEMES.map((t) => (
-              <button
-                key={t.id}
-                onClick={() => apply(t.id)}
-                className="flex w-full items-center justify-between px-3 py-1.5 text-left text-sm hover:bg-hover"
-              >
-                <span>{t.label}</span>
-                {theme === t.id && <span className="text-foreground/70">✓</span>}
-              </button>
-            ))}
-          </div>
-        </>
-      )}
-    </div>
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="outline" size="sm" className="gap-2">
+          <Palette className="size-4" />
+          <span className="hidden sm:inline">{current.label}</span>
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="max-h-96 overflow-y-auto">
+        <DropdownMenuLabel>Theme</DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        <DropdownMenuRadioGroup value={theme} onValueChange={apply}>
+          {THEMES.map((t) => (
+            <DropdownMenuRadioItem key={t.id} value={t.id}>
+              {t.label}
+            </DropdownMenuRadioItem>
+          ))}
+        </DropdownMenuRadioGroup>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }

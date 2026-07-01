@@ -29,10 +29,7 @@ export default async function ProjectsPage() {
   return (
     <div className="mx-auto w-full max-w-5xl px-6 py-10">
       <div>
-        <Link href="/dashboard" className="text-sm text-foreground/60 hover:underline">
-          ← Dashboard
-        </Link>
-        <h1 className="mt-1 text-2xl font-semibold tracking-tight">Projects</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">Projects</h1>
         <p className="text-sm text-foreground/60">{membership.workspace.name}</p>
       </div>
 

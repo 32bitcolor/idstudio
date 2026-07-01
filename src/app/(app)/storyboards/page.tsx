@@ -31,14 +31,9 @@ export default async function StoryboardsPage() {
 
   return (
     <div className="mx-auto w-full max-w-5xl px-6 py-10">
-      <div className="flex items-center justify-between">
-        <div>
-          <Link href="/dashboard" className="text-sm text-foreground/60 hover:underline">
-            ← Dashboard
-          </Link>
-          <h1 className="mt-1 text-2xl font-semibold tracking-tight">Storyboards</h1>
-          <p className="text-sm text-foreground/60">{membership.workspace.name}</p>
-        </div>
+      <div>
+        <h1 className="text-2xl font-semibold tracking-tight">Storyboards</h1>
+        <p className="text-sm text-foreground/60">{membership.workspace.name}</p>
       </div>
 
       <form action={createStoryboard} className="mt-6 flex gap-2">

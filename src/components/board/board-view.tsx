@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useTransition, useMemo } from "react";
-import Link from "next/link";
 import {
   DndContext,
   DragOverlay,
@@ -36,7 +35,7 @@ import {
 } from "@/app/actions/boards";
 import { CardDrawer, type CardFacePatch } from "@/components/board/card-drawer";
 import { FilterBar, type DueFilter } from "@/components/board/filter-bar";
-import { ThemeSwitcher } from "@/components/theme-switcher";
+import { useSetPageTitle } from "@/components/app-shell/breadcrumbs";
 
 type Label = { id: string; name: string; color: string };
 type Member = { id: string; name: string | null; email: string };
@@ -326,13 +325,11 @@ export function BoardView({
 function BoardHeader({ boardId, boardName }: { boardId: string; boardName: string }) {
   const [name, setName] = useState(boardName);
   const [, startTransition] = useTransition();
+  useSetPageTitle(name);
 
   return (
     <header className="flex items-center justify-between gap-4 px-6 py-5">
       <div className="flex items-center gap-3">
-        <Link href="/boards" className="text-sm text-foreground/60 hover:underline">
-          ← Boards
-        </Link>
         <input
           value={name}
           onChange={(e) => setName(e.target.value)}
@@ -343,7 +340,6 @@ function BoardHeader({ boardId, boardName }: { boardId: string; boardName: strin
         />
       </div>
       <div className="flex items-center gap-2">
-        <ThemeSwitcher />
         <form
           action={async () => {
             if (confirm("Delete this entire board?")) await deleteBoard(boardId);

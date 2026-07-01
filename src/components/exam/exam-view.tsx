@@ -10,7 +10,7 @@ import {
   deleteExam,
 } from "@/app/actions/exams";
 import { EXAM_STATUSES, EXAM_STATUS_LABEL, type ExamStatus } from "@/lib/exam";
-import { ThemeSwitcher } from "@/components/theme-switcher";
+import { useSetPageTitle } from "@/components/app-shell/breadcrumbs";
 import { QuestionsSection, type QuestionInit } from "@/components/exam/questions-section";
 
 type ExamMeta = {
@@ -30,6 +30,7 @@ export function ExamView({ exam, initialQuestions }: { exam: ExamMeta; initialQu
   const [description, setDescription] = useState(exam.description ?? "");
   const [status, setStatus] = useState(exam.status);
   const [, startTransition] = useTransition();
+  useSetPageTitle(title);
 
   // Settings cluster — every change persists the whole group via updateExamSettings.
   const [passingScore, setPassingScore] = useState(exam.passingScore);
@@ -51,16 +52,13 @@ export function ExamView({ exam, initialQuestions }: { exam: ExamMeta; initialQu
     <div className="mx-auto w-full max-w-4xl px-6 py-8">
       <header className="flex items-start justify-between gap-4">
         <div className="min-w-0 flex-1">
-          <Link href="/exams" className="text-sm text-foreground/60 hover:underline">
-            ← Exams
-          </Link>
           <input
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             onBlur={() => {
               if (title.trim() && title !== exam.title) startTransition(() => void renameExam(exam.id, title));
             }}
-            className="mt-1 w-full rounded bg-transparent text-2xl font-semibold tracking-tight outline-none hover:bg-hover focus:bg-hover"
+            className="w-full rounded bg-transparent text-2xl font-semibold tracking-tight outline-none hover:bg-hover focus:bg-hover"
           />
           {exam.deliverable && (
             <p className="mt-1 text-sm text-foreground/50">
@@ -72,7 +70,6 @@ export function ExamView({ exam, initialQuestions }: { exam: ExamMeta; initialQu
             </p>
           )}
         </div>
-        <ThemeSwitcher />
       </header>
 
       <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-3">

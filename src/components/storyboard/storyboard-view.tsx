@@ -9,7 +9,7 @@ import {
   deleteStoryboard,
 } from "@/app/actions/storyboards";
 import { STORYBOARD_STATUSES, STORYBOARD_STATUS_LABEL, type StoryboardStatus } from "@/lib/storyboard";
-import { ThemeSwitcher } from "@/components/theme-switcher";
+import { useSetPageTitle } from "@/components/app-shell/breadcrumbs";
 import { ScreensSection, type ScreenInit } from "@/components/storyboard/screens-section";
 
 type StoryboardMeta = {
@@ -25,21 +25,19 @@ export function StoryboardView({ storyboard, initialScreens }: { storyboard: Sto
   const [description, setDescription] = useState(storyboard.description ?? "");
   const [status, setStatus] = useState(storyboard.status);
   const [, startTransition] = useTransition();
+  useSetPageTitle(title);
 
   return (
     <div className="mx-auto w-full max-w-4xl px-6 py-8">
       <header className="flex items-start justify-between gap-4">
         <div className="min-w-0 flex-1">
-          <Link href="/storyboards" className="text-sm text-foreground/60 hover:underline">
-            ← Storyboards
-          </Link>
           <input
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             onBlur={() => {
               if (title.trim() && title !== storyboard.title) startTransition(() => void renameStoryboard(storyboard.id, title));
             }}
-            className="mt-1 w-full rounded bg-transparent text-2xl font-semibold tracking-tight outline-none hover:bg-hover focus:bg-hover"
+            className="w-full rounded bg-transparent text-2xl font-semibold tracking-tight outline-none hover:bg-hover focus:bg-hover"
           />
           {storyboard.deliverable && (
             <p className="mt-1 text-sm text-foreground/50">
@@ -51,7 +49,6 @@ export function StoryboardView({ storyboard, initialScreens }: { storyboard: Sto
             </p>
           )}
         </div>
-        <ThemeSwitcher />
       </header>
 
       <div className="mt-4 flex flex-wrap items-center gap-3">

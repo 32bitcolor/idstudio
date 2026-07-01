@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import Link from "next/link";
 import {
   renameProject,
   setProjectStatus,
@@ -21,7 +20,7 @@ import {
   type PhaseStatus,
   type ProjectStatus,
 } from "@/lib/methodology";
-import { ThemeSwitcher } from "@/components/theme-switcher";
+import { useSetPageTitle } from "@/components/app-shell/breadcrumbs";
 import { DeliverablesSection } from "@/components/project/deliverables-section";
 import { MilestonesSection } from "@/components/project/milestones-section";
 import { TimeTracking } from "@/components/project/time-tracking";
@@ -111,6 +110,7 @@ export function ProjectView({
   const [status, setStatus] = useState(project.status);
   const [phases, setPhases] = useState<Phase[]>(initialPhases);
   const [, startTransition] = useTransition();
+  useSetPageTitle(name);
 
   const done = phases.filter((p) => p.status === "done").length;
 
@@ -162,10 +162,7 @@ export function ProjectView({
     <div className="mx-auto w-full max-w-3xl px-6 py-8">
       <header className="flex items-start justify-between gap-4">
         <div className="min-w-0 flex-1">
-          <Link href="/projects" className="text-sm text-foreground/60 hover:underline">
-            ← Projects
-          </Link>
-          <div className="mt-1 flex items-center gap-2">
+          <div className="flex items-center gap-2">
             <input
               value={name}
               onChange={(e) => setName(e.target.value)}
@@ -177,7 +174,6 @@ export function ProjectView({
             <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-xs text-foreground/70">{project.methodology}</span>
           </div>
         </div>
-        <ThemeSwitcher />
       </header>
 
       <div className="mt-4 flex flex-wrap items-center gap-3">

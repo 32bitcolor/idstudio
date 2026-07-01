@@ -4,6 +4,10 @@ A self-hosted web app for instructional design teams: a full-featured Kanban boa
 ID-tailored project management (ADDIE/SAM), a storyboarding suite, a certification &
 exam builder, and LMS integration (LearnUpon). Built to run on your own Proxmox server.
 
+Every module lives behind a single **app shell** — a collapsible left-nav sidebar,
+a sticky header with breadcrumb navigation, and instant theme switching — so the whole
+workspace navigates as one product.
+
 > **Status: Phase 4 in progress (exam builder shipped).** The foundation, the full Kanban
 > board, project management (projects with ADDIE/SAM phases, deliverables linked to board
 > cards, milestones, SME/stakeholder review cycles, and time tracking), and the storyboarding
@@ -72,10 +76,17 @@ same, and it's fully self-contained. This can be swapped for an auth library lat
 src/
   app/
     (auth)/login, (auth)/signup   Auth pages
-    dashboard/                     Protected dashboard (role-gated admin panel)
-    actions/auth.ts                Server Actions: signup / login / logout
-  components/                      Auth form client components
+    (app)/                         Authed modules behind one shared shell:
+      layout.tsx                   Auth gate + collapsible sidebar + header/breadcrumbs
+      dashboard, boards, projects, storyboards, exams
+    actions/                       Server Actions (auth, boards, projects, exams, …)
+  components/
+    app-shell/                     Left-nav sidebar + header breadcrumbs
+    ui/                            shadcn/ui primitives (sidebar, dropdown, breadcrumb, …)
+    board/ project/ storyboard/ exam/   Feature client components
+  hooks/           use-mobile (responsive sidebar)
   lib/
+    utils.ts       cn() class-merge helper (clsx + tailwind-merge)
     db.ts        Prisma client (singleton, pg adapter)
     session.ts   jose encrypt/decrypt + session cookie
     dal.ts       Data Access Layer: getCurrentUser / requireUser / requireAdmin

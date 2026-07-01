@@ -1,5 +1,7 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:is(.dark *));
+
 /* ── Semantic design tokens ───────────────────────────────────────────────────
    Components use the utilities these expose (bg-surface, border-border,
    bg-accent, hover:bg-hover, …). Each theme below just re-defines the raw vars. */
@@ -16,6 +18,39 @@
   --color-accent-foreground: var(--accent-foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+
+  /* ── shadcn/ui token bridge ───────────────────────────────────────────────
+     shadcn components read these token names. We point them at the existing
+     theme vars above, so all 13 themes drive shadcn components out of the box
+     (no per-theme duplication). `primary` = our bold `accent`; shadcn's own
+     subtle `accent` (menu hover, etc.) stays as our `accent` too — where we
+     want a quiet hover (the sidebar) we route through the sidebar tokens. */
+  --color-card: var(--surface);
+  --color-card-foreground: var(--foreground);
+  --color-popover: var(--surface);
+  --color-popover-foreground: var(--foreground);
+  --color-primary: var(--accent);
+  --color-primary-foreground: var(--accent-foreground);
+  --color-secondary: var(--muted);
+  --color-secondary-foreground: var(--foreground);
+  --color-muted-foreground: color-mix(in srgb, var(--foreground) 60%, transparent);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: #ffffff;
+  --color-input: var(--border);
+  --color-ring: var(--border-strong);
+  --radius-lg: var(--radius);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-sm: calc(var(--radius) - 4px);
+
+  /* Sidebar — a slightly recessed surface with quiet hovers, theme-driven. */
+  --color-sidebar: var(--surface-muted);
+  --color-sidebar-foreground: var(--foreground);
+  --color-sidebar-primary: var(--accent);
+  --color-sidebar-primary-foreground: var(--accent-foreground);
+  --color-sidebar-accent: var(--hover);
+  --color-sidebar-accent-foreground: var(--foreground);
+  --color-sidebar-border: var(--border);
+  --color-sidebar-ring: var(--accent);
 }
 
 /* Light (also the default for the "System" option in light mode) */
@@ -31,6 +66,9 @@
   --hover: #f4f4f5;
   --accent: #171717;
   --accent-foreground: #ffffff;
+  /* Theme-agnostic tokens (not overridden per theme). */
+  --destructive: #dc2626;
+  --radius: 0.5rem;
 }
 
 /* System dark: only when no explicit theme is chosen */
