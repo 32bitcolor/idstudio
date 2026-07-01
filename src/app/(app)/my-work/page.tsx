@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { ClipboardCheck, Columns3, Flag, Send } from "lucide-react";
+import { Check, ClipboardCheck, Columns3, Flag, RotateCcw, Send } from "lucide-react";
 
 import { prisma } from "@/lib/db";
 import { requireUser, getActiveMembership } from "@/lib/dal";
@@ -15,9 +15,13 @@ import { ReviewInbox, type InboxReview } from "@/components/my-work/review-inbox
 
 export const metadata = { title: "My Work · IDStudio" };
 
-// Reviewer's actionable queue vs. the requester's open loops.
+// Reviewer's actionable queue vs. the requester's open loops. Resolved reviews
+// (approved / changes-requested) move to the read-only history section.
 const REVIEWER_OPEN = ["requested", "in_review"] as const;
-const REQUESTER_OPEN = ["requested", "in_review", "changes_requested"] as const;
+const REQUESTER_OPEN = ["requested", "in_review"] as const;
+const RESOLVED = ["approved", "changes_requested"] as const;
+
+const historyDate = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric" });
 
 // Resolve the most specific artifact a review points at (storyboard > card > project).
 function artifactLink(d: {
@@ -46,7 +50,7 @@ export default async function MyWorkPage() {
     card: { select: { title: true, column: { select: { board: { select: { id: true, name: true } } } } } },
   } as const;
 
-  const [toReview, requested, cards, milestones] = await Promise.all([
+  const [toReview, requested, cards, milestones, history] = await Promise.all([
     prisma.reviewCycle.findMany({
       where: {
         reviewerId: me.id,
@@ -85,6 +89,22 @@ export default async function MyWorkPage() {
       take: 8,
       select: { id: true, name: true, dueDate: true, project: { select: { id: true, name: true } } },
     }),
+    // Review history — resolved reviews I either decided (reviewer) or requested.
+    prisma.reviewCycle.findMany({
+      where: {
+        OR: [{ reviewerId: me.id }, { requestedById: me.id }],
+        status: { in: [...RESOLVED] },
+        deliverable: { project: { workspaceId: wsId, ...projectVis } },
+      },
+      orderBy: { updatedAt: "desc" },
+      take: 20,
+      select: {
+        id: true, round: true, status: true, updatedAt: true, reviewerId: true,
+        reviewer: { select: { name: true, email: true } },
+        requestedBy: { select: { name: true, email: true } },
+        deliverable: { select: deliverableSelect },
+      },
+    }),
   ]);
 
   const inbox: InboxReview[] = toReview.map((r) => ({
@@ -101,6 +121,7 @@ export default async function MyWorkPage() {
   }));
 
   const totalOpen = inbox.length + requested.length + cards.length + milestones.length;
+  const hasAnything = totalOpen > 0 || history.length > 0;
 
   return (
     <PageContainer>
@@ -110,7 +131,7 @@ export default async function MyWorkPage() {
         description="Everything waiting on you — reviews, action items, and what's coming due."
       />
 
-      {totalOpen === 0 ? (
+      {!hasAnything ? (
         <EmptyState
           className="mt-10"
           icon={ClipboardCheck}
@@ -210,6 +231,44 @@ export default async function MyWorkPage() {
               </Card>
             )}
           </section>
+
+          {/* Review history — resolved reviews I decided or requested */}
+          {history.length > 0 && (
+            <section>
+              <SectionHeader>Review history · {history.length}</SectionHeader>
+              <Card className="divide-y divide-border p-0">
+                {history.map((r) => {
+                  const link = artifactLink(r.deliverable);
+                  const iReviewed = r.reviewerId === me.id;
+                  const other = iReviewed
+                    ? (r.requestedBy?.name ?? r.requestedBy?.email ?? null)
+                    : (r.reviewer?.name ?? r.reviewer?.email ?? null);
+                  const approved = r.status === "approved";
+                  return (
+                    <div key={r.id} className="flex flex-wrap items-center gap-3 px-5 py-3">
+                      {approved
+                        ? <Check className="size-4 shrink-0 text-green-600" />
+                        : <RotateCcw className="size-4 shrink-0 text-amber-600" />}
+                      <div className="min-w-0 flex-1">
+                        <Link href={link.href} className="truncate font-medium hover:underline">
+                          {r.deliverable.name}
+                        </Link>
+                        <div className="truncate text-sm text-muted-foreground">
+                          {r.deliverable.project.name} · round {r.round} ·{" "}
+                          {iReviewed ? "you reviewed" : "you requested"}
+                          {other ? ` · ${iReviewed ? "for" : "reviewer"} ${other}` : ""}
+                        </div>
+                      </div>
+                      <StatusBadge tone={approved ? "success" : "warning"}>
+                        {approved ? "Approved" : "Changes requested"}
+                      </StatusBadge>
+                      <span className="text-xs text-muted-foreground">{historyDate.format(r.updatedAt)}</span>
+                    </div>
+                  );
+                })}
+              </Card>
+            </section>
+          )}
         </div>
       )}
     </PageContainer>
