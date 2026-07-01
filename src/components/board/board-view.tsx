@@ -36,6 +36,9 @@ import {
 import { CardDrawer, type CardFacePatch } from "@/components/board/card-drawer";
 import { FilterBar, type DueFilter } from "@/components/board/filter-bar";
 import { useSetPageTitle } from "@/components/app-shell/breadcrumbs";
+import { InlineTitle } from "@/components/shared/inline-title";
+import { ConfirmDelete } from "@/components/shared/confirm-delete";
+import { Button } from "@/components/ui/button";
 
 type Label = { id: string; name: string; color: string };
 type Member = { id: string; name: string | null; email: string };
@@ -329,27 +332,32 @@ function BoardHeader({ boardId, boardName }: { boardId: string; boardName: strin
 
   return (
     <header className="flex items-center justify-between gap-4 px-6 py-5">
-      <div className="flex items-center gap-3">
-        <input
+      <div className="flex min-w-0 flex-1 items-center gap-3">
+        <InlineTitle
           value={name}
-          onChange={(e) => setName(e.target.value)}
-          onBlur={() => {
+          onChange={setName}
+          onCommit={() => {
             if (name.trim() && name !== boardName) startTransition(() => void renameBoard(boardId, name));
           }}
-          className="rounded-md bg-transparent px-1 text-lg font-semibold tracking-tight outline-none hover:bg-hover focus:bg-hover"
+          ariaLabel="Board name"
+          className="text-lg"
         />
       </div>
-      <div className="flex items-center gap-2">
-        <form
-          action={async () => {
-            if (confirm("Delete this entire board?")) await deleteBoard(boardId);
-          }}
-        >
-          <button className="rounded-md border border-border px-3 py-1.5 text-sm text-red-600 hover:bg-red-500/5">
+      <ConfirmDelete
+        title="Delete this board?"
+        description="This permanently deletes the board and all of its columns and cards."
+        confirmLabel="Delete board"
+        onConfirm={() => deleteBoard(boardId)}
+        trigger={
+          <Button
+            variant="outline"
+            size="sm"
+            className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+          >
             Delete board
-          </button>
-        </form>
-      </div>
+          </Button>
+        }
+      />
     </header>
   );
 }
@@ -384,19 +392,20 @@ function ColumnView({
     <div className="flex w-72 shrink-0 flex-col rounded-xl border border-border bg-surface-muted">
       <div className="flex items-center gap-1 px-3 pt-3">
         <input
+          aria-label="Column name"
           value={name}
           onChange={(e) => setName(e.target.value)}
           onBlur={() => name.trim() && name !== column.name && onRename(column.id, name.trim())}
           className="min-w-0 flex-1 rounded bg-transparent px-1 text-sm font-medium outline-none hover:bg-hover focus:bg-hover"
         />
-        <span className="shrink-0 text-xs text-foreground/40">{column.cards.length}</span>
-        <button disabled={!canMoveLeft} onClick={() => onMove(column.id, -1)} className="rounded px-1 text-foreground/50 hover:bg-hover disabled:opacity-25" title="Move left">
+        <span className="shrink-0 text-xs text-muted-foreground">{column.cards.length}</span>
+        <button disabled={!canMoveLeft} onClick={() => onMove(column.id, -1)} className="rounded px-1 text-muted-foreground hover:bg-hover disabled:opacity-25" title="Move left" aria-label="Move column left">
           ◀
         </button>
-        <button disabled={!canMoveRight} onClick={() => onMove(column.id, 1)} className="rounded px-1 text-foreground/50 hover:bg-hover disabled:opacity-25" title="Move right">
+        <button disabled={!canMoveRight} onClick={() => onMove(column.id, 1)} className="rounded px-1 text-muted-foreground hover:bg-hover disabled:opacity-25" title="Move right" aria-label="Move column right">
           ▶
         </button>
-        <button onClick={() => onDelete(column.id)} className="rounded px-1 text-foreground/50 hover:bg-red-500/10 hover:text-red-600" title="Delete column">
+        <button onClick={() => onDelete(column.id)} className="rounded px-1 text-muted-foreground hover:text-destructive" title="Delete column" aria-label="Delete column">
           ×
         </button>
       </div>

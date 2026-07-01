@@ -1,21 +1,20 @@
 # IDStudio — Instructional Designer Workspace
 
 A self-hosted web app for instructional design teams: a full-featured Kanban board,
-ID-tailored project management (ADDIE/SAM), a storyboarding suite, a certification &
-exam builder, and LMS integration (LearnUpon). Built to run on your own Proxmox server.
+ID-tailored project management (ADDIE/SAM), and a storyboarding suite — with more of the
+ID workflow on the way. Built to run on your own Proxmox server.
 
 Every module lives behind a single **app shell** — a collapsible left-nav sidebar,
 a sticky header with breadcrumb navigation, and instant theme switching — so the whole
 workspace navigates as one product.
 
-> **Status: Phase 4 in progress (exam builder shipped).** The foundation, the full Kanban
+> **Status: core modules shipped; reorienting the roadmap.** The foundation, the full Kanban
 > board, project management (projects with ADDIE/SAM phases, deliverables linked to board
 > cards, milestones, SME/stakeholder review cycles, and time tracking), and the storyboarding
-> suite (screen-by-screen storyboards with rich-text fields, linked to project deliverables)
-> are built and verified. Phase 4's first slice — the **exam builder** (workspace-scoped exams
-> with ordered questions, four question types, answer options, and per-exam settings) — is
-> built and verified. Up next in Phase 4: exam taking & auto-scoring, then certifications.
-> See the **[Roadmap](#roadmap)** below.
+> suite are built and verified — all inside one unified app shell (collapsible left-nav +
+> breadcrumbs) on a consistent shadcn/ui design system driving 13 themes. We're now reorienting
+> the roadmap around the "operating system for instructional-design teams" thesis — see the
+> **[Roadmap](#roadmap)** below.
 
 ## Screenshots
 
@@ -148,14 +147,11 @@ and seeds the admin, then the app and worker start.
 - ✅ **Phase 3 — Storyboarding suite:** workspace-scoped storyboards with ordered screens, per-screen
   type and rich-text fields (on-screen text, narration, visual/interaction/developer notes),
   optionally linked to a project's storyboard deliverable
-- 🔨 **Phase 4 — Certifications & exam builder** *(in progress)*
-  - ✅ Slice 1 — exam builder: workspace-scoped exams (optionally linked to an `assessment`
-    deliverable) with ordered questions, four question types (multiple choice, multiple answer,
-    true/false, short answer), answer options, and per-exam settings (passing score, time
-    limit, max attempts, shuffle)
-  - ⬜ Slice 2 — exam taking & auto-scoring (attempts)
-  - ⬜ Slice 3 — certifications (issuance, expiry)
-  - ⬜ Slice 4 — reusable question banks
-- ⬜ **Phase 5 — LearnUpon integration**
+- 🧭 **Next — reorienting around the ID operating-system thesis.** The standalone exam builder
+  was removed as off-strategy: IDStudio aims to sit *above* the authoring tools and the LMS you
+  already use, not to become one. Pillars under exploration: structured **intake & demand
+  management**, **SME review & approval workflows**, an **objectives → content → assessment
+  alignment spine**, **content lifecycle & a reusable asset library**, and **LMS integration**
+  for publishing courses and pulling completion/impact data back.
 
 Full detail in `.claude/plans/deep-jumping-treehouse.md`.

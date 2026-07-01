@@ -1,16 +1,24 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { Film, Plus } from "lucide-react";
+
 import { prisma } from "@/lib/db";
 import { getActiveMembership } from "@/lib/dal";
 import { createStoryboard } from "@/app/actions/storyboards";
 import { STORYBOARD_STATUS_LABEL, type StoryboardStatus } from "@/lib/storyboard";
+import { PageContainer, PageHeader } from "@/components/shared/page";
+import { EmptyState } from "@/components/shared/empty-state";
+import { StatusBadge, type StatusTone } from "@/components/shared/status-badge";
+import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 
 export const metadata = { title: "Storyboards · IDStudio" };
 
-function statusClass(s: string) {
-  if (s === "approved") return "bg-green-500/15 text-green-600";
-  if (s === "in_review") return "bg-blue-500/15 text-blue-600";
-  return "bg-muted text-foreground/60";
+function storyboardTone(status: string): StatusTone {
+  if (status === "approved") return "success";
+  if (status === "in_review") return "info";
+  return "neutral";
 }
 
 export default async function StoryboardsPage() {
@@ -30,50 +38,49 @@ export default async function StoryboardsPage() {
   });
 
   return (
-    <div className="mx-auto w-full max-w-5xl px-6 py-10">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Storyboards</h1>
-        <p className="text-sm text-foreground/60">{membership.workspace.name}</p>
-      </div>
+    <PageContainer>
+      <PageHeader
+        eyebrow={membership.workspace.name}
+        title="Storyboards"
+        description="Screen-by-screen course design, ready for SME review."
+      />
 
-      <form action={createStoryboard} className="mt-6 flex gap-2">
-        <input
-          name="title"
-          required
-          maxLength={180}
-          placeholder="New storyboard title…"
-          className="w-72 rounded-md border border-border-strong bg-transparent px-3 py-2 text-sm outline-none focus:border-foreground/60"
-        />
-        <button className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-accent-foreground">
-          Create storyboard
-        </button>
+      <form action={createStoryboard} className="mt-6 flex flex-wrap gap-2">
+        <Input name="title" required maxLength={180} placeholder="New storyboard title…" className="w-72" />
+        <Button type="submit">
+          <Plus className="size-4" /> Create storyboard
+        </Button>
       </form>
 
       {storyboards.length === 0 ? (
-        <p className="mt-10 text-sm text-foreground/50">No storyboards yet. Create your first one above.</p>
+        <EmptyState
+          className="mt-8"
+          icon={Film}
+          title="No storyboards yet"
+          description="Create a storyboard to lay out screens, narration, and interaction notes for a course."
+        />
       ) : (
         <ul className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {storyboards.map((sb) => (
             <li key={sb.id}>
-              <Link
-                href={`/storyboards/${sb.id}`}
-                className="block rounded-xl border border-border p-4 hover:border-foreground/40"
-              >
-                <div className="flex items-start justify-between gap-2">
-                  <h2 className="min-w-0 font-medium">{sb.title}</h2>
-                  <span className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${statusClass(sb.status)}`}>
-                    {STORYBOARD_STATUS_LABEL[sb.status as StoryboardStatus] ?? sb.status}
-                  </span>
-                </div>
-                <p className="mt-1 text-sm text-foreground/50">
-                  {sb._count.screens} {sb._count.screens === 1 ? "screen" : "screens"}
-                  {sb.deliverable ? ` · ${sb.deliverable.name}` : ""}
-                </p>
+              <Link href={`/storyboards/${sb.id}`} className="group block">
+                <Card className="gap-2 py-4 transition-colors group-hover:border-border-strong">
+                  <div className="flex items-start justify-between gap-2 px-5">
+                    <span className="min-w-0 truncate font-medium">{sb.title}</span>
+                    <StatusBadge tone={storyboardTone(sb.status)}>
+                      {STORYBOARD_STATUS_LABEL[sb.status as StoryboardStatus] ?? sb.status}
+                    </StatusBadge>
+                  </div>
+                  <div className="px-5 text-sm text-muted-foreground">
+                    {sb._count.screens} {sb._count.screens === 1 ? "screen" : "screens"}
+                    {sb.deliverable ? ` · ${sb.deliverable.name}` : ""}
+                  </div>
+                </Card>
               </Link>
             </li>
           ))}
         </ul>
       )}
-    </div>
+    </PageContainer>
   );
 }

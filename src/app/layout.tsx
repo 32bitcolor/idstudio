@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "IDStudio",
-  description: "Instructional Designer Workspace — kanban, projects, storyboards, exams, LMS sync.",
+  description: "Instructional Designer Workspace — kanban, projects, storyboards, LMS sync.",
 };
 
 export default function RootLayout({

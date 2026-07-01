@@ -18,15 +18,7 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
-
-// First path segment → human label + list href. Mirrors the sidebar's NAV_ITEMS.
-const SECTIONS: Record<string, string> = {
-  dashboard: "Dashboard",
-  boards: "Boards",
-  projects: "Projects",
-  storyboards: "Storyboards",
-  exams: "Exams",
-};
+import { SECTION_LABELS } from "@/lib/modules";
 
 // Detail pages register their entity's live name so the trailing crumb can show
 // it (the URL only carries an opaque id). Cleared automatically on unmount.
@@ -60,7 +52,7 @@ export function Breadcrumbs() {
 
   const segments = pathname.split("/").filter(Boolean);
   const section = segments[0];
-  const sectionLabel = section ? SECTIONS[section] : undefined;
+  const sectionLabel = section ? SECTION_LABELS[section] : undefined;
 
   // Unknown top-level route — render nothing rather than a guess.
   if (!sectionLabel) return null;

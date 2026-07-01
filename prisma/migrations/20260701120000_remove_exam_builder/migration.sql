@@ -1,0 +1,3 @@
+DROP TABLE IF EXISTS "QuestionOption";
+DROP TABLE IF EXISTS "Question";
+DROP TABLE IF EXISTS "Exam";

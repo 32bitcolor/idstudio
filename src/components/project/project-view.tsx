@@ -21,6 +21,13 @@ import {
   type ProjectStatus,
 } from "@/lib/methodology";
 import { useSetPageTitle } from "@/components/app-shell/breadcrumbs";
+import { PageContainer, PageHeader, SectionHeader } from "@/components/shared/page";
+import { InlineTitle } from "@/components/shared/inline-title";
+import { StatusBadge, type StatusTone } from "@/components/shared/status-badge";
+import { ConfirmDelete } from "@/components/shared/confirm-delete";
+import { Button } from "@/components/ui/button";
+import { Select } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import { DeliverablesSection } from "@/components/project/deliverables-section";
 import { MilestonesSection } from "@/components/project/milestones-section";
 import { TimeTracking } from "@/components/project/time-tracking";
@@ -47,10 +54,10 @@ const NEXT_STATUS: Record<string, PhaseStatus> = {
   done: "not_started",
 };
 
-function statusClass(s: string) {
-  if (s === "done") return "bg-green-500/15 text-green-600";
-  if (s === "in_progress") return "bg-blue-500/15 text-blue-600";
-  return "bg-muted text-foreground/60";
+function phaseTone(s: string): StatusTone {
+  if (s === "done") return "success";
+  if (s === "in_progress") return "info";
+  return "neutral";
 }
 
 function move<T>(arr: T[], from: number, to: number) {
@@ -159,108 +166,113 @@ export function ProjectView({
   }
 
   return (
-    <div className="mx-auto w-full max-w-3xl px-6 py-8">
-      <header className="flex items-start justify-between gap-4">
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
-            <input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              onBlur={() => {
-                if (name.trim() && name !== project.name) startTransition(() => void renameProject(project.id, name));
-              }}
-              className="min-w-0 flex-1 rounded bg-transparent text-2xl font-semibold tracking-tight outline-none hover:bg-hover focus:bg-hover"
-            />
-            <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-xs text-foreground/70">{project.methodology}</span>
-          </div>
-        </div>
-      </header>
+    <PageContainer>
+      <PageHeader
+        title={
+          <InlineTitle
+            value={name}
+            onChange={setName}
+            onCommit={() => {
+              if (name.trim() && name !== project.name) startTransition(() => void renameProject(project.id, name));
+            }}
+            ariaLabel="Project name"
+          />
+        }
+        actions={<StatusBadge tone="neutral">{project.methodology}</StatusBadge>}
+      />
 
       <div className="mt-4 flex flex-wrap items-center gap-3">
         <label className="flex items-center gap-2 text-sm">
-          <span className="text-foreground/60">Status</span>
-          <select
-            value={status}
-            onChange={(e) => {
-              setStatus(e.target.value);
-              startTransition(() => void setProjectStatus(project.id, e.target.value));
-            }}
-            className="rounded-md border border-border-strong bg-transparent px-2 py-1 text-sm outline-none"
-          >
-            {PROJECT_STATUSES.map((s) => (
-              <option key={s} value={s}>
-                {PROJECT_STATUS_LABEL[s as ProjectStatus]}
-              </option>
-            ))}
-          </select>
+          <span className="text-muted-foreground">Status</span>
+          <span className="inline-flex w-40">
+            <Select
+              value={status}
+              onChange={(e) => {
+                setStatus(e.target.value);
+                startTransition(() => void setProjectStatus(project.id, e.target.value));
+              }}
+            >
+              {PROJECT_STATUSES.map((s) => (
+                <option key={s} value={s}>
+                  {PROJECT_STATUS_LABEL[s as ProjectStatus]}
+                </option>
+              ))}
+            </Select>
+          </span>
         </label>
         {phases.length > 0 && (
-          <span className="text-sm text-foreground/50">
+          <span className="text-sm text-muted-foreground">
             {done}/{phases.length} phases done
           </span>
         )}
       </div>
 
-      <textarea
+      <Textarea
         value={description}
         onChange={(e) => setDescription(e.target.value)}
         onBlur={() => updateProjectDescription(project.id, description)}
         placeholder="Add a project description…"
         rows={2}
-        className="mt-4 w-full resize-none rounded-md border border-border-strong bg-transparent px-3 py-2 text-sm outline-none focus:border-foreground/60"
+        className="mt-4 resize-none"
       />
 
       <section className="mt-8">
-        <h2 className="text-sm font-medium uppercase tracking-wide text-foreground/50">Phases</h2>
-        <div className="mt-3 flex flex-col gap-2">
+        <SectionHeader>Phases</SectionHeader>
+        <div className="flex flex-col gap-2">
           {phases.length === 0 && (
-            <p className="text-sm text-foreground/40">No phases yet. Add the first one below.</p>
+            <p className="text-sm text-muted-foreground">No phases yet. Add the first one below.</p>
           )}
           {phases.map((p, i) => (
             <div key={p.id} className="flex items-start gap-3 rounded-xl border border-border p-3">
               <button
                 onClick={() => cycleStatus(p)}
-                className={`mt-0.5 shrink-0 rounded-full px-2.5 py-1 text-xs font-medium ${statusClass(p.status)}`}
+                className="mt-0.5 shrink-0 rounded-full outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
                 title="Click to advance status"
+                aria-label={`Phase status: ${PHASE_STATUS_LABEL[p.status as PhaseStatus] ?? p.status}. Click to advance.`}
               >
-                {PHASE_STATUS_LABEL[p.status as PhaseStatus] ?? p.status}
+                <StatusBadge tone={phaseTone(p.status)}>
+                  {PHASE_STATUS_LABEL[p.status as PhaseStatus] ?? p.status}
+                </StatusBadge>
               </button>
               <div className="min-w-0 flex-1">
                 <input
+                  aria-label="Phase name"
                   value={p.name}
                   onChange={(e) => renamePhaseLocal(p.id, e.target.value)}
                   onBlur={(e) => commitPhaseName(p, e.target.value)}
                   className="w-full rounded bg-transparent px-1 text-sm font-medium outline-none hover:bg-hover focus:bg-hover"
                 />
-                <div className="mt-1.5 flex flex-wrap items-center gap-3 px-1 text-xs text-foreground/60">
+                <div className="mt-1.5 flex flex-wrap items-center gap-3 px-1 text-xs text-muted-foreground">
                   <label className="flex items-center gap-1">
                     Start
                     <input
                       type="date"
+                      aria-label="Phase start date"
                       value={p.startDate ? p.startDate.slice(0, 10) : ""}
                       onChange={(e) => changeDate(p, "start", e.target.value)}
-                      className="rounded border border-border-strong bg-transparent px-1 py-0.5"
+                      className="rounded border border-input bg-transparent px-1 py-0.5"
                     />
                   </label>
                   <label className="flex items-center gap-1">
                     End
                     <input
                       type="date"
+                      aria-label="Phase end date"
                       value={p.endDate ? p.endDate.slice(0, 10) : ""}
                       onChange={(e) => changeDate(p, "end", e.target.value)}
-                      className="rounded border border-border-strong bg-transparent px-1 py-0.5"
+                      className="rounded border border-input bg-transparent px-1 py-0.5"
                     />
                   </label>
                 </div>
               </div>
-              <div className="flex shrink-0 items-center gap-1 text-foreground/50">
-                <button disabled={i === 0} onClick={() => reorder(i, -1)} className="rounded px-1 hover:bg-hover disabled:opacity-25" title="Move up">
+              <div className="flex shrink-0 items-center gap-1 text-muted-foreground">
+                <button disabled={i === 0} onClick={() => reorder(i, -1)} className="rounded px-1 hover:bg-hover disabled:opacity-25" title="Move up" aria-label="Move phase up">
                   ↑
                 </button>
-                <button disabled={i === phases.length - 1} onClick={() => reorder(i, 1)} className="rounded px-1 hover:bg-hover disabled:opacity-25" title="Move down">
+                <button disabled={i === phases.length - 1} onClick={() => reorder(i, 1)} className="rounded px-1 hover:bg-hover disabled:opacity-25" title="Move down" aria-label="Move phase down">
                   ↓
                 </button>
-                <button onClick={() => removePhase(p.id)} className="rounded px-1 hover:bg-red-500/10 hover:text-red-600" title="Delete phase">
+                <button onClick={() => removePhase(p.id)} className="rounded px-1 hover:text-destructive" title="Delete phase" aria-label="Delete phase">
                   ×
                 </button>
               </div>
@@ -286,15 +298,19 @@ export function ProjectView({
       />
 
       <div className="mt-10 border-t border-border pt-4">
-        <form
-          action={async () => {
-            if (confirm("Delete this entire project?")) await deleteProject(project.id);
-          }}
-        >
-          <button className="text-sm text-red-600 hover:underline">Delete project</button>
-        </form>
+        <ConfirmDelete
+          title="Delete this project?"
+          description="This permanently deletes the project and all its phases, deliverables, milestones, and time entries."
+          confirmLabel="Delete project"
+          onConfirm={() => deleteProject(project.id)}
+          trigger={
+            <Button variant="ghost" className="text-destructive hover:bg-destructive/10 hover:text-destructive">
+              Delete project
+            </Button>
+          }
+        />
       </div>
-    </div>
+    </PageContainer>
   );
 }
 

@@ -2,19 +2,10 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import {
-  Cable,
-  ChevronsUpDown,
-  Columns3,
-  Film,
-  FolderKanban,
-  GraduationCap,
-  LayoutDashboard,
-  LogOut,
-  type LucideIcon,
-} from "lucide-react";
+import { ChevronsUpDown, LogOut } from "lucide-react";
 
 import { logout } from "@/app/actions/auth";
+import { NAV_MODULES } from "@/lib/modules";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -35,18 +26,6 @@ import {
   SidebarMenuItem,
   SidebarRail,
 } from "@/components/ui/sidebar";
-
-// Feature areas. `href` marks a module that's live; the rest are upcoming phases.
-type NavItem = { name: string; href?: string; icon: LucideIcon; phase: string };
-
-const NAV_ITEMS: NavItem[] = [
-  { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard, phase: "" },
-  { name: "Boards", href: "/boards", icon: Columns3, phase: "Phase 1" },
-  { name: "Projects", href: "/projects", icon: FolderKanban, phase: "Phase 2" },
-  { name: "Storyboards", href: "/storyboards", icon: Film, phase: "Phase 3" },
-  { name: "Exams", href: "/exams", icon: GraduationCap, phase: "Phase 4" },
-  { name: "LMS Integration", icon: Cable, phase: "Phase 5" },
-];
 
 function isActive(pathname: string, href: string) {
   if (href === "/dashboard") return pathname === href;
@@ -93,10 +72,10 @@ export function AppSidebar({
         <SidebarGroup>
           <SidebarGroupLabel>Workspace</SidebarGroupLabel>
           <SidebarMenu>
-            {NAV_ITEMS.map((item) => {
+            {NAV_MODULES.map((item) => {
               const active = item.href ? isActive(pathname, item.href) : false;
               return (
-                <SidebarMenuItem key={item.name}>
+                <SidebarMenuItem key={item.key}>
                   {item.href ? (
                     <SidebarMenuButton asChild isActive={active} tooltip={item.name}>
                       <Link href={item.href}>
