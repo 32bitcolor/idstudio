@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 
 import { requireUser, getActiveMembership } from "@/lib/dal";
+import { boardVisibilityWhere, storyboardVisibilityWhere, projectVisibilityWhere } from "@/lib/authz";
 import { prisma } from "@/lib/db";
 import { Role } from "@/generated/prisma/client";
 import { NAV_MODULES } from "@/lib/modules";
@@ -46,9 +47,17 @@ export default async function DashboardPage() {
   const isAdmin = membership.role === Role.ADMIN;
   const wsId = membership.workspaceId;
 
+  // Respect group-based access: the dashboard only counts/lists resources the
+  // current user is allowed to see.
+  const [projectVis, boardVis, storyboardVis] = await Promise.all([
+    projectVisibilityWhere(),
+    boardVisibilityWhere(),
+    storyboardVisibilityWhere(),
+  ]);
+
   const [projects, boardCount, storyboardCount, milestones, myReviews] = await Promise.all([
     prisma.project.findMany({
-      where: { workspaceId: wsId },
+      where: { workspaceId: wsId, ...projectVis },
       orderBy: { updatedAt: "desc" },
       select: {
         id: true,
@@ -58,10 +67,10 @@ export default async function DashboardPage() {
         phases: { select: { status: true } },
       },
     }),
-    prisma.board.count({ where: { workspaceId: wsId } }),
-    prisma.storyboard.count({ where: { workspaceId: wsId } }),
+    prisma.board.count({ where: { workspaceId: wsId, ...boardVis } }),
+    prisma.storyboard.count({ where: { workspaceId: wsId, ...storyboardVis } }),
     prisma.milestone.findMany({
-      where: { project: { workspaceId: wsId }, completedAt: null, dueDate: { not: null } },
+      where: { project: { workspaceId: wsId, ...projectVis }, completedAt: null, dueDate: { not: null } },
       orderBy: { dueDate: "asc" },
       take: 5,
       select: { id: true, name: true, dueDate: true, project: { select: { id: true, name: true } } },

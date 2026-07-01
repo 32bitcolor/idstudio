@@ -21,6 +21,7 @@ export default async function AppLayout({
         userLabel={user.name ?? user.email}
         userEmail={user.email}
         role={membership?.role ?? "—"}
+        isAdmin={membership?.role === "ADMIN"}
       />
       <SidebarInset>
         <PageTitleProvider>

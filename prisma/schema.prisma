@@ -29,6 +29,7 @@ model User {
   comments     Comment[]
   reviewCycles ReviewCycle[]
   timeEntries  TimeEntry[]
+  groupMemberships GroupMembership[]
 }
 
 model Workspace {
@@ -41,6 +42,7 @@ model Workspace {
   boards      Board[]
   projects    Project[]
   storyboards Storyboard[]
+  groups      Group[]
 }
 
 // Role is per-workspace (on Membership), never global on User.
@@ -71,6 +73,7 @@ model Board {
   workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   columns     Column[]
   labels      Label[]
+  groupAccess BoardGroup[]
 
   @@index([workspaceId])
 }
@@ -144,6 +147,7 @@ model Project {
   deliverables Deliverable[]
   milestones   Milestone[]
   timeEntries  TimeEntry[]
+  groupAccess  ProjectGroup[]
 
   @@index([workspaceId])
 }
@@ -243,6 +247,7 @@ model Storyboard {
   workspace     Workspace    @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   deliverable   Deliverable? @relation(fields: [deliverableId], references: [id], onDelete: SetNull)
   screens       Screen[]
+  groupAccess   StoryboardGroup[]
 
   @@index([workspaceId])
 }
@@ -317,4 +322,70 @@ model CardAssignee {
 
   @@id([cardId, userId])
   @@index([userId])
+}
+
+// ── Groups & access control ──────────────────────────────────────────────────
+// A Group is a named set of workspace members. Access is DEFAULT-OPEN: a board /
+// storyboard / project is visible to every workspace member UNTIL it is shared
+// with one or more groups, after which only members of those groups (plus
+// workspace ADMINs, who always have access) can see it. See src/lib/authz.ts.
+
+model Group {
+  id          String            @id @default(cuid())
+  workspaceId String
+  name        String
+  description String?
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  workspace   Workspace         @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  members     GroupMembership[]
+  boards      BoardGroup[]
+  storyboards StoryboardGroup[]
+  projects    ProjectGroup[]
+
+  @@unique([workspaceId, name])
+  @@index([workspaceId])
+}
+
+model GroupMembership {
+  groupId String
+  userId  String
+  group   Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user    User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([groupId, userId])
+  @@index([userId])
+}
+
+// Resource ↔ group access grants. Presence of any row restricts the resource to
+// the granted groups; absence of rows leaves it open to all workspace members.
+
+model BoardGroup {
+  boardId String
+  groupId String
+  board   Board @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  group   Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@id([boardId, groupId])
+  @@index([groupId])
+}
+
+model StoryboardGroup {
+  storyboardId String
+  groupId      String
+  storyboard   Storyboard @relation(fields: [storyboardId], references: [id], onDelete: Cascade)
+  group        Group      @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@id([storyboardId, groupId])
+  @@index([groupId])
+}
+
+model ProjectGroup {
+  projectId String
+  groupId   String
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  group     Group   @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@id([projectId, groupId])
+  @@index([groupId])
 }

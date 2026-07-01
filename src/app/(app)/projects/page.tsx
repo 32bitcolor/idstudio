@@ -4,6 +4,7 @@ import { FolderKanban, Plus } from "lucide-react";
 
 import { prisma } from "@/lib/db";
 import { getActiveMembership } from "@/lib/dal";
+import { projectVisibilityWhere } from "@/lib/authz";
 import { createProject } from "@/app/actions/projects";
 import { PROJECT_STATUS_LABEL, type ProjectStatus } from "@/lib/methodology";
 import { PageContainer, PageHeader } from "@/components/shared/page";
@@ -27,7 +28,7 @@ export default async function ProjectsPage() {
   if (!membership) redirect("/login");
 
   const projects = await prisma.project.findMany({
-    where: { workspaceId: membership.workspaceId },
+    where: { workspaceId: membership.workspaceId, ...(await projectVisibilityWhere()) },
     orderBy: { createdAt: "desc" },
     select: {
       id: true,

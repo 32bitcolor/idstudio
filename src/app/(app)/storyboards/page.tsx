@@ -4,6 +4,7 @@ import { Film, Plus } from "lucide-react";
 
 import { prisma } from "@/lib/db";
 import { getActiveMembership } from "@/lib/dal";
+import { storyboardVisibilityWhere } from "@/lib/authz";
 import { createStoryboard } from "@/app/actions/storyboards";
 import { STORYBOARD_STATUS_LABEL, type StoryboardStatus } from "@/lib/storyboard";
 import { PageContainer, PageHeader } from "@/components/shared/page";
@@ -26,7 +27,7 @@ export default async function StoryboardsPage() {
   if (!membership) redirect("/login");
 
   const storyboards = await prisma.storyboard.findMany({
-    where: { workspaceId: membership.workspaceId },
+    where: { workspaceId: membership.workspaceId, ...(await storyboardVisibilityWhere()) },
     orderBy: { updatedAt: "desc" },
     select: {
       id: true,

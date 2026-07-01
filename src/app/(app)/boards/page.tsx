@@ -4,6 +4,7 @@ import { Columns3, Plus } from "lucide-react";
 
 import { prisma } from "@/lib/db";
 import { getActiveMembership } from "@/lib/dal";
+import { boardVisibilityWhere } from "@/lib/authz";
 import { createBoard } from "@/app/actions/boards";
 import { PageContainer, PageHeader } from "@/components/shared/page";
 import { EmptyState } from "@/components/shared/empty-state";
@@ -18,7 +19,7 @@ export default async function BoardsPage() {
   if (!membership) redirect("/login");
 
   const boards = await prisma.board.findMany({
-    where: { workspaceId: membership.workspaceId },
+    where: { workspaceId: membership.workspaceId, ...(await boardVisibilityWhere()) },
     orderBy: { createdAt: "desc" },
     select: { id: true, name: true, _count: { select: { columns: true } } },
   });

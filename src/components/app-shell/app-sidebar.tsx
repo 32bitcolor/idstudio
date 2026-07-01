@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ChevronsUpDown, LogOut } from "lucide-react";
+import { ChevronsUpDown, LogOut, Settings, Users } from "lucide-react";
 
 import { logout } from "@/app/actions/auth";
 import { NAV_MODULES } from "@/lib/modules";
@@ -37,11 +37,13 @@ export function AppSidebar({
   userLabel,
   userEmail,
   role,
+  isAdmin,
 }: {
   workspaceName: string;
   userLabel: string;
   userEmail: string;
   role: string;
+  isAdmin: boolean;
 }) {
   const pathname = usePathname();
   const initial = (userLabel || userEmail || "?").charAt(0).toUpperCase();
@@ -140,6 +142,21 @@ export function AppSidebar({
                     </span>
                   </div>
                 </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem asChild>
+                  <Link href="/settings/account" className="cursor-pointer">
+                    <Settings className="size-4" />
+                    Account settings
+                  </Link>
+                </DropdownMenuItem>
+                {isAdmin && (
+                  <DropdownMenuItem asChild>
+                    <Link href="/settings/members" className="cursor-pointer">
+                      <Users className="size-4" />
+                      Members &amp; groups
+                    </Link>
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuSeparator />
                 <form action={logout}>
                   <DropdownMenuItem asChild>
