@@ -11,10 +11,11 @@ function projectPath(projectId: string) {
   return `/projects/${projectId}`;
 }
 
-// Review changes surface in the personal "My Work" hub too, so refresh both.
+// Review changes surface in the personal "My Work" hub too — refresh the whole
+// /my-work subtree (Overview + Review History) as well as the project page.
 function revalidateReview(projectId: string) {
   revalidatePath(projectPath(projectId));
-  revalidatePath("/my-work");
+  revalidatePath("/my-work", "layout");
 }
 
 export async function addReviewCycle(deliverableId: string, reviewerId: string, dueIso: string | null) {

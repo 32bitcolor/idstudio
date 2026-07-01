@@ -9,6 +9,7 @@ import { EmptyState } from "@/components/shared/empty-state";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { Card } from "@/components/ui/card";
 import { artifactLink, DELIVERABLE_SELECT } from "@/components/my-work/artifact";
+import { ReopenReviewButton } from "@/components/my-work/reopen-review-button";
 
 export const metadata = { title: "Review History · IDStudio" };
 
@@ -78,6 +79,7 @@ export default async function ReviewHistoryPage() {
                 {approved ? "Approved" : "Changes requested"}
               </StatusBadge>
               <span className="shrink-0 text-xs text-muted-foreground">{fmtDate.format(r.updatedAt)}</span>
+              <ReopenReviewButton reviewId={r.id} approved={approved} />
             </div>
             {r.feedback && (
               <p className="mt-2 rounded-md bg-muted/50 px-3 py-2 text-sm text-muted-foreground">
