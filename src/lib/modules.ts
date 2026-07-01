@@ -1,5 +1,6 @@
 import {
   LayoutDashboard,
+  ListChecks,
   Columns3,
   FolderKanban,
   Film,
@@ -28,6 +29,13 @@ export const MODULES: ModuleDef[] = [
     href: "/dashboard",
     icon: LayoutDashboard,
     tagline: "Your workspace at a glance",
+  },
+  {
+    key: "my-work",
+    name: "My Work",
+    href: "/my-work",
+    icon: ListChecks,
+    tagline: "Reviews, action items & what's due",
   },
   {
     key: "boards",

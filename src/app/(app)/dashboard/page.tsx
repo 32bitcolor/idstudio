@@ -96,7 +96,7 @@ export default async function DashboardPage() {
     { label: "Active projects", value: activeProjects.length, icon: FolderKanban, href: "/projects" },
     { label: "Boards", value: boardCount, icon: Columns3, href: "/boards" },
     { label: "Storyboards", value: storyboardCount, icon: Film, href: "/storyboards" },
-    { label: "Awaiting your review", value: myReviews.length, icon: ClipboardCheck, href: "/projects" },
+    { label: "Awaiting your review", value: myReviews.length, icon: ClipboardCheck, href: "/my-work" },
   ];
 
   return (
@@ -187,7 +187,15 @@ export default async function DashboardPage() {
 
         <section className="flex flex-col gap-8">
           <div>
-            <SectionHeader>Awaiting your review</SectionHeader>
+            <SectionHeader
+              action={
+                <Link href="/my-work" className="text-xs text-muted-foreground hover:underline">
+                  View all →
+                </Link>
+              }
+            >
+              Awaiting your review
+            </SectionHeader>
             {myReviews.length === 0 ? (
               <p className="rounded-lg border border-dashed border-border px-4 py-6 text-center text-sm text-muted-foreground">
                 You&rsquo;re all caught up.
@@ -195,7 +203,7 @@ export default async function DashboardPage() {
             ) : (
               <div className="flex flex-col gap-2">
                 {myReviews.map((r) => (
-                  <Link key={r.id} href={`/projects/${r.deliverable.project.id}`} className="group">
+                  <Link key={r.id} href="/my-work" className="group">
                     <Card className="gap-1 py-3 transition-colors group-hover:border-border-strong">
                       <div className="truncate px-4 text-sm font-medium">{r.deliverable.name}</div>
                       <div className="truncate px-4 text-xs text-muted-foreground">

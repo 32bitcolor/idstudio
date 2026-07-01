@@ -27,7 +27,8 @@ model User {
   memberships  Membership[]
   assignedCards CardAssignee[]
   comments     Comment[]
-  reviewCycles ReviewCycle[]
+  reviewCycles ReviewCycle[] @relation("ReviewReviewer")
+  requestedReviews ReviewCycle[] @relation("ReviewRequester")
   timeEntries  TimeEntry[]
   groupMemberships GroupMembership[]
 }
@@ -190,6 +191,7 @@ model ReviewCycle {
   id            String      @id @default(cuid())
   deliverableId String
   reviewerId    String
+  requestedById String? // who set up the review (null for legacy rows)
   round         Int
   status        String      @default("requested") // requested / in_review / changes_requested / approved
   dueDate       DateTime?
@@ -197,9 +199,12 @@ model ReviewCycle {
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
   deliverable   Deliverable @relation(fields: [deliverableId], references: [id], onDelete: Cascade)
-  reviewer      User        @relation(fields: [reviewerId], references: [id], onDelete: Cascade)
+  reviewer      User        @relation("ReviewReviewer", fields: [reviewerId], references: [id], onDelete: Cascade)
+  requestedBy   User?       @relation("ReviewRequester", fields: [requestedById], references: [id], onDelete: SetNull)
 
   @@index([deliverableId])
+  @@index([reviewerId])
+  @@index([requestedById])
 }
 
 model TimeEntry {
