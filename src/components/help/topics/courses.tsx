@@ -5,9 +5,9 @@ export default function Courses() {
   return (
     <>
       <Lead>
-        Courses are IDStudio&rsquo;s block-based authoring tool — build a responsive course out of
-        content and interactive blocks, preview it as a learner, and (soon) export it to your LMS.
-        Think of it as the &ldquo;build&rdquo; step that follows your storyboard.
+        Courses are IDStudio&rsquo;s block-based authoring tool — build a responsive, interactive
+        course out of content and activity blocks, preview it as a learner, and export it to your
+        LMS. Think of it as the &ldquo;build&rdquo; step that follows your storyboard.
       </Lead>
 
       <Callout tone="note">
@@ -25,27 +25,50 @@ export default function Courses() {
         <LI>Use the <strong>Lessons</strong> rail on the left to add, rename, reorder, and switch between lessons.</LI>
       </UL>
 
-      <H2>Blocks</H2>
-      <P>Click <UI>Add a block</UI> and pick a type:</P>
+      <H2>Content blocks</H2>
       <DefList>
         <Def term="Heading">A section title (H1–H3).</Def>
         <Def term="Text">A rich paragraph with bold, italic, and lists.</Def>
         <Def term="Statement">A short, emphasized callout for a key point.</Def>
-        <Def term="Image">An image with alt text and an optional caption.</Def>
+        <Def term="Quote">A pull-quote with an attribution.</Def>
+        <Def term="List">A bulleted, numbered, or checked list.</Def>
+        <Def term="Image">Upload an image (bundled into the export) or paste an external URL — with alt text and a caption.</Def>
+        <Def term="Video embed">Paste a YouTube or Vimeo link to embed it responsively.</Def>
         <Def term="Divider">A simple horizontal rule between sections.</Def>
+      </DefList>
+
+      <H2>Interactive blocks</H2>
+      <DefList>
         <Def term="Accordion">Collapsible sections the learner expands one at a time.</Def>
-        <Def term="Knowledge check">A multiple-choice question with per-answer feedback.</Def>
+        <Def term="Tabs">Parallel sections the learner switches between.</Def>
+        <Def term="Process">Numbered steps the learner pages through, one at a time.</Def>
+        <Def term="Flashcards">Flip cards — a prompt on the front, an answer on the back.</Def>
+        <Def term="Knowledge check">
+          A question in one of three forms: <UI>Multiple choice</UI> (one answer),{" "}
+          <UI>Multi-select</UI> (several correct answers, submitted together), or{" "}
+          <UI>Fill in the blank</UI> (a typed answer matched against any accepted phrasing).
+        </Def>
       </DefList>
       <P>
-        Reorder blocks with the up/down controls that appear on hover, and delete with the trash
-        icon. Everything autosaves as you edit.
+        Click <UI>Add a block</UI> to insert one — the picker groups content and interactive blocks
+        the same way this guide does. Drag a block by its handle to reorder it (or use the up/down
+        arrows), and delete with the trash icon. Everything autosaves as you edit.
+      </P>
+
+      <H3>Uploading images</H3>
+      <P>
+        In an <strong>Image</strong> block, choose <UI>Upload</UI> to pick a file from your device —
+        it&rsquo;s stored securely and bundled directly into the course when you export, so the
+        package is fully self-contained (no broken links once it leaves IDStudio). Choose{" "}
+        <UI>Use a URL</UI> instead to link an image hosted elsewhere.
       </P>
 
       <H2>Preview like a learner</H2>
       <P>
         Toggle <UI>Preview</UI> (top-right) to see the current lesson exactly as a learner will —
-        themed, responsive, and interactive. Accordions expand, and knowledge checks accept an answer
-        and reveal feedback. Toggle back to <UI>Edit</UI> to keep building.
+        themed, responsive, and interactive. Accordions expand, tabs switch, flashcards flip, and
+        knowledge checks accept an answer and reveal feedback. Toggle back to <UI>Edit</UI> to keep
+        building.
       </P>
 
       <H3>Aligned to your objectives</H3>
@@ -69,15 +92,16 @@ export default function Courses() {
       </DefList>
       <P>
         You&rsquo;ll get a <code>.zip</code> to upload to your LMS as-is. Each package is a standalone
-        player: the learner scrolls the lessons, answers knowledge checks, and their completion,
-        score, and per-question results report back to the LMS.
+        player: the learner scrolls the lessons, works through every interactive block, and their
+        completion, score, and per-question results (including multi-select and fill-in-the-blank
+        answers) report back to the LMS.
       </P>
 
       <H2>A good first course</H2>
       <Steps>
         <>From <strong>Courses</strong>, click <UI>Create course</UI> (or open a project&rsquo;s <em>course</em> deliverable and choose <UI>Create course</UI>).</>
         <>Rename Lesson 1 and start adding blocks — a heading, some text, a statement, an image.</>
-        <>Add a <strong>knowledge check</strong>: write the question, add options, mark the correct one, and write feedback.</>
+        <>Add an interactive block — try an <strong>accordion</strong> or <strong>flashcards</strong> — then a <strong>knowledge check</strong>: write the question, add options, mark the correct one(s), and write feedback.</>
         <>Add more lessons for each chunk of the course, then hit <UI>Preview</UI> to walk it as a learner.</>
       </Steps>
 

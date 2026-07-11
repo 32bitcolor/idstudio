@@ -13,6 +13,23 @@ import {
   X,
   Download,
 } from "lucide-react";
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  KeyboardSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  verticalListSortingStrategy,
+  useSortable,
+  arrayMove,
+  sortableKeyboardCoordinates,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 
 import {
   DropdownMenu,
@@ -40,6 +57,7 @@ import {
   BLOCK_TYPES,
   BLOCK_LABEL,
   BLOCK_DESCRIPTION,
+  BLOCK_CATEGORY,
   parseBlockContent,
   type BlockType,
 } from "@/lib/course";
@@ -245,6 +263,7 @@ export function CourseView({
             mode === "edit" ? (
               <LessonEditor
                 key={active.id}
+                courseId={course.id}
                 lesson={active}
                 objectives={projectObjectives}
                 onRename={(v) => {
@@ -257,7 +276,7 @@ export function CourseView({
                 onAddBlock={addBlock}
               />
             ) : (
-              <LessonPreview courseTitle={title} lesson={active} />
+              <LessonPreview courseId={course.id} courseTitle={title} lesson={active} />
             )
           ) : (
             <p className="text-sm text-muted-foreground">No lessons.</p>
@@ -283,7 +302,11 @@ export function CourseView({
   );
 }
 
+const CONTENT_TYPES = BLOCK_TYPES.filter((t) => BLOCK_CATEGORY[t] === "content");
+const INTERACTIVE_TYPES = BLOCK_TYPES.filter((t) => BLOCK_CATEGORY[t] === "interactive");
+
 function LessonEditor({
+  courseId,
   lesson,
   objectives,
   onRename,
@@ -293,6 +316,7 @@ function LessonEditor({
   onBlocksChange,
   onAddBlock,
 }: {
+  courseId: string;
   lesson: LessonInit;
   objectives: ProjectObjective[];
   onRename: (v: string) => void;
@@ -304,12 +328,25 @@ function LessonEditor({
 }) {
   const [, startTransition] = useTransition();
   const [inserterOpen, setInserterOpen] = useState(false);
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
 
   function reorderBlock(index: number, dir: -1 | 1) {
     const to = index + dir;
     if (to < 0 || to >= lesson.blocks.length) return;
     onBlocksChange(move(lesson.blocks, index, to));
     startTransition(() => void moveBlock(lesson.blocks[index].id, to));
+  }
+  function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const oldIndex = lesson.blocks.findIndex((b) => b.id === active.id);
+    const newIndex = lesson.blocks.findIndex((b) => b.id === over.id);
+    if (oldIndex === -1 || newIndex === -1) return;
+    onBlocksChange(arrayMove(lesson.blocks, oldIndex, newIndex));
+    startTransition(() => void moveBlock(lesson.blocks[oldIndex].id, newIndex));
   }
   function removeBlock(id: string) {
     onBlocksChange(lesson.blocks.filter((b) => b.id !== id));
@@ -336,25 +373,31 @@ function LessonEditor({
         )}
       </div>
 
-      <div className="flex flex-col gap-3">
-        {lesson.blocks.length === 0 && (
-          <p className="rounded-xl border border-dashed border-border px-4 py-10 text-center text-sm text-muted-foreground">
-            This lesson is empty. Add your first block below.
-          </p>
-        )}
-        {lesson.blocks.map((b, i) => (
-          <BlockRow
-            key={b.id}
-            block={b}
-            objectives={objectives}
-            index={i}
-            total={lesson.blocks.length}
-            onReorder={reorderBlock}
-            onRemove={removeBlock}
-            onContent={setBlockContent}
-          />
-        ))}
-      </div>
+      {lesson.blocks.length === 0 ? (
+        <p className="rounded-xl border border-dashed border-border px-4 py-10 text-center text-sm text-muted-foreground">
+          This lesson is empty. Add your first block below.
+        </p>
+      ) : (
+        <DndContext id={`blocks-${lesson.id}`} sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+          <SortableContext items={lesson.blocks.map((b) => b.id)} strategy={verticalListSortingStrategy}>
+            <div className="flex flex-col gap-3">
+              {lesson.blocks.map((b, i) => (
+                <BlockRow
+                  key={b.id}
+                  courseId={courseId}
+                  block={b}
+                  objectives={objectives}
+                  index={i}
+                  total={lesson.blocks.length}
+                  onReorder={reorderBlock}
+                  onRemove={removeBlock}
+                  onContent={setBlockContent}
+                />
+              ))}
+            </div>
+          </SortableContext>
+        </DndContext>
+      )}
 
       {/* Inserter */}
       <div className="mt-3">
@@ -364,24 +407,8 @@ function LessonEditor({
               <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Add a block</span>
               <button onClick={() => setInserterOpen(false)} className="rounded p-0.5 text-foreground/40 hover:text-foreground"><X className="size-4" /></button>
             </div>
-            <div className="grid gap-2 sm:grid-cols-2">
-              {BLOCK_TYPES.map((t) => {
-                const Icon = BLOCK_REGISTRY[t].icon;
-                return (
-                  <button
-                    key={t}
-                    onClick={() => { onAddBlock(t); setInserterOpen(false); }}
-                    className="flex items-start gap-2.5 rounded-lg border border-border p-2.5 text-left transition-colors hover:border-border-strong hover:bg-hover"
-                  >
-                    <div className="flex size-8 shrink-0 items-center justify-center rounded-md bg-accent/12 text-accent"><Icon className="size-4" /></div>
-                    <div className="min-w-0">
-                      <div className="text-sm font-medium">{BLOCK_LABEL[t]}</div>
-                      <div className="text-xs text-muted-foreground">{BLOCK_DESCRIPTION[t]}</div>
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
+            <BlockPicker label="Content" types={CONTENT_TYPES} onPick={(t) => { onAddBlock(t); setInserterOpen(false); }} />
+            <BlockPicker label="Interactive" types={INTERACTIVE_TYPES} onPick={(t) => { onAddBlock(t); setInserterOpen(false); }} className="mt-4" />
           </div>
         ) : (
           <button onClick={() => setInserterOpen(true)} className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-dashed border-border py-3 text-sm font-medium text-muted-foreground hover:border-border-strong hover:text-foreground">
@@ -393,7 +420,44 @@ function LessonEditor({
   );
 }
 
+function BlockPicker({
+  label,
+  types,
+  onPick,
+  className,
+}: {
+  label: string;
+  types: readonly BlockType[];
+  onPick: (t: BlockType) => void;
+  className?: string;
+}) {
+  return (
+    <div className={className}>
+      <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground/70">{label}</p>
+      <div className="grid gap-2 sm:grid-cols-2">
+        {types.map((t) => {
+          const Icon = BLOCK_REGISTRY[t].icon;
+          return (
+            <button
+              key={t}
+              onClick={() => onPick(t)}
+              className="flex items-start gap-2.5 rounded-lg border border-border p-2.5 text-left transition-colors hover:border-border-strong hover:bg-hover"
+            >
+              <div className="flex size-8 shrink-0 items-center justify-center rounded-md bg-accent/12 text-accent"><Icon className="size-4" /></div>
+              <div className="min-w-0">
+                <div className="text-sm font-medium">{BLOCK_LABEL[t]}</div>
+                <div className="text-xs text-muted-foreground">{BLOCK_DESCRIPTION[t]}</div>
+              </div>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function BlockRow({
+  courseId,
   block,
   objectives,
   index,
@@ -402,6 +466,7 @@ function BlockRow({
   onRemove,
   onContent,
 }: {
+  courseId: string;
   block: BlockInit;
   objectives: ProjectObjective[];
   index: number;
@@ -415,6 +480,7 @@ function BlockRow({
   const [content, setContent] = useState(() => parseBlockContent(type, block.content));
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [, startTransition] = useTransition();
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: block.id });
 
   function save(next: unknown) {
     const json = JSON.stringify(next);
@@ -428,10 +494,19 @@ function BlockRow({
 
   const Edit = reg.Edit;
   return (
-    <div className="group relative rounded-xl border border-border p-3 pl-9">
-      <div className="absolute left-1 top-3 flex flex-col items-center text-foreground/30">
+    <div
+      ref={setNodeRef}
+      style={{ transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.5 : 1 }}
+      className="group relative rounded-xl border border-border bg-surface p-3 pl-9"
+    >
+      <button
+        {...attributes}
+        {...listeners}
+        className="absolute left-1 top-3 flex cursor-grab flex-col items-center text-foreground/30 hover:text-foreground/60 active:cursor-grabbing"
+        title="Drag to reorder"
+      >
         <GripVertical className="size-4" />
-      </div>
+      </button>
       <div className="absolute right-2 top-2 flex items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
         <span className="mr-1 rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">{BLOCK_LABEL[type]}</span>
         <button onClick={() => onReorder(index, -1)} disabled={index === 0} className="rounded p-0.5 text-foreground/40 hover:text-foreground disabled:opacity-20" title="Move up"><ChevronUp className="size-4" /></button>
@@ -439,13 +514,13 @@ function BlockRow({
         <button onClick={() => onRemove(block.id)} className="rounded p-0.5 text-foreground/40 hover:text-destructive" title="Delete block"><Trash2 className="size-4" /></button>
       </div>
       <div className="pt-4">
-        <Edit content={content} save={save} objectives={objectives} />
+        <Edit content={content} save={save} courseId={courseId} objectives={objectives} />
       </div>
     </div>
   );
 }
 
-function LessonPreview({ courseTitle, lesson }: { courseTitle: string; lesson: LessonInit }) {
+function LessonPreview({ courseId, courseTitle, lesson }: { courseId: string; courseTitle: string; lesson: LessonInit }) {
   return (
     <div className="mx-auto max-w-2xl">
       <p className="text-sm font-medium text-muted-foreground">{courseTitle}</p>
@@ -455,7 +530,7 @@ function LessonPreview({ courseTitle, lesson }: { courseTitle: string; lesson: L
         {lesson.blocks.map((b) => {
           const type = b.blockType as BlockType;
           const View = BLOCK_REGISTRY[type].View;
-          return <View key={b.id} content={parseBlockContent(type, b.content)} />;
+          return <View key={b.id} content={parseBlockContent(type, b.content)} courseId={courseId} />;
         })}
       </div>
     </div>
