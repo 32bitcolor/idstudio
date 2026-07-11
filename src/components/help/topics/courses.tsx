@@ -11,9 +11,11 @@ export default function Courses() {
       </Lead>
 
       <Callout tone="note">
-        IDStudio authors courses; your <strong>LMS delivers them</strong>. The roadmap priority is
-        export to <strong>SCORM</strong> and <strong>xAPI (Tin Can)</strong> so any LMS can play and
-        track your course — the block model here is built with that packaging in mind.
+        IDStudio authors courses; your <strong>LMS delivers them</strong>. Use{" "}
+        <UI>Export</UI> (top-right of the editor) to download a self-contained package in{" "}
+        <strong>SCORM 1.2</strong>, <strong>SCORM 2004</strong>, or <strong>xAPI (Tin Can)</strong>,
+        then upload it to any LMS — it plays standalone and reports completion, score, and
+        per-question results back.
       </Callout>
 
       <H2>Structure: course → lessons → blocks</H2>
@@ -54,6 +56,21 @@ export default function Courses() {
           learning objectives
         </Link>{" "}
         they assess — keeping the build aligned to the design.
+      </P>
+
+      <H2>Exporting to your LMS</H2>
+      <P>
+        When a course is ready, click <UI>Export</UI> and choose a format:
+      </P>
+      <DefList>
+        <Def term="SCORM 1.2">The most widely supported format — the safe default for most LMSs.</Def>
+        <Def term="SCORM 2004">Newer SCORM with richer status and scoring, if your LMS prefers it.</Def>
+        <Def term="xAPI (Tin Can)">Sends statements to an LRS — for modern learning-record tracking.</Def>
+      </DefList>
+      <P>
+        You&rsquo;ll get a <code>.zip</code> to upload to your LMS as-is. Each package is a standalone
+        player: the learner scrolls the lessons, answers knowledge checks, and their completion,
+        score, and per-question results report back to the LMS.
       </P>
 
       <H2>A good first course</H2>

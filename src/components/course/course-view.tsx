@@ -11,7 +11,16 @@ import {
   Pencil,
   Eye,
   X,
+  Download,
 } from "lucide-react";
+
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 import {
   renameCourse,
@@ -162,6 +171,27 @@ export function CourseView({
               <Eye className="size-3.5" /> Preview
             </button>
           </div>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-sm font-medium hover:bg-hover">
+                <Download className="size-3.5" /> Export
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuLabel>Export for your LMS</DropdownMenuLabel>
+              {([
+                { key: "scorm12", label: "SCORM 1.2" },
+                { key: "scorm2004", label: "SCORM 2004" },
+                { key: "xapi", label: "xAPI (Tin Can)" },
+              ] as const).map((f) => (
+                <DropdownMenuItem key={f.key} asChild>
+                  <a href={`/api/courses/${course.id}/export?format=${f.key}`} download className="cursor-pointer">
+                    {f.label}
+                  </a>
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 
