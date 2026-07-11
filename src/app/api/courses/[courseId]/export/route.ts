@@ -34,7 +34,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ courseId
   });
   if (!course) return new Response("Not found", { status: 404 });
 
-  const { zip, filename } = buildCoursePackage(course, format);
+  const { zip, filename } = await buildCoursePackage(course, format);
   return new Response(new Uint8Array(zip), {
     headers: {
       "Content-Type": "application/zip",

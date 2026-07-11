@@ -1,6 +1,7 @@
 import "server-only";
 import { zipSync, strToU8 } from "fflate";
-import { parseBlockContent, type BlockType } from "@/lib/course";
+import { parseBlockContent, embedUrl, type BlockType, type ImageContent, type KnowledgeCheckContent } from "@/lib/course";
+import { getObjectBytes } from "@/lib/storage";
 import { STYLES, PLAYER_JS, SCORM_JS, xapiJs, indexHtml } from "@/lib/course-export-assets";
 
 export type ExportFormat = "scorm12" | "scorm2004" | "xapi";
@@ -75,8 +76,11 @@ function tiptapToHtml(json: string | null): string {
 }
 
 // ── Course → player data model ────────────────────────────────────────────────
+// Async because an uploaded image's bytes are fetched from object storage and
+// bundled into the package (media/{blockId}.{ext}) — the export must be fully
+// self-contained, not hotlink back to this server's MinIO.
 
-function blockToModel(b: LoadedBlock): Record<string, unknown> | null {
+async function blockToModel(b: LoadedBlock, media: Record<string, Uint8Array>): Promise<Record<string, unknown> | null> {
   const type = b.blockType as BlockType;
   const c = parseBlockContent(type, b.content);
   switch (type) {
@@ -88,17 +92,53 @@ function blockToModel(b: LoadedBlock): Record<string, unknown> | null {
       return { type, html: tiptapToHtml((c as { doc: string | null }).doc) };
     case "statement":
       return { type, text: (c as { text: string }).text };
+    case "quote": {
+      const q = c as { quote: string; attribution: string };
+      return { type, quote: q.quote, attribution: q.attribution };
+    }
+    case "list": {
+      const l = c as { style: string; items: string[] };
+      return { type, style: l.style, items: l.items };
+    }
     case "image": {
-      const i = c as { url: string; alt: string; caption: string };
+      const i = c as ImageContent;
+      if (i.key) {
+        const bytes = await getObjectBytes(i.key);
+        if (bytes) {
+          const ext = (i.key.match(/\.([a-zA-Z0-9]+)$/)?.[1] || "img").toLowerCase();
+          const file = `media/${b.id}.${ext}`;
+          media[file] = bytes;
+          return { type, url: file, alt: i.alt, caption: i.caption };
+        }
+        return { type, url: "", alt: i.alt, caption: i.caption }; // object missing — best-effort
+      }
       return { type, url: i.url, alt: i.alt, caption: i.caption };
+    }
+    case "multimedia": {
+      const m = c as { url: string; caption: string };
+      return { type, embed: embedUrl(m.url), url: m.url, caption: m.caption };
     }
     case "divider":
       return { type };
     case "accordion":
       return { type, items: (c as { items: { title: string; body: string }[] }).items.map((it) => ({ title: it.title, body: it.body })) };
+    case "tabs":
+      return { type, items: (c as { items: { title: string; body: string }[] }).items.map((it) => ({ title: it.title, body: it.body })) };
+    case "process":
+      return { type, steps: (c as { steps: { title: string; body: string }[] }).steps.map((s) => ({ title: s.title, body: s.body })) };
+    case "flashcards":
+      return { type, cards: (c as { cards: { front: string; back: string }[] }).cards.map((cd) => ({ front: cd.front, back: cd.back })) };
     case "knowledge_check": {
-      const k = c as { question: string; options: { id: string; text: string; correct: boolean }[]; feedback: string };
-      return { type, id: b.id, question: k.question, feedback: k.feedback, options: k.options.map((o) => ({ id: o.id, text: o.text, correct: o.correct })) };
+      const k = c as KnowledgeCheckContent;
+      return {
+        type,
+        id: b.id,
+        questionType: k.questionType,
+        question: k.question,
+        feedback: k.feedback,
+        options: k.options.map((o) => ({ id: o.id, text: o.text, correct: o.correct })),
+        acceptedAnswers: k.acceptedAnswers,
+      };
     }
   }
   return null;
@@ -108,13 +148,15 @@ function activityId(course: LoadedCourse): string {
   return `http://idstudio.local/course/${course.id}`;
 }
 
-function courseDataJs(course: LoadedCourse): string {
+async function courseDataJs(course: LoadedCourse, media: Record<string, Uint8Array>): Promise<string> {
   const model = {
     title: course.title,
-    lessons: course.lessons.map((l) => ({
-      title: l.title,
-      blocks: l.blocks.map(blockToModel).filter(Boolean),
-    })),
+    lessons: await Promise.all(
+      course.lessons.map(async (l) => ({
+        title: l.title,
+        blocks: (await Promise.all(l.blocks.map((b) => blockToModel(b, media)))).filter(Boolean),
+      })),
+    ),
   };
   return `window.COURSE=${JSON.stringify(model)};`;
 }
@@ -185,11 +227,13 @@ function tincanXml(course: LoadedCourse): string {
 
 // ── Assemble the package ──────────────────────────────────────────────────────
 
-export function buildCoursePackage(course: LoadedCourse, format: ExportFormat): { zip: Uint8Array; filename: string } {
+export async function buildCoursePackage(course: LoadedCourse, format: ExportFormat): Promise<{ zip: Uint8Array; filename: string }> {
+  const media: Record<string, Uint8Array> = {};
   const files: Record<string, Uint8Array> = {
     "styles.css": strToU8(STYLES),
     "player.js": strToU8(PLAYER_JS),
-    "course-data.js": strToU8(courseDataJs(course)),
+    "course-data.js": strToU8(await courseDataJs(course, media)),
+    ...media,
   };
 
   let runtimeFile: string;
