@@ -2,7 +2,6 @@ import { requireUser, getActiveMembership } from "@/lib/dal";
 import { prisma } from "@/lib/db";
 import { AppSidebar } from "@/components/app-shell/app-sidebar";
 import { Breadcrumbs, PageTitleProvider } from "@/components/app-shell/breadcrumbs";
-import { ThemeSwitcher } from "@/components/theme-switcher";
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
 
@@ -37,9 +36,6 @@ export default async function AppLayout({
             <SidebarTrigger className="-ml-1" />
             <Separator orientation="vertical" className="mr-2 h-4" />
             <Breadcrumbs />
-            <div className="ml-auto">
-              <ThemeSwitcher />
-            </div>
           </header>
           <div className="flex-1">{children}</div>
         </PageTitleProvider>

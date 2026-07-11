@@ -45,9 +45,9 @@ export default function AccountThemes() {
       <H2>Theming IDStudio</H2>
       <P>
         IDStudio ships with a big library of hand-tuned themes, and the entire interface re-colors
-        instantly when you pick one — sidebar, cards, buttons, charts, and all. Find the theme
-        control in the app header: the <UI>Palette</UI> button, which shows your current theme&rsquo;s
-        name. Click it and choose from the dropdown.
+        instantly when you pick one — sidebar, cards, buttons, charts, and all. Find the theme picker
+        in <UI>Settings → Account</UI>, under <UI>Appearance</UI> — a grid of swatches, each showing
+        a preview of that theme&rsquo;s background and accent color. Click one to apply it.
       </P>
 
       <H3>How it behaves</H3>

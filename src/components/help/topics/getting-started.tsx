@@ -68,10 +68,9 @@ export default function GettingStarted() {
 
       <H2>Make it yours</H2>
       <P>
-        Tap the theme button in the top-right (it shows the current theme, e.g. <UI>System</UI>) to
-        switch between 17 built-in themes — from clean Light and GitHub to Dracula, Rosé Pine,
-        Everforest, and more. Your choice is remembered on this device and applies instantly across
-        the whole app.
+        Head to <UI>Settings → Account → Appearance</UI> to switch between 17 built-in themes — from
+        clean Light and GitHub to Dracula, Rosé Pine, Everforest, and more. Your choice is remembered
+        on this device and applies instantly across the whole app.
       </P>
 
       <Callout tone="tip">

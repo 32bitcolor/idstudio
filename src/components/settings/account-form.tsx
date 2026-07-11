@@ -7,6 +7,7 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import { ThemePicker } from "@/components/settings/theme-picker";
 
 export function AccountForm({ email, name }: { email: string; name: string | null }) {
   const [state, action, pending] = useActionState<FormState, FormData>(changePassword, undefined);
@@ -18,8 +19,18 @@ export function AccountForm({ email, name }: { email: string; name: string | nul
   }, [state?.success]);
 
   return (
-    <div className="max-w-md">
+    <div className="flex max-w-2xl flex-col gap-6">
       <Card className="p-6">
+        <div className="mb-4">
+          <h2 className="font-medium">Appearance</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Pick a theme for this device — it applies instantly and only affects your own view.
+          </p>
+        </div>
+        <ThemePicker />
+      </Card>
+
+      <Card className="max-w-md p-6">
         <div className="mb-5">
           <h2 className="font-medium">Profile</h2>
           <p className="mt-1 text-sm text-muted-foreground">
