@@ -25,6 +25,8 @@ import {
   Upload,
   Link2,
   Loader2,
+  MapPin,
+  ArrowDownUp,
   type LucideIcon,
 } from "lucide-react";
 
@@ -50,6 +52,10 @@ import type {
   ProcessStep,
   FlashcardsContent,
   Flashcard,
+  LabeledGraphicContent,
+  LabeledGraphicMarker,
+  SortContent,
+  SortItem,
   KnowledgeCheckContent,
   KnowledgeCheckOption,
   KnowledgeCheckType,
@@ -266,12 +272,24 @@ function ListView({ content }: ViewProps<ListContent>) {
 }
 
 // ── Image (real upload) ───────────────────────────────────────────────────────
-function ImageEdit({ content, save, courseId }: EditProps<ImageContent>) {
+/** Shared upload-or-URL controls for any block backed by an S3 key + url pair
+ * (Image, Labeled Graphic). Renders only the source picker, not the preview —
+ * each caller renders the resolved `src` (via useImageSrc) however it needs. */
+function ImageSourceControls({
+  courseId,
+  keyVal,
+  url,
+  onChange,
+}: {
+  courseId?: string;
+  keyVal: string | null;
+  url: string;
+  onChange: (next: { key: string | null; url: string }) => void;
+}) {
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [urlMode, setUrlMode] = useState(!content.key && !!content.url);
+  const [urlMode, setUrlMode] = useState(!keyVal && !!url);
   const fileRef = useRef<HTMLInputElement>(null);
-  const src = useImageSrc(courseId, content.key, content.url);
 
   async function handleFile(file: File) {
     if (!courseId) return;
@@ -284,7 +302,7 @@ function ImageEdit({ content, save, courseId }: EditProps<ImageContent>) {
       if ("error" in res) { setError(res.error); return; }
       const put = await fetch(res.uploadUrl, { method: "PUT", body: file, headers: { "Content-Type": file.type } });
       if (!put.ok) { setError("Upload failed."); return; }
-      save({ ...content, key: res.key, url: "" });
+      onChange({ key: res.key, url: "" });
     } catch {
       setError("Upload failed.");
     } finally {
@@ -311,8 +329,8 @@ function ImageEdit({ content, save, courseId }: EditProps<ImageContent>) {
 
       {urlMode ? (
         <input
-          value={content.key ? "" : content.url}
-          onChange={(e) => save({ ...content, key: null, url: e.target.value })}
+          value={keyVal ? "" : url}
+          onChange={(e) => onChange({ key: null, url: e.target.value })}
           placeholder="Image URL (https://…)"
           className={input}
         />
@@ -330,6 +348,15 @@ function ImageEdit({ content, save, courseId }: EditProps<ImageContent>) {
         </div>
       )}
       {error && <p className="text-xs text-destructive">{error}</p>}
+    </div>
+  );
+}
+
+function ImageEdit({ content, save, courseId }: EditProps<ImageContent>) {
+  const src = useImageSrc(courseId, content.key, content.url);
+  return (
+    <div className="flex flex-col gap-2">
+      <ImageSourceControls courseId={courseId} keyVal={content.key} url={content.url} onChange={(next) => save({ ...content, ...next })} />
       {src && (
         // eslint-disable-next-line @next/next/no-img-element
         <img src={src} alt={content.alt} className="max-h-56 w-auto rounded-lg border border-border" />
@@ -350,6 +377,105 @@ function ImageView({ content, courseId }: ViewProps<ImageContent>) {
       <img src={src} alt={content.alt} className="w-full rounded-xl border border-border" />
       {content.caption && <figcaption className="text-center text-sm text-muted-foreground">{content.caption}</figcaption>}
     </figure>
+  );
+}
+
+// ── Labeled graphic (image + clickable hotspots) ──────────────────────────────
+function LabeledGraphicEdit({ content, save, courseId }: EditProps<LabeledGraphicContent>) {
+  const src = useImageSrc(courseId, content.key, content.url);
+  const [activeMarker, setActiveMarker] = useState<string | null>(null);
+
+  function addMarkerAt(e: React.MouseEvent<HTMLDivElement>) {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = Math.round(((e.clientX - rect.left) / rect.width) * 1000) / 10;
+    const y = Math.round(((e.clientY - rect.top) / rect.height) * 1000) / 10;
+    const marker: LabeledGraphicMarker = { id: uid(), x, y, title: "", body: "" };
+    save({ ...content, markers: [...content.markers, marker] });
+    setActiveMarker(marker.id);
+  }
+  function patchMarker(id: string, p: Partial<LabeledGraphicMarker>) {
+    save({ ...content, markers: content.markers.map((m) => (m.id === id ? { ...m, ...p } : m)) });
+  }
+  function removeMarker(id: string) {
+    save({ ...content, markers: content.markers.filter((m) => m.id !== id) });
+    if (activeMarker === id) setActiveMarker(null);
+  }
+
+  return (
+    <div className="flex flex-col gap-2">
+      <ImageSourceControls courseId={courseId} keyVal={content.key} url={content.url} onChange={(next) => save({ ...content, ...next })} />
+      {src && (
+        <>
+          <div
+            onClick={addMarkerAt}
+            title="Click to place a marker"
+            className="relative cursor-crosshair select-none overflow-hidden rounded-lg border border-border"
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={src} alt={content.alt} className="block w-full" draggable={false} />
+            {content.markers.map((m, i) => (
+              <button
+                key={m.id}
+                onClick={(e) => { e.stopPropagation(); setActiveMarker(activeMarker === m.id ? null : m.id); }}
+                style={{ left: `${m.x}%`, top: `${m.y}%` }}
+                className={cn(
+                  "absolute flex size-6 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 border-white text-xs font-bold shadow",
+                  activeMarker === m.id ? "bg-foreground text-background" : "bg-accent text-accent-foreground"
+                )}
+              >
+                {i + 1}
+              </button>
+            ))}
+          </div>
+          <p className="text-xs text-muted-foreground">Click the image to add a marker; click a marker below to edit it.</p>
+        </>
+      )}
+      <input value={content.alt} onChange={(e) => save({ ...content, alt: e.target.value })} placeholder="Alt text (accessibility)" className={cn(input, "text-xs")} />
+      {content.markers.length > 0 && (
+        <div className="flex flex-col gap-2">
+          {content.markers.map((m, i) => (
+            <div key={m.id} className={cn("rounded-lg border p-2", activeMarker === m.id ? "border-accent" : "border-border")}>
+              <div className="flex items-center gap-2">
+                <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-accent text-[10px] font-bold text-accent-foreground">{i + 1}</span>
+                <input value={m.title} onChange={(e) => patchMarker(m.id, { title: e.target.value })} placeholder="Marker title…" className={cn(input, "text-sm")} />
+                <button onClick={() => removeMarker(m.id)} className="shrink-0 rounded px-1 text-foreground/40 hover:text-destructive" title="Remove marker"><X className="size-4" /></button>
+              </div>
+              <textarea value={m.body} onChange={(e) => patchMarker(m.id, { body: e.target.value })} rows={2} placeholder="Marker detail…" className={cn(input, "mt-2 resize-none")} />
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+function LabeledGraphicView({ content, courseId }: ViewProps<LabeledGraphicContent>) {
+  const src = useImageSrc(courseId, content.key, content.url);
+  const [open, setOpen] = useState<string | null>(null);
+  if (!src) return <p className="text-foreground/40">No image set.</p>;
+  return (
+    <div className="relative select-none overflow-hidden rounded-xl border border-border">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src={src} alt={content.alt} className="block w-full" />
+      {content.markers.map((m, i) => (
+        <div key={m.id} className="absolute" style={{ left: `${m.x}%`, top: `${m.y}%` }}>
+          <button
+            onClick={() => setOpen(open === m.id ? null : m.id)}
+            className={cn(
+              "flex size-7 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 border-white text-xs font-bold shadow transition-colors",
+              open === m.id ? "bg-foreground text-background" : "bg-accent text-accent-foreground"
+            )}
+          >
+            {i + 1}
+          </button>
+          {open === m.id && (
+            <div className="absolute z-10 mt-1 w-56 -translate-x-1/2 rounded-lg border border-border bg-surface p-3 text-left shadow-lg">
+              <p className="text-sm font-semibold">{m.title || `Marker ${i + 1}`}</p>
+              {m.body && <p className="mt-1 text-xs text-muted-foreground">{m.body}</p>}
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
   );
 }
 
@@ -853,6 +979,187 @@ function KnowledgeCheckView({ content }: ViewProps<KnowledgeCheckContent>) {
   );
 }
 
+// ── Sorting activity (learner assigns items to categories) ───────────────────
+function SortEdit({ content, save }: EditProps<SortContent>) {
+  function patchCategory(id: string, name: string) {
+    save({ ...content, categories: content.categories.map((c) => (c.id === id ? { ...c, name } : c)) });
+  }
+  function removeCategory(id: string) {
+    save({
+      ...content,
+      categories: content.categories.filter((c) => c.id !== id),
+      items: content.items.map((i) => (i.categoryId === id ? { ...i, categoryId: null } : i)),
+    });
+  }
+  function patchItem(id: string, p: Partial<SortItem>) {
+    save({ ...content, items: content.items.map((i) => (i.id === id ? { ...i, ...p } : i)) });
+  }
+  function removeItem(id: string) {
+    save({ ...content, items: content.items.filter((i) => i.id !== id) });
+  }
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-2">
+        <p className="text-xs font-medium text-muted-foreground">Categories</p>
+        {content.categories.map((c) => (
+          <div key={c.id} className="flex items-center gap-2">
+            <input value={c.name} onChange={(e) => patchCategory(c.id, e.target.value)} placeholder="Category name…" className={cn(input, "text-sm")} />
+            <button onClick={() => removeCategory(c.id)} className="shrink-0 rounded px-1 text-foreground/40 hover:text-destructive" title="Remove category">
+              <X className="size-4" />
+            </button>
+          </div>
+        ))}
+        <button
+          onClick={() => save({ ...content, categories: [...content.categories, { id: uid(), name: "" }] })}
+          className="self-start rounded-md px-2 py-1 text-sm text-foreground/50 hover:bg-hover"
+        >
+          <Plus className="mr-1 inline size-3.5" /> Add category
+        </button>
+      </div>
+      <div className="flex flex-col gap-2">
+        <p className="text-xs font-medium text-muted-foreground">Items</p>
+        {content.items.map((i) => (
+          <div key={i.id} className="flex items-center gap-2">
+            <input value={i.text} onChange={(e) => patchItem(i.id, { text: e.target.value })} placeholder="Item text…" className={cn(input, "text-sm")} />
+            <select
+              value={i.categoryId ?? ""}
+              onChange={(e) => patchItem(i.id, { categoryId: e.target.value || null })}
+              className={cn(input, "w-40 shrink-0 text-sm")}
+            >
+              <option value="">Correct category…</option>
+              {content.categories.map((c) => (
+                <option key={c.id} value={c.id}>{c.name || "(untitled)"}</option>
+              ))}
+            </select>
+            <button onClick={() => removeItem(i.id)} className="shrink-0 rounded px-1 text-foreground/40 hover:text-destructive" title="Remove item">
+              <X className="size-4" />
+            </button>
+          </div>
+        ))}
+        <button
+          onClick={() => save({ ...content, items: [...content.items, { id: uid(), text: "", categoryId: null }] })}
+          className="self-start rounded-md px-2 py-1 text-sm text-foreground/50 hover:bg-hover"
+        >
+          <Plus className="mr-1 inline size-3.5" /> Add item
+        </button>
+      </div>
+      <textarea
+        value={content.feedback}
+        onChange={(e) => save({ ...content, feedback: e.target.value })}
+        rows={2}
+        placeholder="Feedback shown after checking (optional)…"
+        className={cn(input, "resize-none text-sm")}
+      />
+    </div>
+  );
+}
+
+function SortView({ content }: ViewProps<SortContent>) {
+  const [placement, setPlacement] = useState<Record<string, string | null>>(() =>
+    Object.fromEntries(content.items.map((i) => [i.id, null]))
+  );
+  const [selected, setSelected] = useState<string | null>(null);
+  const [checked, setChecked] = useState(false);
+
+  if (content.categories.length === 0 || content.items.length === 0) {
+    return <p className="text-foreground/40">No sorting items yet.</p>;
+  }
+
+  function place(itemId: string, categoryId: string | null) {
+    if (checked) return;
+    setPlacement((prev) => ({ ...prev, [itemId]: categoryId }));
+    setSelected(null);
+  }
+  function reset() {
+    setPlacement(Object.fromEntries(content.items.map((i) => [i.id, null])));
+    setSelected(null);
+    setChecked(false);
+  }
+
+  const unsorted = content.items.filter((i) => !placement[i.id]);
+  const allPlaced = unsorted.length === 0;
+  const correctCount = content.items.filter((i) => placement[i.id] === i.categoryId).length;
+
+  return (
+    <div className="rounded-xl border border-border bg-surface p-5">
+      <p className="mb-3 flex items-center gap-2 text-sm text-muted-foreground">
+        <ArrowDownUp className="size-4" /> Select an item, then select the category it belongs to.
+      </p>
+
+      <div className="mb-4 flex flex-wrap gap-2 rounded-lg border border-dashed border-border p-3 min-h-12">
+        {unsorted.length === 0 && <span className="text-xs text-foreground/40">All items sorted.</span>}
+        {unsorted.map((i) => (
+          <button
+            key={i.id}
+            onClick={() => setSelected(selected === i.id ? null : i.id)}
+            className={cn(
+              "rounded-full border px-3 py-1 text-sm transition-colors",
+              selected === i.id ? "border-accent bg-accent/15 text-foreground" : "border-border-strong hover:bg-hover"
+            )}
+          >
+            {i.text || "(item)"}
+          </button>
+        ))}
+      </div>
+
+      <div className="grid gap-3 sm:grid-cols-2">
+        {content.categories.map((c) => {
+          const inCat = content.items.filter((i) => placement[i.id] === c.id);
+          return (
+            <div
+              key={c.id}
+              onClick={() => selected && place(selected, c.id)}
+              className={cn(
+                "flex min-h-24 flex-col gap-1.5 rounded-lg border p-3",
+                selected ? "cursor-pointer border-accent/50 hover:border-accent" : "border-border"
+              )}
+            >
+              <p className="text-xs font-semibold text-muted-foreground">{c.name || "(category)"}</p>
+              {inCat.map((i) => {
+                const style = checked
+                  ? i.categoryId === c.id
+                    ? { borderColor: "var(--color-success)", backgroundColor: "color-mix(in srgb, var(--color-success) 8%, transparent)" }
+                    : { borderColor: "var(--color-destructive)", backgroundColor: "color-mix(in srgb, var(--color-destructive) 8%, transparent)" }
+                  : undefined;
+                return (
+                  <button
+                    key={i.id}
+                    onClick={(e) => { e.stopPropagation(); place(i.id, null); }}
+                    disabled={checked}
+                    style={style}
+                    className="flex items-center justify-between gap-2 rounded-md border border-border-strong bg-surface px-2 py-1 text-left text-sm disabled:cursor-default"
+                  >
+                    <span>{i.text}</span>
+                    {checked && (i.categoryId === c.id ? <Check className="size-3.5 shrink-0" style={{ color: "var(--color-success)" }} /> : <X className="size-3.5 shrink-0" style={{ color: "var(--color-destructive)" }} />)}
+                  </button>
+                );
+              })}
+            </div>
+          );
+        })}
+      </div>
+
+      {!checked ? (
+        <button
+          onClick={() => setChecked(true)}
+          disabled={!allPlaced}
+          className="mt-4 self-start rounded-md bg-accent px-3 py-1.5 text-sm font-medium text-accent-foreground disabled:opacity-40"
+        >
+          Check answers
+        </button>
+      ) : (
+        <div className="mt-4 flex flex-col items-start gap-2">
+          <p className="text-sm font-medium" style={{ color: correctCount === content.items.length ? "var(--color-success)" : "var(--color-destructive)" }}>
+            {correctCount} of {content.items.length} correct
+          </p>
+          {content.feedback && <p className="rounded-lg bg-muted px-3 py-2 text-sm text-foreground/80">{content.feedback}</p>}
+          <button onClick={reset} className="text-xs text-muted-foreground hover:underline">Try again</button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Registry ──────────────────────────────────────────────────────────────────
 type Reg = {
   icon: LucideIcon;
@@ -875,5 +1182,7 @@ export const BLOCK_REGISTRY: Record<BlockType, Reg> = {
   tabs: { icon: LayoutPanelTop, Edit: TabsEdit, View: TabsView },
   process: { icon: ListOrdered, Edit: ProcessEdit, View: ProcessView },
   flashcards: { icon: Layers, Edit: FlashcardsEdit, View: FlashcardsView },
+  labeled_graphic: { icon: MapPin, Edit: LabeledGraphicEdit, View: LabeledGraphicView },
+  sort: { icon: ArrowDownUp, Edit: SortEdit, View: SortView },
   knowledge_check: { icon: CircleHelp, Edit: KnowledgeCheckEdit, View: KnowledgeCheckView },
 };

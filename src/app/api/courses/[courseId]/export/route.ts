@@ -22,11 +22,14 @@ export async function GET(req: Request, { params }: { params: Promise<{ courseId
       id: true,
       title: true,
       description: true,
+      sections: { orderBy: { position: "asc" }, select: { id: true, title: true, position: true } },
       lessons: {
         orderBy: { position: "asc" },
         select: {
           id: true,
           title: true,
+          sectionId: true,
+          position: true,
           blocks: { orderBy: { position: "asc" }, select: { id: true, blockType: true, content: true } },
         },
       },

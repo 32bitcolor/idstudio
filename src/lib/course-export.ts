@@ -1,6 +1,15 @@
 import "server-only";
 import { zipSync, strToU8 } from "fflate";
-import { parseBlockContent, embedUrl, type BlockType, type ImageContent, type KnowledgeCheckContent } from "@/lib/course";
+import {
+  parseBlockContent,
+  embedUrl,
+  orderLessonsBySections,
+  type BlockType,
+  type ImageContent,
+  type LabeledGraphicContent,
+  type SortContent,
+  type KnowledgeCheckContent,
+} from "@/lib/course";
 import { getObjectBytes } from "@/lib/storage";
 import { STYLES, PLAYER_JS, SCORM_JS, xapiJs, indexHtml } from "@/lib/course-export-assets";
 
@@ -13,8 +22,15 @@ export const EXPORT_LABELS: Record<ExportFormat, string> = {
 };
 
 type LoadedBlock = { id: string; blockType: string; content: string };
-type LoadedLesson = { id: string; title: string; blocks: LoadedBlock[] };
-export type LoadedCourse = { id: string; title: string; description: string | null; lessons: LoadedLesson[] };
+type LoadedLesson = { id: string; title: string; sectionId: string | null; position: string; blocks: LoadedBlock[] };
+type LoadedSection = { id: string; title: string; position: string };
+export type LoadedCourse = {
+  id: string;
+  title: string;
+  description: string | null;
+  sections: LoadedSection[];
+  lessons: LoadedLesson[];
+};
 
 // ── TipTap (StarterKit) JSON → HTML ───────────────────────────────────────────
 
@@ -80,6 +96,21 @@ function tiptapToHtml(json: string | null): string {
 // bundled into the package (media/{blockId}.{ext}) — the export must be fully
 // self-contained, not hotlink back to this server's MinIO.
 
+/** Resolve an uploaded image's key to a bundled `media/{blockId}.{ext}` file, or pass through a plain URL. */
+async function resolveImageSrc(key: string | null, url: string, blockId: string, media: Record<string, Uint8Array>): Promise<string> {
+  if (key) {
+    const bytes = await getObjectBytes(key);
+    if (bytes) {
+      const ext = (key.match(/\.([a-zA-Z0-9]+)$/)?.[1] || "img").toLowerCase();
+      const file = `media/${blockId}.${ext}`;
+      media[file] = bytes;
+      return file;
+    }
+    return ""; // object missing — best-effort
+  }
+  return url;
+}
+
 async function blockToModel(b: LoadedBlock, media: Record<string, Uint8Array>): Promise<Record<string, unknown> | null> {
   const type = b.blockType as BlockType;
   const c = parseBlockContent(type, b.content);
@@ -102,17 +133,23 @@ async function blockToModel(b: LoadedBlock, media: Record<string, Uint8Array>): 
     }
     case "image": {
       const i = c as ImageContent;
-      if (i.key) {
-        const bytes = await getObjectBytes(i.key);
-        if (bytes) {
-          const ext = (i.key.match(/\.([a-zA-Z0-9]+)$/)?.[1] || "img").toLowerCase();
-          const file = `media/${b.id}.${ext}`;
-          media[file] = bytes;
-          return { type, url: file, alt: i.alt, caption: i.caption };
-        }
-        return { type, url: "", alt: i.alt, caption: i.caption }; // object missing — best-effort
-      }
-      return { type, url: i.url, alt: i.alt, caption: i.caption };
+      const src = await resolveImageSrc(i.key, i.url, b.id, media);
+      return { type, url: src, alt: i.alt, caption: i.caption };
+    }
+    case "labeled_graphic": {
+      const lg = c as LabeledGraphicContent;
+      const src = await resolveImageSrc(lg.key, lg.url, b.id, media);
+      return { type, url: src, alt: lg.alt, markers: lg.markers.map((m) => ({ id: m.id, x: m.x, y: m.y, title: m.title, body: m.body })) };
+    }
+    case "sort": {
+      const s = c as SortContent;
+      return {
+        type,
+        id: b.id,
+        categories: s.categories.map((cat) => ({ id: cat.id, name: cat.name })),
+        items: s.items.map((it) => ({ id: it.id, text: it.text, categoryId: it.categoryId })),
+        feedback: s.feedback,
+      };
     }
     case "multimedia": {
       const m = c as { url: string; caption: string };
@@ -149,11 +186,14 @@ function activityId(course: LoadedCourse): string {
 }
 
 async function courseDataJs(course: LoadedCourse, media: Record<string, Uint8Array>): Promise<string> {
+  const ordered = orderLessonsBySections(course.lessons, course.sections);
+  const sectionTitle = new Map(course.sections.map((s) => [s.id, s.title]));
   const model = {
     title: course.title,
     lessons: await Promise.all(
-      course.lessons.map(async (l) => ({
+      ordered.map(async (l) => ({
         title: l.title,
+        section: l.sectionId ? (sectionTitle.get(l.sectionId) ?? null) : null,
         blocks: (await Promise.all(l.blocks.map((b) => blockToModel(b, media)))).filter(Boolean),
       })),
     ),

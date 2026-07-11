@@ -7,12 +7,13 @@ import { prisma } from "@/lib/db";
 import { getActiveMembership } from "@/lib/dal";
 import {
   getCourseForUser,
+  getSectionForUser,
   getLessonForUser,
   getBlockForUser,
   getDeliverableForUser,
 } from "@/lib/authz";
 import { positionBetween, positionForIndex } from "@/lib/ordering";
-import { BLOCK_TYPES, defaultBlockContent, parseBlockContent, type BlockType, type ImageContent } from "@/lib/course";
+import { BLOCK_TYPES, defaultBlockContent, parseBlockContent, orderLessonsBySections, type BlockType, type ImageContent } from "@/lib/course";
 import {
   buildCourseImageKey,
   presignUpload,
@@ -23,6 +24,7 @@ import {
 
 const Title = z.string().trim().min(1, "Required").max(200);
 const LessonTitle = z.string().trim().min(1, "Required").max(200);
+const SectionTitle = z.string().trim().min(1, "Required").max(200);
 const BlockTypeE = z.enum(BLOCK_TYPES);
 
 function coursePath(courseId: string) {
@@ -153,11 +155,17 @@ export async function renameLesson(lessonId: string, title: string) {
 export async function moveLesson(lessonId: string, targetIndex: number) {
   const l = await getLessonForUser(lessonId);
   if (!l) return { error: "Lesson not found." };
-  const siblings = await prisma.lesson.findMany({
-    where: { courseId: l.courseId, id: { not: lessonId } },
-    orderBy: { position: "asc" },
-    select: { position: true },
-  });
+  // `targetIndex` is in canonical (section-grouped) order — the same order the
+  // editor rail renders — not raw position order, so siblings must be built
+  // the same way the client did to keep the two in agreement.
+  const [allLessons, sections] = await Promise.all([
+    prisma.lesson.findMany({
+      where: { courseId: l.courseId, id: { not: lessonId } },
+      select: { id: true, sectionId: true, position: true },
+    }),
+    prisma.section.findMany({ where: { courseId: l.courseId }, select: { id: true, position: true } }),
+  ]);
+  const siblings = orderLessonsBySections(allLessons, sections);
   const position = positionForIndex(siblings.map((s) => s.position), targetIndex);
   await prisma.lesson.update({ where: { id: lessonId }, data: { position } });
   revalidatePath(coursePath(l.courseId));
@@ -168,6 +176,71 @@ export async function deleteLesson(lessonId: string) {
   if (!l) return { error: "Lesson not found." };
   await prisma.lesson.delete({ where: { id: lessonId } });
   revalidatePath(coursePath(l.courseId));
+}
+
+/** Assign a lesson to a section (or null to make it unsectioned again). */
+export async function setLessonSection(lessonId: string, sectionId: string | null) {
+  const l = await getLessonForUser(lessonId);
+  if (!l) return { error: "Lesson not found." };
+  if (sectionId) {
+    const s = await getSectionForUser(sectionId);
+    if (!s || s.courseId !== l.courseId) return { error: "Section not found." };
+  }
+  await prisma.lesson.update({ where: { id: lessonId }, data: { sectionId } });
+  revalidatePath(coursePath(l.courseId));
+}
+
+// ── Sections ─────────────────────────────────────────────────────────────────
+// An optional grouping layer above lessons. A course with no sections renders
+// its lessons as the same flat list it always has.
+
+export async function createSection(courseId: string, title: string) {
+  const c = await getCourseForUser(courseId);
+  if (!c) return { error: "Course not found." };
+  const parsed = SectionTitle.safeParse(title);
+  if (!parsed.success) return { error: "Section title is required." };
+  const last = await prisma.section.findFirst({
+    where: { courseId },
+    orderBy: { position: "desc" },
+    select: { position: true },
+  });
+  const section = await prisma.section.create({
+    data: { courseId, title: parsed.data, position: positionBetween(last?.position ?? null, null) },
+    select: { id: true, title: true, position: true },
+  });
+  revalidatePath(coursePath(courseId));
+  return { section };
+}
+
+export async function renameSection(sectionId: string, title: string) {
+  const s = await getSectionForUser(sectionId);
+  if (!s) return { error: "Section not found." };
+  const parsed = SectionTitle.safeParse(title);
+  if (!parsed.success) return { error: "Section title is required." };
+  await prisma.section.update({ where: { id: sectionId }, data: { title: parsed.data } });
+  revalidatePath(coursePath(s.courseId));
+}
+
+export async function moveSection(sectionId: string, targetIndex: number) {
+  const s = await getSectionForUser(sectionId);
+  if (!s) return { error: "Section not found." };
+  const siblings = await prisma.section.findMany({
+    where: { courseId: s.courseId, id: { not: sectionId } },
+    orderBy: { position: "asc" },
+    select: { position: true },
+  });
+  const position = positionForIndex(siblings.map((x) => x.position), targetIndex);
+  await prisma.section.update({ where: { id: sectionId }, data: { position } });
+  revalidatePath(coursePath(s.courseId));
+}
+
+/** Deletes the section only — its lessons become unsectioned, not deleted. */
+export async function deleteSection(sectionId: string) {
+  const s = await getSectionForUser(sectionId);
+  if (!s) return { error: "Section not found." };
+  await prisma.lesson.updateMany({ where: { sectionId }, data: { sectionId: null } });
+  await prisma.section.delete({ where: { id: sectionId } });
+  revalidatePath(coursePath(s.courseId));
 }
 
 // ── Blocks ───────────────────────────────────────────────────────────────────

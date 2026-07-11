@@ -16,6 +16,8 @@ export const BLOCK_TYPES = [
   "tabs",
   "process",
   "flashcards",
+  "labeled_graphic",
+  "sort",
   "knowledge_check",
 ] as const;
 export type BlockType = (typeof BLOCK_TYPES)[number];
@@ -33,6 +35,8 @@ export const BLOCK_LABEL: Record<BlockType, string> = {
   tabs: "Tabs",
   process: "Process",
   flashcards: "Flashcards",
+  labeled_graphic: "Labeled graphic",
+  sort: "Sorting activity",
   knowledge_check: "Knowledge check",
 };
 
@@ -49,6 +53,8 @@ export const BLOCK_DESCRIPTION: Record<BlockType, string> = {
   tabs: "Parallel sections the learner switches between",
   process: "Numbered, sequential steps",
   flashcards: "Flip cards — a prompt on the front, an answer on the back",
+  labeled_graphic: "An image with clickable markers that reveal more detail",
+  sort: "The learner sorts items into the correct categories",
   knowledge_check: "A question — multiple choice, multi-select, or fill in the blank",
 };
 
@@ -66,6 +72,8 @@ export const BLOCK_CATEGORY: Record<BlockType, "content" | "interactive"> = {
   tabs: "interactive",
   process: "interactive",
   flashcards: "interactive",
+  labeled_graphic: "interactive",
+  sort: "interactive",
   knowledge_check: "interactive",
 };
 
@@ -90,6 +98,15 @@ export type ProcessStep = { id: string; title: string; body: string };
 export type ProcessContent = { steps: ProcessStep[] };
 export type Flashcard = { id: string; front: string; back: string };
 export type FlashcardsContent = { cards: Flashcard[] };
+
+// x/y are percentages (0–100) of the image's width/height, so markers stay
+// correctly placed at any responsive size.
+export type LabeledGraphicMarker = { id: string; x: number; y: number; title: string; body: string };
+export type LabeledGraphicContent = { key: string | null; url: string; alt: string; markers: LabeledGraphicMarker[] };
+
+export type SortCategory = { id: string; name: string };
+export type SortItem = { id: string; text: string; categoryId: string | null };
+export type SortContent = { categories: SortCategory[]; items: SortItem[]; feedback: string };
 
 export const KNOWLEDGE_CHECK_TYPES = ["single", "multi", "fill_blank"] as const;
 export type KnowledgeCheckType = (typeof KNOWLEDGE_CHECK_TYPES)[number];
@@ -121,6 +138,8 @@ export type BlockContentMap = {
   tabs: TabsContent;
   process: ProcessContent;
   flashcards: FlashcardsContent;
+  labeled_graphic: LabeledGraphicContent;
+  sort: SortContent;
   knowledge_check: KnowledgeCheckContent;
 };
 
@@ -150,6 +169,10 @@ export function defaultBlockContent(type: BlockType): BlockContentMap[BlockType]
       return { steps: [] } satisfies ProcessContent;
     case "flashcards":
       return { cards: [] } satisfies FlashcardsContent;
+    case "labeled_graphic":
+      return { key: null, url: "", alt: "", markers: [] } satisfies LabeledGraphicContent;
+    case "sort":
+      return { categories: [], items: [], feedback: "" } satisfies SortContent;
     case "knowledge_check":
       return {
         questionType: "single",
@@ -180,4 +203,37 @@ export function embedUrl(url: string): string | null {
   const vimeo = url.match(/vimeo\.com\/(?:video\/)?(\d+)/);
   if (vimeo) return `https://player.vimeo.com/video/${vimeo[1]}`;
   return null;
+}
+
+// ── Sections ──────────────────────────────────────────────────────────────────
+// An optional grouping layer above lessons. The canonical order — used by the
+// editor rail, Preview navigation, and export — is: unsectioned lessons first
+// (as a preamble), then each section in its own order, each showing its
+// lessons in their own order. A course with no sections is unaffected: every
+// lesson is "unsectioned" and this reduces to the original flat order.
+
+export type SectionLite = { id: string; position: string };
+export type LessonLite = { id: string; sectionId: string | null; position: string };
+
+function byPosition(a: { position: string }, b: { position: string }): number {
+  return a.position < b.position ? -1 : a.position > b.position ? 1 : 0;
+}
+
+export function orderLessonsBySections<L extends LessonLite>(lessons: L[], sections: SectionLite[]): L[] {
+  const bySection = new Map<string, L[]>();
+  const unsectioned: L[] = [];
+  for (const l of lessons) {
+    if (l.sectionId) {
+      const arr = bySection.get(l.sectionId);
+      if (arr) arr.push(l);
+      else bySection.set(l.sectionId, [l]);
+    } else {
+      unsectioned.push(l);
+    }
+  }
+  const out = [...unsectioned].sort(byPosition);
+  for (const s of [...sections].sort(byPosition)) {
+    out.push(...(bySection.get(s.id) ?? []).sort(byPosition));
+  }
+  return out;
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, useTransition } from "react";
+import { useMemo, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import {
   Plus,
@@ -12,6 +12,7 @@ import {
   Eye,
   X,
   Download,
+  Folder,
 } from "lucide-react";
 import {
   DndContext,
@@ -48,6 +49,11 @@ import {
   renameLesson,
   moveLesson,
   deleteLesson,
+  setLessonSection,
+  createSection,
+  renameSection,
+  moveSection,
+  deleteSection,
   createBlock,
   updateBlockContent,
   moveBlock,
@@ -59,6 +65,7 @@ import {
   BLOCK_DESCRIPTION,
   BLOCK_CATEGORY,
   parseBlockContent,
+  orderLessonsBySections,
   type BlockType,
 } from "@/lib/course";
 import { BLOCK_REGISTRY, type ProjectObjective } from "@/components/course/blocks";
@@ -70,7 +77,8 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 export type BlockInit = { id: string; blockType: string; content: string; position: string };
-export type LessonInit = { id: string; title: string; position: string; blocks: BlockInit[] };
+export type LessonInit = { id: string; title: string; position: string; sectionId: string | null; blocks: BlockInit[] };
+export type SectionInit = { id: string; title: string; position: string };
 type CourseMeta = {
   id: string;
   title: string;
@@ -88,23 +96,30 @@ function move<T>(arr: T[], from: number, to: number) {
 
 export function CourseView({
   course,
+  initialSections,
   initialLessons,
   projectObjectives,
 }: {
   course: CourseMeta;
+  initialSections: SectionInit[];
   initialLessons: LessonInit[];
   projectObjectives: ProjectObjective[];
 }) {
   const [title, setTitle] = useState(course.title);
   const [description, setDescription] = useState(course.description ?? "");
   const [status, setStatus] = useState(course.status);
+  const [sections, setSections] = useState<SectionInit[]>(initialSections);
   const [lessons, setLessons] = useState<LessonInit[]>(initialLessons);
   const [activeId, setActiveId] = useState<string>(initialLessons[0]?.id ?? "");
   const [mode, setMode] = useState<"edit" | "preview">("edit");
   const [, startTransition] = useTransition();
   useSetPageTitle(title);
 
-  const active = lessons.find((l) => l.id === activeId) ?? lessons[0];
+  // Canonical display/playback order: unsectioned lessons first, then each
+  // section (its own order) with its lessons (their own order) — shared with
+  // the server (moveLesson) and the export engine so all three agree.
+  const orderedLessons = useMemo(() => orderLessonsBySections(lessons, sections), [lessons, sections]);
+  const active = orderedLessons.find((l) => l.id === activeId) ?? orderedLessons[0];
 
   function setLessonBlocks(lessonId: string, blocks: BlockInit[]) {
     setLessons((prev) => prev.map((l) => (l.id === lessonId ? { ...l, blocks } : l)));
@@ -113,7 +128,7 @@ export function CourseView({
   async function addLesson() {
     const res = await createLesson(course.id, `Lesson ${lessons.length + 1}`);
     if ("lesson" in res && res.lesson) {
-      setLessons((prev) => [...prev, { ...res.lesson, blocks: [] }]);
+      setLessons((prev) => [...prev, { ...res.lesson, sectionId: null, blocks: [] }]);
       setActiveId(res.lesson.id);
     }
   }
@@ -122,17 +137,57 @@ export function CourseView({
   }
   function reorderLesson(index: number, dir: -1 | 1) {
     const to = index + dir;
-    if (to < 0 || to >= lessons.length) return;
-    setLessons((prev) => move(prev, index, to));
-    startTransition(() => void moveLesson(lessons[index].id, to));
+    if (to < 0 || to >= orderedLessons.length) return;
+    const a = orderedLessons[index], b = orderedLessons[to];
+    if (a.sectionId !== b.sectionId) return; // don't hop across a section boundary
+    // Swap positions optimistically — preserves sort order even before the
+    // server's authoritative recompute lands.
+    setLessons((prev) =>
+      prev.map((l) => {
+        if (l.id === a.id) return { ...l, position: b.position };
+        if (l.id === b.id) return { ...l, position: a.position };
+        return l;
+      }),
+    );
+    startTransition(() => void moveLesson(a.id, to));
   }
   function removeLesson(id: string) {
     if (lessons.length === 1) return;
     if (!confirm("Delete this lesson and its content?")) return;
-    const next = lessons.filter((l) => l.id !== id);
-    setLessons(next);
-    if (activeId === id) setActiveId(next[0]?.id ?? "");
+    setLessons((prev) => prev.filter((l) => l.id !== id));
+    if (activeId === id) {
+      const idx = orderedLessons.findIndex((l) => l.id === id);
+      const fallback = orderedLessons[idx + 1] ?? orderedLessons[idx - 1];
+      setActiveId(fallback?.id ?? "");
+    }
     startTransition(() => void deleteLesson(id));
+  }
+  function assignLessonSection(lessonId: string, sectionId: string | null) {
+    setLessons((prev) => prev.map((l) => (l.id === lessonId ? { ...l, sectionId } : l)));
+    startTransition(() => void setLessonSection(lessonId, sectionId));
+  }
+
+  async function addSection() {
+    const res = await createSection(course.id, `Section ${sections.length + 1}`);
+    if ("section" in res && res.section) setSections((prev) => [...prev, res.section]);
+  }
+  function renameSectionLocal(id: string, value: string) {
+    setSections((prev) => prev.map((s) => (s.id === id ? { ...s, title: value } : s)));
+  }
+  function commitSectionTitle(id: string, value: string) {
+    if (value.trim()) startTransition(() => void renameSection(id, value.trim()));
+  }
+  function reorderSection(index: number, dir: -1 | 1) {
+    const to = index + dir;
+    if (to < 0 || to >= sections.length) return;
+    setSections((prev) => move(prev, index, to));
+    startTransition(() => void moveSection(sections[index].id, to));
+  }
+  function removeSection(id: string) {
+    if (!confirm("Delete this section? Its lessons become unsectioned, not deleted.")) return;
+    setSections((prev) => prev.filter((s) => s.id !== id));
+    setLessons((prev) => prev.map((l) => (l.sectionId === id ? { ...l, sectionId: null } : l)));
+    startTransition(() => void deleteSection(id));
   }
 
   async function addBlock(type: BlockType) {
@@ -228,32 +283,28 @@ export function CourseView({
         {/* Lessons rail */}
         <aside className="lg:sticky lg:top-6 lg:h-fit">
           <p className="mb-2 px-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Lessons</p>
-          <ul className="flex flex-col gap-0.5">
-            {lessons.map((l, i) => (
-              <li key={l.id} className="group flex items-center gap-1">
-                <button
-                  onClick={() => setActiveId(l.id)}
-                  className={cn(
-                    "flex-1 truncate rounded-lg px-2 py-1.5 text-left text-sm",
-                    l.id === active?.id ? "bg-accent/12 font-medium text-foreground" : "text-muted-foreground hover:bg-hover"
-                  )}
-                >
-                  <span className="mr-1 text-xs text-muted-foreground">{i + 1}.</span>
-                  {l.title}
-                </button>
-                {mode === "edit" && (
-                  <div className="flex shrink-0 items-center opacity-0 group-hover:opacity-100">
-                    <button onClick={() => reorderLesson(i, -1)} disabled={i === 0} className="rounded p-0.5 text-foreground/40 hover:text-foreground disabled:opacity-20" title="Move up"><ChevronUp className="size-3.5" /></button>
-                    <button onClick={() => reorderLesson(i, 1)} disabled={i === lessons.length - 1} className="rounded p-0.5 text-foreground/40 hover:text-foreground disabled:opacity-20" title="Move down"><ChevronDown className="size-3.5" /></button>
-                  </div>
-                )}
-              </li>
-            ))}
-          </ul>
+          <LessonRail
+            sections={sections}
+            orderedLessons={orderedLessons}
+            activeId={active?.id ?? ""}
+            mode={mode}
+            onSelect={setActiveId}
+            onReorderLesson={reorderLesson}
+            onAssignSection={assignLessonSection}
+            onReorderSection={reorderSection}
+            onRenameSection={renameSectionLocal}
+            onCommitSectionTitle={commitSectionTitle}
+            onDeleteSection={removeSection}
+          />
           {mode === "edit" && (
-            <button onClick={addLesson} className="mt-1 w-full rounded-lg px-2 py-1.5 text-left text-sm text-foreground/50 hover:bg-hover">
-              <Plus className="mr-1 inline size-3.5" /> Add lesson
-            </button>
+            <div className="mt-1 flex flex-col">
+              <button onClick={addLesson} className="w-full rounded-lg px-2 py-1.5 text-left text-sm text-foreground/50 hover:bg-hover">
+                <Plus className="mr-1 inline size-3.5" /> Add lesson
+              </button>
+              <button onClick={addSection} className="w-full rounded-lg px-2 py-1.5 text-left text-sm text-foreground/50 hover:bg-hover">
+                <Folder className="mr-1 inline size-3.5" /> Add section
+              </button>
+            </div>
           )}
         </aside>
 
@@ -299,6 +350,112 @@ export function CourseView({
         </div>
       )}
     </PageContainer>
+  );
+}
+
+type RailRow =
+  | { type: "header"; section: SectionInit; sectionIndex: number }
+  | { type: "lesson"; lesson: LessonInit; index: number };
+
+function LessonRail({
+  sections,
+  orderedLessons,
+  activeId,
+  mode,
+  onSelect,
+  onReorderLesson,
+  onAssignSection,
+  onReorderSection,
+  onRenameSection,
+  onCommitSectionTitle,
+  onDeleteSection,
+}: {
+  sections: SectionInit[];
+  orderedLessons: LessonInit[];
+  activeId: string;
+  mode: "edit" | "preview";
+  onSelect: (id: string) => void;
+  onReorderLesson: (index: number, dir: -1 | 1) => void;
+  onAssignSection: (lessonId: string, sectionId: string | null) => void;
+  onReorderSection: (index: number, dir: -1 | 1) => void;
+  onRenameSection: (id: string, value: string) => void;
+  onCommitSectionTitle: (id: string, value: string) => void;
+  onDeleteSection: (id: string) => void;
+}) {
+  // Walk sections in display order (not lesson order) so an empty section still
+  // gets a header — otherwise a freshly created section is invisible until a
+  // lesson is assigned to it.
+  const indexById = new Map(orderedLessons.map((l, i) => [l.id, i]));
+  const rows: RailRow[] = [];
+  orderedLessons
+    .filter((l) => !l.sectionId)
+    .forEach((lesson) => rows.push({ type: "lesson", lesson, index: indexById.get(lesson.id)! }));
+  sections.forEach((section, sectionIndex) => {
+    rows.push({ type: "header", section, sectionIndex });
+    orderedLessons
+      .filter((l) => l.sectionId === section.id)
+      .forEach((lesson) => rows.push({ type: "lesson", lesson, index: indexById.get(lesson.id)! }));
+  });
+
+  return (
+    <ul className="flex flex-col gap-0.5">
+      {rows.map((row) =>
+        row.type === "header" ? (
+          <li key={`section-${row.section.id}`} className="group mt-3 flex items-center gap-1 px-1 first:mt-0">
+            <input
+              value={row.section.title}
+              onChange={(e) => onRenameSection(row.section.id, e.target.value)}
+              onBlur={(e) => onCommitSectionTitle(row.section.id, e.target.value)}
+              disabled={mode !== "edit"}
+              className="min-w-0 flex-1 truncate rounded bg-transparent py-0.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground outline-none hover:bg-hover focus:bg-hover disabled:hover:bg-transparent"
+            />
+            {mode === "edit" && (
+              <div className="flex shrink-0 items-center opacity-0 group-hover:opacity-100">
+                <button onClick={() => onReorderSection(row.sectionIndex, -1)} disabled={row.sectionIndex === 0} className="rounded p-0.5 text-foreground/40 hover:text-foreground disabled:opacity-20" title="Move section up"><ChevronUp className="size-3.5" /></button>
+                <button onClick={() => onReorderSection(row.sectionIndex, 1)} disabled={row.sectionIndex === sections.length - 1} className="rounded p-0.5 text-foreground/40 hover:text-foreground disabled:opacity-20" title="Move section down"><ChevronDown className="size-3.5" /></button>
+                <button onClick={() => onDeleteSection(row.section.id)} className="rounded p-0.5 text-foreground/40 hover:text-destructive" title="Delete section"><Trash2 className="size-3.5" /></button>
+              </div>
+            )}
+          </li>
+        ) : (
+          <li key={row.lesson.id} className="group flex items-center gap-1">
+            <button
+              onClick={() => onSelect(row.lesson.id)}
+              className={cn(
+                "flex-1 truncate rounded-lg px-2 py-1.5 text-left text-sm",
+                row.lesson.id === activeId ? "bg-accent/12 font-medium text-foreground" : "text-muted-foreground hover:bg-hover"
+              )}
+            >
+              <span className="mr-1 text-xs text-muted-foreground">{row.index + 1}.</span>
+              {row.lesson.title}
+            </button>
+            {mode === "edit" && (
+              <div className="flex shrink-0 items-center opacity-0 group-hover:opacity-100">
+                {sections.length > 0 && (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <button className="rounded p-0.5 text-foreground/40 hover:text-foreground" title="Move to section"><Folder className="size-3.5" /></button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="start">
+                      <DropdownMenuItem onSelect={() => onAssignSection(row.lesson.id, null)} className="cursor-pointer">
+                        {!row.lesson.sectionId && "✓ "}No section
+                      </DropdownMenuItem>
+                      {sections.map((s) => (
+                        <DropdownMenuItem key={s.id} onSelect={() => onAssignSection(row.lesson.id, s.id)} className="cursor-pointer">
+                          {row.lesson.sectionId === s.id && "✓ "}{s.title}
+                        </DropdownMenuItem>
+                      ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
+                <button onClick={() => onReorderLesson(row.index, -1)} disabled={row.index === 0 || orderedLessons[row.index - 1]?.sectionId !== row.lesson.sectionId} className="rounded p-0.5 text-foreground/40 hover:text-foreground disabled:opacity-20" title="Move up"><ChevronUp className="size-3.5" /></button>
+                <button onClick={() => onReorderLesson(row.index, 1)} disabled={row.index === orderedLessons.length - 1 || orderedLessons[row.index + 1]?.sectionId !== row.lesson.sectionId} className="rounded p-0.5 text-foreground/40 hover:text-foreground disabled:opacity-20" title="Move down"><ChevronDown className="size-3.5" /></button>
+              </div>
+            )}
+          </li>
+        ),
+      )}
+    </ul>
   );
 }
 

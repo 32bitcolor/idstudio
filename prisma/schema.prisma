@@ -515,9 +515,26 @@ model Course {
   workspace     Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   deliverable   Deliverable?  @relation(fields: [deliverableId], references: [id], onDelete: SetNull)
   lessons       Lesson[]
+  sections      Section[]
   groupAccess   CourseGroup[]
 
   @@index([workspaceId])
+}
+
+// A lightweight, optional grouping layer above lessons (Rise calls these
+// "sections"). Lessons with no sectionId render as a flat list — the default,
+// unchanged look for every course that hasn't opted into grouping.
+model Section {
+  id        String   @id @default(cuid())
+  courseId  String
+  title     String
+  position  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  course    Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  lessons   Lesson[]
+
+  @@index([courseId, position])
 }
 
 model CourseGroup {
@@ -533,14 +550,17 @@ model CourseGroup {
 model Lesson {
   id        String   @id @default(cuid())
   courseId  String
+  sectionId String?
   title     String
   position  String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   course    Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  section   Section? @relation(fields: [sectionId], references: [id], onDelete: SetNull)
   blocks    Block[]
 
   @@index([courseId, position])
+  @@index([sectionId])
 }
 
 model Block {

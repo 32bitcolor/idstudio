@@ -21,12 +21,17 @@ export default async function CoursePage({ params }: { params: Promise<{ courseI
       deliverable: {
         select: { id: true, name: true, projectId: true, project: { select: { name: true } } },
       },
+      sections: {
+        orderBy: { position: "asc" },
+        select: { id: true, title: true, position: true },
+      },
       lessons: {
         orderBy: { position: "asc" },
         select: {
           id: true,
           title: true,
           position: true,
+          sectionId: true,
           blocks: {
             orderBy: { position: "asc" },
             select: { id: true, blockType: true, content: true, position: true },
@@ -64,6 +69,7 @@ export default async function CoursePage({ params }: { params: Promise<{ courseI
             }
           : null,
       }}
+      initialSections={course.sections}
       initialLessons={course.lessons}
       projectObjectives={projectObjectives}
     />

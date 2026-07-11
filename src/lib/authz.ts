@@ -246,6 +246,15 @@ export async function getCourseForUser(courseId: string) {
   });
 }
 
+export async function getSectionForUser(sectionId: string) {
+  const ctx = await getAccessContext();
+  if (!ctx) return null;
+  return prisma.section.findFirst({
+    where: { id: sectionId, course: { workspace: ownedByUser(ctx.userId), ...courseAccessOR(ctx) } },
+    select: { id: true, courseId: true },
+  });
+}
+
 export async function getLessonForUser(lessonId: string) {
   const ctx = await getAccessContext();
   if (!ctx) return null;

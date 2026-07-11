@@ -17,7 +17,10 @@ body { margin:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,
   font-size:14px; cursor:pointer; }
 .nav a.on { background:#eef2ff; color:var(--fg); font-weight:600; }
 .nav a .n { color:#9aa4b0; margin-right:6px; }
-.main { flex:1; display:flex; justify-content:center; padding:40px 24px 80px; }
+.nav-section { margin:16px 8px 4px; font-size:11px; font-weight:700; text-transform:uppercase;
+  letter-spacing:.04em; color:#9aa4b0; }
+.nav-section:first-child { margin-top:0; }
+.main { flex:1; display:flex; flex-direction:column; align-items:center; padding:40px 24px 80px; }
 .lesson { max-width:680px; width:100%; }
 .lesson > h2.title { font-size:28px; font-weight:700; margin:0 0 24px; }
 .blk-heading { margin:28px 0 8px; font-weight:600; }
@@ -96,6 +99,35 @@ h1.blk-heading{font-size:26px} h2.blk-heading{font-size:22px} h3.blk-heading{fon
   font-size:14px; font-weight:600; cursor:pointer; }
 .btn.ghost { background:var(--surface); color:var(--fg); border:1px solid var(--border); }
 .btn:disabled { opacity:.4; cursor:default; }
+.lg { position:relative; margin:20px 0; }
+.lg img { display:block; width:100%; border-radius:10px; border:1px solid var(--border); }
+.lg-marker { position:absolute; transform:translate(-50%,-50%); }
+.lg-pin { width:26px; height:26px; border-radius:50%; border:2px solid #fff; background:var(--accent); color:#fff;
+  font-size:12px; font-weight:700; cursor:pointer; box-shadow:0 1px 4px rgba(0,0,0,.3); }
+.lg-marker.open .lg-pin { background:var(--fg); }
+.lg-pop { display:none; position:absolute; top:100%; left:50%; transform:translateX(-50%); margin-top:6px; width:220px;
+  background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:12px;
+  box-shadow:0 4px 16px rgba(0,0,0,.12); z-index:5; text-align:left; }
+.lg-marker.open .lg-pop { display:block; }
+.lg-pop-title { margin:0; font-weight:600; font-size:14px; }
+.lg-pop-body { margin:6px 0 0; font-size:13px; color:var(--muted); }
+.sort { border:1px solid var(--border); border-radius:12px; padding:20px; margin:24px 0; background:var(--surface); }
+.sort-hint { margin:0 0 12px; font-size:14px; color:var(--muted); }
+.sort-pool { display:flex; flex-wrap:wrap; gap:8px; min-height:44px; border:1px dashed var(--border); border-radius:10px;
+  padding:12px; margin-bottom:16px; }
+.sort-empty { font-size:13px; color:var(--muted); }
+.sort-item { border:1px solid var(--border); border-radius:999px; padding:6px 14px; font-size:14px; background:var(--surface);
+  cursor:pointer; color:var(--fg); }
+.sort-item.on { border-color:var(--accent); background:rgba(37,99,235,.1); }
+.sort-item.ok { border-color:var(--ok); background:rgba(22,163,74,.08); }
+.sort-item.bad { border-color:var(--bad); background:rgba(220,38,38,.08); }
+.sort-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+@media (max-width:520px){ .sort-grid{grid-template-columns:1fr} }
+.sort-cat { min-height:90px; border:1px solid var(--border); border-radius:10px; padding:12px; cursor:pointer; }
+.sort-cat-name { margin:0 0 8px; font-size:13px; font-weight:600; color:var(--muted); }
+.sort-cat-items { display:flex; flex-direction:column; gap:6px; }
+.sort-cat-items .sort-item { text-align:left; cursor:pointer; }
+.sort-actions { margin-top:16px; }
 .done { text-align:center; padding:60px 20px; }
 .done h2 { font-size:26px; } .done .score { font-size:44px; font-weight:700; margin:12px 0; }
 @media (max-width:720px){ .wrap{flex-direction:column} .nav{width:auto;height:auto;position:static;
@@ -108,15 +140,15 @@ export const PLAYER_JS = `
   var lessons = C.lessons || [];
   var viewed = {}, kc = {}, cur = 0, finished = false;
   var totalKC = 0;
-  lessons.forEach(function(l){ (l.blocks||[]).forEach(function(b){ if(b.type==="knowledge_check") totalKC++; }); });
+  lessons.forEach(function(l){ (l.blocks||[]).forEach(function(b){ if(b.type==="knowledge_check"||b.type==="sort") totalKC++; }); });
 
   function E(tag, cls, html){ var e=document.createElement(tag); if(cls)e.className=cls; if(html!=null)e.innerHTML=html; return e; }
   function esc(s){ return String(s==null?"":s).replace(/[&<>]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;"}[c];}); }
 
   function renderAccordion(b){
     var wrap=E("div","acc");
-    (b.items||[]).forEach(function(it){
-      var item=E("div","acc-item");
+    (b.items||[]).forEach(function(it, idx){
+      var item=E("div","acc-item"+(idx===0?" open":"")); // first section open by default, matching the editor preview
       var head=E("button","acc-head",esc(it.title)+"<span class='car'>\\u25BE</span>");
       var body=E("div","acc-body",esc(it.body));
       head.onclick=function(){ item.className = item.className.indexOf("open")>-1 ? "acc-item" : "acc-item open"; };
@@ -304,6 +336,114 @@ export const PLAYER_JS = `
     });
     return wrap;
   }
+  function renderLabeledGraphic(b){
+    var wrap=E("div","lg");
+    if(b.url){ var img=new Image(); img.src=b.url; img.alt=b.alt||""; wrap.appendChild(img); }
+    (b.markers||[]).forEach(function(m, idx){
+      var holder=E("div","lg-marker"); holder.style.left=m.x+"%"; holder.style.top=m.y+"%";
+      var pin=E("button","lg-pin", String(idx+1));
+      var pop=E("div","lg-pop");
+      pop.appendChild(E("p","lg-pop-title", esc(m.title||("Marker "+(idx+1)))));
+      if(m.body) pop.appendChild(E("p","lg-pop-body", esc(m.body)));
+      holder.appendChild(pin); holder.appendChild(pop);
+      pin.onclick=function(e){
+        e.stopPropagation();
+        var open = holder.className.indexOf("open")>-1;
+        Array.prototype.forEach.call(wrap.querySelectorAll(".lg-marker"), function(h){ h.className="lg-marker"; });
+        if(!open) holder.className="lg-marker open";
+      };
+      wrap.appendChild(holder);
+    });
+    return wrap;
+  }
+  function renderSort(b){
+    var wrap=E("div","sort");
+    var categories=b.categories||[], items=b.items||[];
+    var placement={}; items.forEach(function(it){ placement[it.id]=null; });
+    var selected=null, checked=false;
+
+    wrap.appendChild(E("p","sort-hint","Select an item, then select the category it belongs to."));
+    var pool=E("div","sort-pool");
+    var grid=E("div","sort-grid");
+    var actions=E("div","sort-actions");
+    wrap.appendChild(pool); wrap.appendChild(grid); wrap.appendChild(actions);
+
+    var catBoxes={};
+    categories.forEach(function(c){
+      var box=E("div","sort-cat");
+      box.appendChild(E("p","sort-cat-name", esc(c.name||"(category)")));
+      var list=E("div","sort-cat-items");
+      box.appendChild(list);
+      box.onclick=function(){ if(selected) place(selected, c.id); };
+      grid.appendChild(box);
+      catBoxes[c.id]={ box:box, list:list };
+    });
+
+    function itemEl(it){
+      var btn=E("button","sort-item", esc(it.text||"(item)"));
+      btn.onclick=function(e){
+        e.stopPropagation();
+        if(checked) return;
+        if(placement[it.id]){ place(it.id, null); return; }
+        selected = selected===it.id ? null : it.id;
+        draw();
+      };
+      return btn;
+    }
+    function place(itemId, catId){
+      if(checked) return;
+      placement[itemId]=catId; selected=null; draw();
+    }
+    function draw(){
+      pool.innerHTML="";
+      var unsorted = items.filter(function(it){ return !placement[it.id]; });
+      if(unsorted.length===0) pool.appendChild(E("span","sort-empty","All items sorted."));
+      unsorted.forEach(function(it){
+        var el=itemEl(it);
+        if(selected===it.id) el.className="sort-item on";
+        pool.appendChild(el);
+      });
+      categories.forEach(function(c){
+        var list=catBoxes[c.id].list;
+        list.innerHTML="";
+        items.filter(function(it){ return placement[it.id]===c.id; }).forEach(function(it){
+          var el=itemEl(it);
+          if(checked){ el.className = it.categoryId===c.id ? "sort-item ok" : "sort-item bad"; el.disabled=true; }
+          list.appendChild(el);
+        });
+      });
+      checkBtn.disabled = checked || items.some(function(it){ return !placement[it.id]; });
+    }
+
+    var checkBtn=E("button","btn","Check answers");
+    checkBtn.onclick=function(){
+      checked=true;
+      var correctCount = items.filter(function(it){ return placement[it.id]===it.categoryId; }).length;
+      kc[b.id] = correctCount===items.length && items.length>0;
+      draw();
+      var res=E("p","kc-result "+(kc[b.id]?"ok":"bad"), correctCount+" of "+items.length+" correct");
+      actions.appendChild(res);
+      if(b.feedback) actions.appendChild(E("div","kc-fb", esc(b.feedback)));
+      checkBtn.style.display="none";
+      var again=E("button","kc-again","Try again");
+      again.onclick=function(){
+        items.forEach(function(it){ placement[it.id]=null; });
+        checked=false; selected=null;
+        res.remove(); again.remove();
+        var fb=actions.querySelector(".kc-fb"); if(fb) fb.remove();
+        checkBtn.style.display=""; draw();
+      };
+      actions.appendChild(again);
+      if(window.LMS && LMS.recordInteraction){
+        var given=items.map(function(it){return it.id+":"+(placement[it.id]||"");}).join(",");
+        var expected=items.map(function(it){return it.id+":"+(it.categoryId||"");}).join(",");
+        LMS.recordInteraction(b.id, kc[b.id], given, expected, "Sorting activity", "other");
+      }
+    };
+    actions.appendChild(checkBtn);
+    draw();
+    return wrap;
+  }
   function renderBlock(b){
     switch(b.type){
       case "heading": return E("h"+(b.level||2),"blk-heading",esc(b.text));
@@ -318,6 +458,8 @@ export const PLAYER_JS = `
       case "tabs": return renderTabs(b);
       case "process": return renderProcess(b);
       case "flashcards": return renderFlashcards(b);
+      case "labeled_graphic": return renderLabeledGraphic(b);
+      case "sort": return renderSort(b);
       case "knowledge_check": return renderKC(b);
     }
     return E("div");
@@ -327,7 +469,12 @@ export const PLAYER_JS = `
 
   function buildNav(){
     nav.innerHTML=""; nav.appendChild(E("h1",null,esc(C.title)));
+    var lastSection; // undefined sentinel so a leading null (unsectioned) never matches
     lessons.forEach(function(l,i){
+      if(l.section !== lastSection){
+        if(l.section) nav.appendChild(E("div","nav-section",esc(l.section)));
+        lastSection = l.section;
+      }
       var a=E("a",i===cur?"on":null,"<span class='n'>"+(i+1)+"</span>"+esc(l.title));
       a.onclick=function(){ cur=i; draw(); };
       nav.appendChild(a);

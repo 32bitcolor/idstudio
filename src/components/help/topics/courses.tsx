@@ -18,11 +18,17 @@ export default function Courses() {
         per-question results back.
       </Callout>
 
-      <H2>Structure: course → lessons → blocks</H2>
+      <H2>Structure: course → sections → lessons → blocks</H2>
       <UL>
         <LI>A <strong>course</strong> is a stack of lessons with a title, description, and a Draft / Published status.</LI>
         <LI>Each <strong>lesson</strong> is a stack of <strong>blocks</strong> — the content the learner scrolls through.</LI>
         <LI>Use the <strong>Lessons</strong> rail on the left to add, rename, reorder, and switch between lessons.</LI>
+        <LI>
+          Optionally group lessons under <strong>sections</strong> — click <UI>Add section</UI> to
+          create one, then use a lesson&rsquo;s folder icon to assign it. Sections show as headings
+          in the rail and in the exported player&rsquo;s navigation; deleting a section unassigns
+          its lessons rather than deleting them.
+        </LI>
       </UL>
 
       <H2>Content blocks</H2>
@@ -43,6 +49,15 @@ export default function Courses() {
         <Def term="Tabs">Parallel sections the learner switches between.</Def>
         <Def term="Process">Numbered steps the learner pages through, one at a time.</Def>
         <Def term="Flashcards">Flip cards — a prompt on the front, an answer on the back.</Def>
+        <Def term="Labeled graphic">
+          Upload an image, then click it to drop numbered markers — each with a title and detail
+          text the learner opens by clicking the marker.
+        </Def>
+        <Def term="Sorting activity">
+          The learner sorts items into categories you define by selecting an item, then the
+          category it belongs to. <UI>Check answers</UI> scores it and reports the result to
+          your LMS just like a knowledge check.
+        </Def>
         <Def term="Knowledge check">
           A question in one of three forms: <UI>Multiple choice</UI> (one answer),{" "}
           <UI>Multi-select</UI> (several correct answers, submitted together), or{" "}
@@ -57,18 +72,19 @@ export default function Courses() {
 
       <H3>Uploading images</H3>
       <P>
-        In an <strong>Image</strong> block, choose <UI>Upload</UI> to pick a file from your device —
-        it&rsquo;s stored securely and bundled directly into the course when you export, so the
-        package is fully self-contained (no broken links once it leaves IDStudio). Choose{" "}
-        <UI>Use a URL</UI> instead to link an image hosted elsewhere.
+        In an <strong>Image</strong> or <strong>Labeled graphic</strong> block, choose{" "}
+        <UI>Upload</UI> to pick a file from your device — it&rsquo;s stored securely and bundled
+        directly into the course when you export, so the package is fully self-contained (no
+        broken links once it leaves IDStudio). Choose <UI>Use a URL</UI> instead to link an image
+        hosted elsewhere.
       </P>
 
       <H2>Preview like a learner</H2>
       <P>
         Toggle <UI>Preview</UI> (top-right) to see the current lesson exactly as a learner will —
-        themed, responsive, and interactive. Accordions expand, tabs switch, flashcards flip, and
-        knowledge checks accept an answer and reveal feedback. Toggle back to <UI>Edit</UI> to keep
-        building.
+        themed, responsive, and interactive. Accordions expand, tabs switch, flashcards flip,
+        labeled-graphic markers pop open, and knowledge checks and sorting activities accept
+        answers and reveal feedback. Toggle back to <UI>Edit</UI> to keep building.
       </P>
 
       <H3>Aligned to your objectives</H3>
@@ -93,8 +109,8 @@ export default function Courses() {
       <P>
         You&rsquo;ll get a <code>.zip</code> to upload to your LMS as-is. Each package is a standalone
         player: the learner scrolls the lessons, works through every interactive block, and their
-        completion, score, and per-question results (including multi-select and fill-in-the-blank
-        answers) report back to the LMS.
+        completion, score, and per-question results (including multi-select, fill-in-the-blank,
+        and sorting-activity answers) report back to the LMS.
       </P>
 
       <H2>A good first course</H2>
