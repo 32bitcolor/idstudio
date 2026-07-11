@@ -1,0 +1,7 @@
+# Local-only override (untracked): publish the Next app on the LAN so the Cloudflare
+# tunnel can use a plain-HTTP origin (http://10.0.1.36:3000) — no TLS-verify/host-header
+# gymnastics, and the public Host header reaches the app so Server Actions work.
+services:
+  app:
+    ports:
+      - "3000:3000"
