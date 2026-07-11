@@ -68,6 +68,15 @@ function whiteboardAccessOR(ctx: Ctx): Prisma.WhiteboardWhereInput {
     ],
   };
 }
+function courseAccessOR(ctx: Ctx): Prisma.CourseWhereInput {
+  return {
+    OR: [
+      { workspaceId: { in: ctx.adminWorkspaceIds } },
+      { groupAccess: { none: {} } },
+      { groupAccess: { some: { groupId: { in: ctx.groupIds } } } },
+    ],
+  };
+}
 
 // Visibility `where` fragments for list/dashboard queries (which query Prisma
 // directly instead of going through the getters). Spread alongside `workspaceId`.
@@ -86,6 +95,10 @@ export async function projectVisibilityWhere(): Promise<Prisma.ProjectWhereInput
 export async function whiteboardVisibilityWhere(): Promise<Prisma.WhiteboardWhereInput> {
   const ctx = await getAccessContext();
   return ctx ? whiteboardAccessOR(ctx) : { id: { in: [] } };
+}
+export async function courseVisibilityWhere(): Promise<Prisma.CourseWhereInput> {
+  const ctx = await getAccessContext();
+  return ctx ? courseAccessOR(ctx) : { id: { in: [] } };
 }
 
 // ── Boards ───────────────────────────────────────────────────────────────────
@@ -219,5 +232,34 @@ export async function getWhiteboardForUser(whiteboardId: string) {
   return prisma.whiteboard.findFirst({
     where: { id: whiteboardId, workspace: ownedByUser(ctx.userId), ...whiteboardAccessOR(ctx) },
     select: { id: true, workspaceId: true },
+  });
+}
+
+// ── Courses ──────────────────────────────────────────────────────────────────
+
+export async function getCourseForUser(courseId: string) {
+  const ctx = await getAccessContext();
+  if (!ctx) return null;
+  return prisma.course.findFirst({
+    where: { id: courseId, workspace: ownedByUser(ctx.userId), ...courseAccessOR(ctx) },
+    select: { id: true, workspaceId: true },
+  });
+}
+
+export async function getLessonForUser(lessonId: string) {
+  const ctx = await getAccessContext();
+  if (!ctx) return null;
+  return prisma.lesson.findFirst({
+    where: { id: lessonId, course: { workspace: ownedByUser(ctx.userId), ...courseAccessOR(ctx) } },
+    select: { id: true, courseId: true },
+  });
+}
+
+export async function getBlockForUser(blockId: string) {
+  const ctx = await getAccessContext();
+  if (!ctx) return null;
+  return prisma.block.findFirst({
+    where: { id: blockId, lesson: { course: { workspace: ownedByUser(ctx.userId), ...courseAccessOR(ctx) } } },
+    select: { id: true, lessonId: true, lesson: { select: { courseId: true } } },
   });
 }
