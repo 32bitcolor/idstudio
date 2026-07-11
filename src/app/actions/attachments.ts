@@ -27,10 +27,6 @@ async function cardWorkspace(cardId: string) {
   return board ? { boardId: board.id, workspaceId: board.workspaceId } : null;
 }
 
-const memberFilter = (userId: string) => ({
-  card: { column: { board: { workspace: { members: { some: { userId } } } } } },
-});
-
 /** Step 1: validate + return a presigned PUT URL the browser uploads to directly. */
 export async function requestUpload(
   cardId: string,
@@ -86,22 +82,24 @@ export async function finalizeUpload(
 export async function getDownloadUrl(attachmentId: string) {
   const user = await getCurrentUser();
   if (!user) return { error: "Unauthorized." };
-  const att = await prisma.attachment.findFirst({
-    where: { id: attachmentId, ...memberFilter(user.id) },
-    select: { storageKey: true, fileName: true },
+  const att = await prisma.attachment.findUnique({
+    where: { id: attachmentId },
+    select: { storageKey: true, fileName: true, cardId: true },
   });
-  if (!att) return { error: "Not found." };
+  // Enforce the same group-based access as the rest of the board (getCardForUser),
+  // not just workspace membership — otherwise restricted attachments leak.
+  if (!att || !(await getCardForUser(att.cardId))) return { error: "Not found." };
   return { url: await presignDownload(att.storageKey, att.fileName) };
 }
 
 export async function deleteAttachment(attachmentId: string) {
   const user = await getCurrentUser();
   if (!user) return { error: "Unauthorized." };
-  const att = await prisma.attachment.findFirst({
-    where: { id: attachmentId, ...memberFilter(user.id) },
-    select: { id: true, storageKey: true, card: { select: { column: { select: { boardId: true } } } } },
+  const att = await prisma.attachment.findUnique({
+    where: { id: attachmentId },
+    select: { id: true, storageKey: true, cardId: true, card: { select: { column: { select: { boardId: true } } } } },
   });
-  if (!att) return { error: "Not found." };
+  if (!att || !(await getCardForUser(att.cardId))) return { error: "Not found." };
   await deleteObject(att.storageKey);
   await prisma.attachment.delete({ where: { id: attachmentId } });
   revalidatePath(boardPath(att.card.column.boardId));

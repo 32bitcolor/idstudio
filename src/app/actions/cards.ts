@@ -151,11 +151,12 @@ export async function createLabel(boardId: string, name: string, color: string) 
 export async function deleteLabel(labelId: string) {
   const user = await getCurrentUser();
   if (!user) return { error: "Unauthorized." };
-  const label = await prisma.label.findFirst({
-    where: { id: labelId, board: { workspace: { members: { some: { userId: user.id } } } } },
+  const label = await prisma.label.findUnique({
+    where: { id: labelId },
     select: { id: true, boardId: true },
   });
-  if (!label) return { error: "Label not found." };
+  // Group-aware board access, matching createLabel — not just workspace membership.
+  if (!label || !(await getBoardForUser(label.boardId))) return { error: "Label not found." };
   await prisma.label.delete({ where: { id: labelId } });
   revalidatePath(boardPath(label.boardId));
 }
@@ -215,10 +216,6 @@ export async function toggleCardAssignee(cardId: string, userId: string, on: boo
 
 // ── Checklist ────────────────────────────────────────────────────────────────
 
-const memberFilter = (userId: string) => ({
-  card: { column: { board: { workspace: { members: { some: { userId } } } } } },
-});
-
 export async function addChecklistItem(cardId: string, text: string) {
   const card = await getCardForUser(cardId);
   if (!card) return { error: "Card not found." };
@@ -241,11 +238,11 @@ export async function addChecklistItem(cardId: string, text: string) {
 export async function toggleChecklistItem(itemId: string, done: boolean) {
   const user = await getCurrentUser();
   if (!user) return { error: "Unauthorized." };
-  const item = await prisma.checklistItem.findFirst({
-    where: { id: itemId, ...memberFilter(user.id) },
-    select: { id: true, card: { select: { column: { select: { boardId: true } } } } },
+  const item = await prisma.checklistItem.findUnique({
+    where: { id: itemId },
+    select: { id: true, cardId: true, card: { select: { column: { select: { boardId: true } } } } },
   });
-  if (!item) return { error: "Item not found." };
+  if (!item || !(await getCardForUser(item.cardId))) return { error: "Item not found." };
   await prisma.checklistItem.update({ where: { id: itemId }, data: { done } });
   revalidatePath(boardPath(item.card.column.boardId));
 }
@@ -253,11 +250,11 @@ export async function toggleChecklistItem(itemId: string, done: boolean) {
 export async function deleteChecklistItem(itemId: string) {
   const user = await getCurrentUser();
   if (!user) return { error: "Unauthorized." };
-  const item = await prisma.checklistItem.findFirst({
-    where: { id: itemId, ...memberFilter(user.id) },
-    select: { id: true, card: { select: { column: { select: { boardId: true } } } } },
+  const item = await prisma.checklistItem.findUnique({
+    where: { id: itemId },
+    select: { id: true, cardId: true, card: { select: { column: { select: { boardId: true } } } } },
   });
-  if (!item) return { error: "Item not found." };
+  if (!item || !(await getCardForUser(item.cardId))) return { error: "Item not found." };
   await prisma.checklistItem.delete({ where: { id: itemId } });
   revalidatePath(boardPath(item.card.column.boardId));
 }
@@ -288,15 +285,16 @@ export async function addComment(cardId: string, body: string) {
 export async function deleteComment(commentId: string) {
   const user = await getCurrentUser();
   if (!user) return { error: "Unauthorized." };
-  const comment = await prisma.comment.findFirst({
-    where: { id: commentId, card: { column: { board: { workspace: { members: { some: { userId: user.id } } } } } } },
+  const comment = await prisma.comment.findUnique({
+    where: { id: commentId },
     select: {
       id: true,
       authorId: true,
+      cardId: true,
       card: { select: { column: { select: { board: { select: { id: true, workspaceId: true } } } } } },
     },
   });
-  if (!comment) return { error: "Comment not found." };
+  if (!comment || !(await getCardForUser(comment.cardId))) return { error: "Comment not found." };
 
   const { id: boardId, workspaceId } = comment.card.column.board;
   let allowed = comment.authorId === user.id;
