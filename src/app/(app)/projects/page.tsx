@@ -60,6 +60,16 @@ export default async function ProjectsPage() {
           <Plus className="size-4" /> Create project
         </Button>
       </form>
+      <p className="mt-2 text-xs text-muted-foreground">
+        Not sure which to pick?{" "}
+        <Link
+          href="/help/addie-sam"
+          className="font-medium text-accent underline underline-offset-2 hover:no-underline"
+        >
+          Compare ADDIE &amp; SAM
+        </Link>{" "}
+        — IDStudio seeds the matching phases for you.
+      </p>
 
       {projects.length === 0 ? (
         <EmptyState

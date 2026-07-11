@@ -75,6 +75,7 @@ export const MODULES: ModuleDef[] = [
 export const NAV_MODULES = MODULES.filter((m) => m.key !== "dashboard");
 
 /** First path segment → display name, for breadcrumbs. */
-export const SECTION_LABELS: Record<string, string> = Object.fromEntries(
-  MODULES.filter((m) => m.href).map((m) => [m.href!.replace(/^\//, ""), m.name])
-);
+export const SECTION_LABELS: Record<string, string> = {
+  ...Object.fromEntries(MODULES.filter((m) => m.href).map((m) => [m.href!.replace(/^\//, ""), m.name])),
+  help: "Help",
+};

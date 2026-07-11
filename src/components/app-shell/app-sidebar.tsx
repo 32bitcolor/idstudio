@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ChevronsUpDown, LogOut, Settings, Users } from "lucide-react";
+import { ChevronsUpDown, LifeBuoy, LogOut, Settings, Users } from "lucide-react";
 
 import { logout } from "@/app/actions/auth";
 import { NAV_MODULES } from "@/lib/modules";
@@ -101,6 +101,23 @@ export function AppSidebar({
                 </SidebarMenuItem>
               );
             })}
+          </SidebarMenu>
+        </SidebarGroup>
+
+        <SidebarGroup className="mt-auto">
+          <SidebarMenu>
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                asChild
+                isActive={isActive(pathname, "/help")}
+                tooltip="Help & guides"
+              >
+                <Link href="/help">
+                  <LifeBuoy />
+                  <span>Help</span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
           </SidebarMenu>
         </SidebarGroup>
       </SidebarContent>
