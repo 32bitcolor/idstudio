@@ -1,3 +1,4 @@
+import "dotenv/config";
 import { Worker, Queue, type ConnectionOptions } from "bullmq";
 
 // Background job runner. Phase 5 registers real LearnUpon sync jobs here; for

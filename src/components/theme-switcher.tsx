@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
 import { Palette } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -30,16 +30,32 @@ const THEMES = [
 ] as const;
 
 const STORAGE_KEY = "idstudio-theme";
+const THEME_EVENT = "idstudio-theme-change";
+
+function subscribe(callback: () => void) {
+  // "storage" syncs across tabs; the custom event syncs within this tab.
+  window.addEventListener("storage", callback);
+  window.addEventListener(THEME_EVENT, callback);
+  return () => {
+    window.removeEventListener("storage", callback);
+    window.removeEventListener(THEME_EVENT, callback);
+  };
+}
+
+function getSnapshot() {
+  try {
+    return localStorage.getItem(STORAGE_KEY) ?? "system";
+  } catch {
+    return "system";
+  }
+}
 
 export function ThemeSwitcher() {
-  const [theme, setTheme] = useState<string>("system");
-
-  useEffect(() => {
-    setTheme(localStorage.getItem(STORAGE_KEY) ?? "system");
-  }, []);
+  // Read the persisted theme without a setState-in-effect; the server snapshot
+  // ("system") matches the pre-paint script's default until hydration.
+  const theme = useSyncExternalStore(subscribe, getSnapshot, () => "system");
 
   function apply(id: string) {
-    setTheme(id);
     try {
       localStorage.setItem(STORAGE_KEY, id);
     } catch {
@@ -47,6 +63,7 @@ export function ThemeSwitcher() {
     }
     if (id === "system") document.documentElement.removeAttribute("data-theme");
     else document.documentElement.setAttribute("data-theme", id);
+    window.dispatchEvent(new Event(THEME_EVENT));
   }
 
   const current = THEMES.find((t) => t.id === theme) ?? THEMES[0];
