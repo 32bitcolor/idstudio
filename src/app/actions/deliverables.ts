@@ -3,7 +3,13 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
-import { getProjectForUser, getDeliverableForUser, getMilestoneForUser } from "@/lib/authz";
+import {
+  getProjectForUser,
+  getDeliverableForUser,
+  getMilestoneForUser,
+  getCardForUser,
+  boardVisibilityWhere,
+} from "@/lib/authz";
 import { positionBetween } from "@/lib/ordering";
 import { DELIVERABLE_TYPES, DELIVERABLE_STATUSES } from "@/lib/methodology";
 
@@ -85,8 +91,10 @@ export async function linkDeliverableCard(id: string, cardId: string | null) {
   if (!workspaceId) return { error: "Project not found." };
 
   if (cardId) {
-    const card = await prisma.card.findFirst({
-      where: { id: cardId, column: { board: { workspaceId } } },
+    // Group-aware access to the target card, not just workspace membership.
+    if (!(await getCardForUser(cardId))) return { error: "Card not found." };
+    const card = await prisma.card.findUnique({
+      where: { id: cardId },
       select: { id: true, title: true, column: { select: { board: { select: { id: true, name: true } } } } },
     });
     if (!card) return { error: "Card not found." };
@@ -114,7 +122,8 @@ export async function listLinkableCards(projectId: string) {
   const workspaceId = await projectWorkspace(projectId);
   if (!workspaceId) return { cards: [] };
   const cards = await prisma.card.findMany({
-    where: { column: { board: { workspaceId } } },
+    // Only cards on boards the user can actually see (respects group access).
+    where: { column: { board: { workspaceId, ...(await boardVisibilityWhere()) } } },
     orderBy: [{ column: { board: { name: "asc" } } }, { title: "asc" }],
     select: { id: true, title: true, column: { select: { board: { select: { name: true } } } } },
     take: 500,

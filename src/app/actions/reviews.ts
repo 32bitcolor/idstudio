@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
+import { Prisma } from "@/generated/prisma/client";
 import { getCurrentUser } from "@/lib/dal";
 import { getDeliverableForUser, getReviewForUser } from "@/lib/authz";
 import { REVIEW_STATUSES } from "@/lib/methodology";
@@ -35,23 +36,35 @@ export async function addReviewCycle(deliverableId: string, reviewerId: string, 
   const dueDate = dueIso ? new Date(dueIso) : null;
   if (dueIso && Number.isNaN(dueDate!.getTime())) return { error: "Invalid date." };
 
-  const last = await prisma.reviewCycle.findFirst({
-    where: { deliverableId },
-    orderBy: { round: "desc" },
-    select: { round: true },
-  });
-  const review = await prisma.reviewCycle.create({
-    data: { deliverableId, reviewerId, requestedById: me.id, round: (last?.round ?? 0) + 1, dueDate },
-    select: {
-      id: true,
-      round: true,
-      reviewerId: true,
-      status: true,
-      dueDate: true,
-      feedback: true,
-      reviewer: { select: { id: true, name: true, email: true } },
-    },
-  });
+  // Compute the next round number and insert atomically under Serializable
+  // isolation, so two concurrent requests can't mint the same round.
+  let review;
+  try {
+    review = await prisma.$transaction(
+      async (tx) => {
+        const last = await tx.reviewCycle.findFirst({
+          where: { deliverableId },
+          orderBy: { round: "desc" },
+          select: { round: true },
+        });
+        return tx.reviewCycle.create({
+          data: { deliverableId, reviewerId, requestedById: me.id, round: (last?.round ?? 0) + 1, dueDate },
+          select: {
+            id: true,
+            round: true,
+            reviewerId: true,
+            status: true,
+            dueDate: true,
+            feedback: true,
+            reviewer: { select: { id: true, name: true, email: true } },
+          },
+        });
+      },
+      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+    );
+  } catch {
+    return { error: "Couldn't start the review — please try again." };
+  }
   revalidateReview(d.projectId);
   return { review: { ...review, dueDate: review.dueDate ? review.dueDate.toISOString() : null } };
 }
