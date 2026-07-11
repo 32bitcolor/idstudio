@@ -27,6 +27,9 @@ refresh_git() {
   set_field latest_commit   "$(git rev-parse --short "origin/$BRANCH" 2>/dev/null || echo '')"
   set_field latest_message  "$(git log -1 --format=%s "origin/$BRANCH" 2>/dev/null || echo '')"
   set_field last_checked    "$(now)"
+  # list of pending commits (newest first): hash <US> subject <US> isoDate <US> author, one per line
+  git log --format="%h%x1f%s%x1f%cI%x1f%an" "HEAD..origin/$BRANCH" > "$CTRL/pending" 2>/dev/null || : > "$CTRL/pending"
+  chmod 666 "$CTRL/pending" 2>/dev/null || true
 }
 
 run_deploy() { # $1 = human label for last_result on success
@@ -34,6 +37,9 @@ run_deploy() { # $1 = human label for last_result on success
   : > "$CTRL/log"
   if docker compose build >>"$CTRL/log" 2>&1 && docker compose up -d >>"$CTRL/log" 2>&1; then
     refresh_git; set_field state idle;  set_field last_result "$1 $(git rev-parse --short HEAD)"
+    # Exit so systemd (Restart=always) relaunches us running the freshly-pulled
+    # version of THIS script — keeps the agent itself up to date after an update.
+    exit 0
   else
     refresh_git; set_field state error; set_field last_result "Failed — see update-control/log"
   fi

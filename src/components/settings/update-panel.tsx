@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { RefreshCw, ArrowUpCircle, RotateCcw, GitCommitHorizontal, CircleAlert } from "lucide-react";
+import { RefreshCw, ArrowUpCircle, RotateCcw, GitCommitHorizontal, CircleAlert, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getUpdateStatus, checkForUpdates, applyUpdate, rollbackUpdate } from "@/app/actions/updates";
 import type { UpdateStatus } from "@/lib/updater";
@@ -10,6 +10,7 @@ export function UpdatePanel({ initial }: { initial: UpdateStatus | null }) {
   const [status, setStatus] = useState<UpdateStatus | null>(initial);
   const [reconnecting, setReconnecting] = useState(false);
   const [pending, setPending] = useState<null | "check" | "update" | "rollback">(null);
+  const [expanded, setExpanded] = useState(false);
   const poll = useRef<ReturnType<typeof setInterval> | null>(null);
 
   async function refresh() {
@@ -108,18 +109,49 @@ export function UpdatePanel({ initial }: { initial: UpdateStatus | null }) {
         <section className="rounded-xl border p-5" style={{ borderColor: "color-mix(in srgb, var(--color-info) 35%, transparent)", backgroundColor: "color-mix(in srgb, var(--color-info) 7%, transparent)" }}>
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
-              <h2 className="font-medium" style={{ color: "var(--color-info)" }}>
-                {s!.behind} update{s!.behind === 1 ? "" : "s"} available
-              </h2>
-              <div className="mt-2 flex items-center gap-2 text-sm">
-                <code className="rounded bg-muted px-1.5 py-0.5 text-xs">{s!.latestCommit}</code>
-                <span className="truncate text-muted-foreground">{s!.latestMessage}</span>
-              </div>
+              {(s?.pending?.length ?? 0) > 0 ? (
+                <button
+                  onClick={() => setExpanded((v) => !v)}
+                  className="flex items-center gap-1.5 font-medium hover:underline"
+                  style={{ color: "var(--color-info)" }}
+                  aria-expanded={expanded}
+                >
+                  {s!.behind} update{s!.behind === 1 ? "" : "s"} available
+                  <ChevronDown className={"size-4 transition-transform " + (expanded ? "rotate-180" : "")} />
+                </button>
+              ) : (
+                <h2 className="font-medium" style={{ color: "var(--color-info)" }}>
+                  {s!.behind} update{s!.behind === 1 ? "" : "s"} available
+                </h2>
+              )}
+              {!expanded && (
+                <div className="mt-2 flex items-center gap-2 text-sm">
+                  <code className="rounded bg-muted px-1.5 py-0.5 text-xs">{s!.latestCommit}</code>
+                  <span className="truncate text-muted-foreground">{s!.latestMessage}</span>
+                </div>
+              )}
             </div>
             <Button onClick={onUpdate} disabled={busy}>
               <ArrowUpCircle className="size-4" /> Update now
             </Button>
           </div>
+
+          {expanded && (s?.pending?.length ?? 0) > 0 && (
+            <ul className="mt-4 flex flex-col divide-y divide-border rounded-lg border border-border bg-surface">
+              {s!.pending.map((c) => (
+                <li key={c.commit} className="flex items-start gap-3 p-3">
+                  <code className="mt-0.5 shrink-0 rounded bg-muted px-1.5 py-0.5 text-xs">{c.commit}</code>
+                  <div className="min-w-0">
+                    <div className="text-sm font-medium">{c.subject}</div>
+                    <div className="mt-0.5 text-xs text-muted-foreground">
+                      {c.author}
+                      {c.date ? ` · ${new Date(c.date).toLocaleString()}` : ""}
+                    </div>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
         </section>
       )}
 

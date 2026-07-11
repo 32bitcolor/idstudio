@@ -10,6 +10,13 @@ import path from "path";
 
 const DIR = process.env.UPDATE_CONTROL_DIR || "";
 
+export type PendingCommit = {
+  commit: string;
+  subject: string;
+  date: string;
+  author: string;
+};
+
 export type UpdateStatus = {
   configured: boolean;
   currentCommit: string;
@@ -22,7 +29,21 @@ export type UpdateStatus = {
   lastResult: string;
   lastChecked: string;
   previousCommit: string;
+  pending: PendingCommit[];
 };
+
+async function readPending(): Promise<PendingCommit[]> {
+  try {
+    const raw = (await fs.readFile(path.join(DIR, "pending"), "utf8")).trim();
+    if (!raw) return [];
+    return raw.split("\n").map((line) => {
+      const [commit, subject, date, author] = line.split(String.fromCharCode(31));
+      return { commit: commit ?? "", subject: subject ?? "", date: date ?? "", author: author ?? "" };
+    });
+  } catch {
+    return [];
+  }
+}
 
 async function field(name: string): Promise<string> {
   try {
@@ -69,6 +90,7 @@ export async function readUpdateStatus(): Promise<UpdateStatus | null> {
     lastResult: lr,
     lastChecked: ch,
     previousCommit: pv,
+    pending: await readPending(),
   };
 }
 
