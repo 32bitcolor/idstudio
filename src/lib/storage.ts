@@ -60,6 +60,11 @@ export function buildObjectKey(workspaceId: string, cardId: string, fileName: st
   return `workspace/${workspaceId}/card/${cardId}/${crypto.randomUUID()}-${safe}`;
 }
 
+export function buildCourseImageKey(workspaceId: string, courseId: string, fileName: string): string {
+  const safe = fileName.replace(/[^a-zA-Z0-9._-]/g, "_").slice(0, 120) || "file";
+  return `workspace/${workspaceId}/course/${courseId}/${crypto.randomUUID()}-${safe}`;
+}
+
 export async function presignUpload(key: string, contentType: string): Promise<string> {
   await ensureBucket();
   return getSignedUrl(
@@ -79,6 +84,11 @@ export async function presignDownload(key: string, fileName: string): Promise<st
     }),
     { expiresIn: 300 },
   );
+}
+
+/** Inline (no forced download) presigned view URL — used for image blocks. */
+export async function presignView(key: string, expiresIn = 3600): Promise<string> {
+  return getSignedUrl(presignClient, new GetObjectCommand({ Bucket: BUCKET, Key: key }), { expiresIn });
 }
 
 export async function deleteObject(key: string): Promise<void> {

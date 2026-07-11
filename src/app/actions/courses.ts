@@ -12,7 +12,14 @@ import {
   getDeliverableForUser,
 } from "@/lib/authz";
 import { positionBetween, positionForIndex } from "@/lib/ordering";
-import { BLOCK_TYPES, defaultBlockContent, type BlockType } from "@/lib/course";
+import { BLOCK_TYPES, defaultBlockContent, parseBlockContent, type BlockType, type ImageContent } from "@/lib/course";
+import {
+  buildCourseImageKey,
+  presignUpload,
+  presignView,
+  deleteObject,
+  MAX_UPLOAD_BYTES,
+} from "@/lib/storage";
 
 const Title = z.string().trim().min(1, "Required").max(200);
 const LessonTitle = z.string().trim().min(1, "Required").max(200);
@@ -97,6 +104,18 @@ export async function setCourseStatus(courseId: string, status: string) {
 export async function deleteCourse(courseId: string) {
   const c = await getCourseForUser(courseId);
   if (!c) return { error: "Course not found." };
+
+  // Best-effort: free any uploaded image objects before dropping the rows
+  // (cascade delete handles the DB side; storage needs an explicit cleanup).
+  const blocks = await prisma.block.findMany({
+    where: { blockType: "image", lesson: { courseId } },
+    select: { content: true },
+  });
+  for (const b of blocks) {
+    const { key } = parseBlockContent("image", b.content) as ImageContent;
+    if (key) await deleteObject(key);
+  }
+
   await prisma.course.delete({ where: { id: courseId } });
   revalidatePath("/courses");
   redirect("/courses");
@@ -213,6 +232,45 @@ export async function moveBlock(blockId: string, targetIndex: number) {
 export async function deleteBlock(blockId: string) {
   const b = await getBlockForUser(blockId);
   if (!b) return { error: "Block not found." };
+  // Best-effort: free the image object if this was an uploaded image block.
+  const full = await prisma.block.findUnique({ where: { id: blockId }, select: { blockType: true, content: true } });
+  if (full?.blockType === "image") {
+    const { key } = parseBlockContent("image", full.content) as ImageContent;
+    if (key) await deleteObject(key);
+  }
   await prisma.block.delete({ where: { id: blockId } });
   revalidatePath(coursePath(b.lesson.courseId));
+}
+
+// ── Image uploads ────────────────────────────────────────────────────────────
+// Uploaded images live in object storage (not the DB) — the key is stored
+// inline in the image block's JSON content. Bundled into the zip on export.
+
+export async function requestCourseImageUpload(
+  courseId: string,
+  fileName: string,
+  mimeType: string,
+  sizeBytes: number,
+): Promise<{ error: string } | { uploadUrl: string; key: string }> {
+  const c = await getCourseForUser(courseId);
+  if (!c) return { error: "Course not found." };
+  if (!Number.isFinite(sizeBytes) || sizeBytes <= 0) return { error: "Invalid file." };
+  if (sizeBytes > MAX_UPLOAD_BYTES) return { error: "File exceeds the 25 MB limit." };
+  if (!mimeType.startsWith("image/")) return { error: "Only image files are supported." };
+  const name = z.string().trim().min(1).max(255).safeParse(fileName);
+  if (!name.success) return { error: "Invalid file name." };
+
+  const key = buildCourseImageKey(c.workspaceId, courseId, name.data);
+  const uploadUrl = await presignUpload(key, mimeType);
+  return { uploadUrl, key };
+}
+
+/** Fresh inline-view URL for an uploaded image (objects aren't public). */
+export async function getCourseImageViewUrl(courseId: string, key: string): Promise<{ error: string } | { url: string }> {
+  const c = await getCourseForUser(courseId);
+  if (!c) return { error: "Course not found." };
+  if (!key.startsWith(`workspace/${c.workspaceId}/course/${courseId}/`)) {
+    return { error: "Invalid image key." };
+  }
+  return { url: await presignView(key) };
 }
