@@ -40,8 +40,11 @@ run_deploy() { # $1 = human label for last_result on success
 }
 
 do_update() {
-  if [ -n "$(git status --porcelain)" ]; then
-    set_field state error; set_field last_result "Working tree not clean on the server — aborted"; return
+  # Only *tracked* modifications should block an update — untracked files (e.g. the
+  # runtime update-control/ dir, or a local docker-compose.override.yml) don't
+  # conflict with a fast-forward pull.
+  if [ -n "$(git status --porcelain --untracked-files=no)" ]; then
+    set_field state error; set_field last_result "Server has local changes to tracked files — aborted"; return
   fi
   set_field previous_commit "$(git rev-parse --short HEAD)"
   git fetch origin --quiet 2>/dev/null || true
