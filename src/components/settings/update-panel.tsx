@@ -9,25 +9,73 @@ import type { UpdateStatus } from "@/lib/updater";
 export function UpdatePanel({ initial }: { initial: UpdateStatus | null }) {
   const [status, setStatus] = useState<UpdateStatus | null>(initial);
   const [reconnecting, setReconnecting] = useState(false);
+  const [reloading, setReloading] = useState(false);
   const [pending, setPending] = useState<null | "check" | "update" | "rollback">(null);
   const [expanded, setExpanded] = useState(false);
-  const poll = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // The commit we were on when the current update/rollback cycle started — used
+  // with sawDisconnect below to tell "still building, old process still serving"
+  // apart from "actually restarted," so we only reload once that's proven.
+  const baselineCommit = useRef<string | null>(null);
+  const sawDisconnect = useRef(false);
+  const wasReconnecting = useRef(false);
+
+  function beginTracking(commit: string | null | undefined) {
+    baselineCommit.current = commit ?? null;
+    sawDisconnect.current = false;
+  }
 
   async function refresh() {
     try {
       const s = await getUpdateStatus();
-      setStatus(s);
+      if (wasReconnecting.current) sawDisconnect.current = true;
+      wasReconnecting.current = false;
       setReconnecting(false);
+      setStatus(s);
+
+      const midCycle = baselineCommit.current !== null;
+      const settled = s?.state !== "updating" && s?.state !== "checking";
+      // Either signal proves the restart actually happened: we saw the old process
+      // go away, or the served commit itself moved (covers a rebuild fast/cached
+      // enough that no poll ever landed during the brief outage).
+      const proofOfRestart = sawDisconnect.current || (!!s?.currentCommit && s.currentCommit !== baselineCommit.current);
+      if (midCycle && proofOfRestart && settled) {
+        if (s?.state === "error") {
+          // Build/restart failed but the old process is still serving — no reload needed.
+          baselineCommit.current = null;
+          sawDisconnect.current = false;
+        } else {
+          // Reconnected to a freshly restarted, idle app — safe to pull the new bundle.
+          setReloading(true);
+          setTimeout(() => window.location.reload(), 700);
+        }
+      }
     } catch {
       // app may be mid-restart during an update — keep trying
+      wasReconnecting.current = true;
       setReconnecting(true);
     }
   }
 
+  // Keep the interval's callback fresh without tearing it down every render.
+  const refreshRef = useRef(refresh);
   useEffect(() => {
-    poll.current = setInterval(refresh, 4000);
-    return () => { if (poll.current) clearInterval(poll.current); };
-  }, []);
+    refreshRef.current = refresh;
+  });
+
+  useEffect(() => {
+    // If we mount mid-update (e.g. the user manually refreshed while it was
+    // running), pick tracking back up so the automatic reload still fires.
+    if (initial?.state === "updating" || initial?.state === "checking") {
+      beginTracking(initial.currentCommit);
+    }
+  }, [initial]);
+
+  useEffect(() => {
+    const busyNow = status?.state === "updating" || status?.state === "checking" || reconnecting || pending !== null;
+    const id = setInterval(() => refreshRef.current(), busyNow ? 1500 : 5000);
+    return () => clearInterval(id);
+  }, [status?.state, reconnecting, pending]);
 
   if (!initial && !status) {
     return (
@@ -50,28 +98,40 @@ export function UpdatePanel({ initial }: { initial: UpdateStatus | null }) {
   }
 
   const s = status;
-  const busy = s?.state === "checking" || s?.state === "updating" || pending !== null;
+  const busy = s?.state === "checking" || s?.state === "updating" || pending !== null || reloading;
   const updateAvailable = (s?.behind ?? 0) > 0;
   const canRollback = !!s?.previousCommit && s.previousCommit !== s.currentCommit;
 
   async function onCheck() {
     setPending("check");
-    await checkForUpdates();
-    setTimeout(() => setPending(null), 1500);
+    try {
+      await checkForUpdates();
+    } finally {
+      refreshRef.current();
+      setTimeout(() => setPending(null), 1500);
+    }
   }
   async function onUpdate() {
     if (!confirm("Update IDStudio now? The app will rebuild and briefly restart. In-progress work should be saved first.")) return;
     setPending("update");
-    await applyUpdate();
-    setReconnecting(true);
-    setTimeout(() => setPending(null), 3000);
+    beginTracking(s?.currentCommit);
+    try {
+      await applyUpdate();
+    } finally {
+      refreshRef.current();
+      setTimeout(() => setPending(null), 3000);
+    }
   }
   async function onRollback() {
     if (!confirm(`Roll back to ${s?.previousCommit}? The app will rebuild and restart.`)) return;
     setPending("rollback");
-    await rollbackUpdate();
-    setReconnecting(true);
-    setTimeout(() => setPending(null), 3000);
+    beginTracking(s?.currentCommit);
+    try {
+      await rollbackUpdate();
+    } finally {
+      refreshRef.current();
+      setTimeout(() => setPending(null), 3000);
+    }
   }
 
   return (
@@ -155,14 +215,19 @@ export function UpdatePanel({ initial }: { initial: UpdateStatus | null }) {
         </section>
       )}
 
-      {(s?.state === "updating" || reconnecting) && (
-        <p className="text-sm text-muted-foreground">
-          {reconnecting
-            ? "Updating — the app is rebuilding and will restart. This page will reconnect automatically…"
-            : "Working…"}
+      {(reloading || reconnecting || s?.state === "updating" || (pending === "update" || pending === "rollback") || s?.state === "checking" || pending === "check") && (
+        <p className="flex items-center gap-2 text-sm text-muted-foreground" aria-live="polite">
+          <RefreshCw className="size-3.5 shrink-0 animate-spin" />
+          {reloading
+            ? "Update complete — reloading this page…"
+            : reconnecting
+              ? "Updating — the app is rebuilding and will restart. This page will reconnect automatically…"
+              : s?.state === "updating" || pending === "update" || pending === "rollback"
+                ? "Update requested — waiting for the rebuild to start…"
+                : "Checking for updates…"}
         </p>
       )}
-      {s?.state === "error" && (
+      {!reconnecting && !reloading && s?.state === "error" && (
         <p className="text-sm text-destructive">{s.lastResult || "The last update failed."}</p>
       )}
 
