@@ -264,6 +264,96 @@
   --accent-foreground: #241b35;
 }
 
+/* Rosé Pine — muted twilight, iris accent */
+[data-theme="rose-pine"] {
+  color-scheme: dark;
+  --background: #191724;
+  --foreground: #e0def4;
+  --surface: #1f1d2e;
+  --surface-muted: #1a1826;
+  --muted: #26233a;
+  --border: #403d52;
+  --border-strong: #524f67;
+  --hover: #26233a;
+  --accent: #c4a7e7;
+  --accent-foreground: #191724;
+}
+
+/* One Dark — Atom classic, blue accent */
+[data-theme="one-dark"] {
+  color-scheme: dark;
+  --background: #282c34;
+  --foreground: #c8ccd4;
+  --surface: #2f343e;
+  --surface-muted: #21252b;
+  --muted: #3a3f4b;
+  --border: #3e4451;
+  --border-strong: #4b5263;
+  --hover: #2c313a;
+  --accent: #61afef;
+  --accent-foreground: #282c34;
+}
+
+/* Everforest — forest green, warm foreground */
+[data-theme="everforest"] {
+  color-scheme: dark;
+  --background: #2d353b;
+  --foreground: #d3c6aa;
+  --surface: #343f44;
+  --surface-muted: #272e33;
+  --muted: #3d484d;
+  --border: #4f585e;
+  --border-strong: #5c6a72;
+  --hover: #3d484d;
+  --accent: #a7c080;
+  --accent-foreground: #2d353b;
+}
+
+/* Ayu Mirage — slate blue, amber accent */
+[data-theme="ayu-mirage"] {
+  color-scheme: dark;
+  --background: #1f2430;
+  --foreground: #cccac2;
+  --surface: #232834;
+  --surface-muted: #1a1f29;
+  --muted: #2d3441;
+  --border: #34415e;
+  --border-strong: #405066;
+  --hover: #2d3441;
+  --accent: #ffcc66;
+  --accent-foreground: #1f2430;
+}
+
+/* Kanagawa — sumi ink, crystal-blue accent */
+[data-theme="kanagawa"] {
+  color-scheme: dark;
+  --background: #1f1f28;
+  --foreground: #dcd7ba;
+  --surface: #2a2a37;
+  --surface-muted: #16161d;
+  --muted: #363646;
+  --border: #54546d;
+  --border-strong: #625e5a;
+  --hover: #363646;
+  --accent: #7e9cd8;
+  --accent-foreground: #1f1f28;
+}
+
+/* GitHub Light — clean paper, azure accent */
+[data-theme="github-light"] {
+  color-scheme: light;
+  --background: #ffffff;
+  --foreground: #1f2328;
+  --surface: #ffffff;
+  --surface-muted: #f6f8fa;
+  --muted: #eaeef2;
+  --border: #d1d9e0;
+  --border-strong: #afb8c1;
+  --hover: #eff2f5;
+  --accent: #0969da;
+  --accent-foreground: #ffffff;
+}
+
 body {
   background: var(--background);
   color: var(--foreground);
