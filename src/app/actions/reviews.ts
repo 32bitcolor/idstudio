@@ -13,10 +13,12 @@ function projectPath(projectId: string) {
 }
 
 // Review changes surface in the personal "My Work" hub too — refresh the whole
-// /my-work subtree (Overview + Review History) as well as the project page.
+// /my-work subtree (Overview + Review History), the project page, and the root
+// layout (the header's "awaiting your review" notification badge).
 function revalidateReview(projectId: string) {
   revalidatePath(projectPath(projectId));
   revalidatePath("/my-work", "layout");
+  revalidatePath("/", "layout");
 }
 
 export async function addReviewCycle(deliverableId: string, reviewerId: string, dueIso: string | null) {

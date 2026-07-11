@@ -1,7 +1,13 @@
 import { requireUser, getActiveMembership } from "@/lib/dal";
 import { prisma } from "@/lib/db";
+import { projectVisibilityWhere } from "@/lib/authz";
 import { AppSidebar } from "@/components/app-shell/app-sidebar";
 import { Breadcrumbs, PageTitleProvider } from "@/components/app-shell/breadcrumbs";
+import { CommandPalette } from "@/components/app-shell/command-palette";
+import { QuickCreate } from "@/components/app-shell/quick-create";
+import { NotificationsBadge } from "@/components/app-shell/notifications-badge";
+import { UpdatePill } from "@/components/app-shell/update-pill";
+import { readUpdateStatus } from "@/lib/updater";
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
 
@@ -19,6 +25,21 @@ export default async function AppLayout({
     select: { workspaceId: true, workspace: { select: { name: true } } },
   });
 
+  const isAdmin = membership?.role === "ADMIN";
+
+  const [awaitingReviewCount, updateStatus] = await Promise.all([
+    membership
+      ? prisma.reviewCycle.count({
+          where: {
+            reviewerId: user.id,
+            status: { in: ["requested", "in_review"] },
+            deliverable: { project: { workspaceId: membership.workspaceId, ...(await projectVisibilityWhere()) } },
+          },
+        })
+      : Promise.resolve(0),
+    isAdmin ? readUpdateStatus() : Promise.resolve(null),
+  ]);
+
   return (
     <SidebarProvider>
       <AppSidebar
@@ -26,7 +47,7 @@ export default async function AppLayout({
         userLabel={user.name ?? user.email}
         userEmail={user.email}
         role={membership?.role ?? "—"}
-        isAdmin={membership?.role === "ADMIN"}
+        isAdmin={isAdmin}
         workspaces={memberships.map((m) => ({ id: m.workspaceId, name: m.workspace.name }))}
         activeWorkspaceId={membership?.workspaceId ?? null}
       />
@@ -36,6 +57,12 @@ export default async function AppLayout({
             <SidebarTrigger className="-ml-1" />
             <Separator orientation="vertical" className="mr-2 h-4" />
             <Breadcrumbs />
+            <div className="ml-auto flex items-center gap-2">
+              {updateStatus && <UpdatePill count={updateStatus.behind} />}
+              <CommandPalette />
+              <NotificationsBadge count={awaitingReviewCount} />
+              <QuickCreate />
+            </div>
           </header>
           <div className="flex-1">{children}</div>
         </PageTitleProvider>
