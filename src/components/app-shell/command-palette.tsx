@@ -2,7 +2,6 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { Dialog as DialogPrimitive } from "radix-ui";
 import {
   Search,
   Columns3,
@@ -17,6 +16,8 @@ import {
 
 import { MODULES } from "@/lib/modules";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 
 type ResultType = "board" | "project" | "storyboard" | "course" | "whiteboard";
 type SearchResult = { type: ResultType; id: string; label: string; href: string };
@@ -154,71 +155,66 @@ export function CommandPalette() {
 
   return (
     <>
-      <button
-        onClick={openPalette}
-        className="flex items-center gap-2 rounded-lg border border-border bg-surface px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:border-border-strong hover:text-foreground"
-      >
+      <Button variant="outline" size="sm" onClick={openPalette} className="text-muted-foreground hover:text-foreground">
         <Search className="size-4" />
         <span className="hidden sm:inline">Search…</span>
         <kbd className="ml-1 hidden rounded border border-border-strong bg-muted px-1.5 py-0.5 font-mono text-[10px] sm:inline">
           {mac ? "⌘K" : "Ctrl K"}
         </kbd>
-      </button>
+      </Button>
 
-      <DialogPrimitive.Root open={open} onOpenChange={setOpen}>
-        <DialogPrimitive.Portal>
-          <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-black/50 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:fade-in-0" />
-          <DialogPrimitive.Content
-            onKeyDown={onKeyDown}
-            className="fixed top-[12vh] left-1/2 z-50 w-full max-w-lg -translate-x-1/2 overflow-hidden rounded-xl border border-border bg-surface shadow-2xl data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95"
-          >
-            <DialogPrimitive.Title className="sr-only">Search IDStudio</DialogPrimitive.Title>
-            <DialogPrimitive.Description className="sr-only">
-              Jump to a module, or search boards, projects, storyboards, courses, and whiteboards.
-            </DialogPrimitive.Description>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent
+          onKeyDown={onKeyDown}
+          showCloseButton={false}
+          className="top-[12vh] max-w-lg translate-y-0 gap-0 overflow-hidden rounded-xl bg-surface p-0 shadow-2xl"
+        >
+          <DialogTitle className="sr-only">Search IDStudio</DialogTitle>
+          <DialogDescription className="sr-only">
+            Jump to a module, or search boards, projects, storyboards, courses, and whiteboards.
+          </DialogDescription>
 
-            <div className="flex items-center gap-2.5 border-b border-border px-4 py-3">
-              <Search className="size-4 shrink-0 text-muted-foreground" />
-              <input
-                ref={inputRef}
-                value={query}
-                onChange={(e) => onQueryChange(e.target.value)}
-                placeholder="Search or jump to…"
-                className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
-              />
-            </div>
+          <div className="flex items-center gap-2.5 border-b border-border px-4 py-3">
+            <Search className="size-4 shrink-0 text-muted-foreground" />
+            <input
+              ref={inputRef}
+              value={query}
+              onChange={(e) => onQueryChange(e.target.value)}
+              placeholder="Search or jump to…"
+              className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+            />
+          </div>
 
-            <div className="max-h-80 overflow-y-auto p-2">
-              {filteredGoTo.length > 0 && (
-                <RowGroup label="Go to" rows={filteredGoTo} rows0={rows} activeIndex={activeIndex} onHover={setActiveIndex} onSelect={go} />
-              )}
-              {searching && (
-                <div className="mt-1">
-                  <p className="px-2 py-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                    Results
-                  </p>
-                  {loading && resultRows.length === 0 ? (
-                    <p className="px-2 py-3 text-sm text-muted-foreground">Searching…</p>
-                  ) : resultRows.length === 0 ? (
-                    <p className="px-2 py-3 text-sm text-muted-foreground">No results for &ldquo;{query.trim()}&rdquo;.</p>
-                  ) : (
-                    <RowGroup rows={resultRows} rows0={rows} activeIndex={activeIndex} onHover={setActiveIndex} onSelect={go} />
-                  )}
-                </div>
-              )}
-              {filteredGoTo.length === 0 && !searching && (
-                <p className="px-2 py-3 text-sm text-muted-foreground">Type to search…</p>
-              )}
-            </div>
+          <div className="max-h-80 overflow-y-auto p-2">
+            {filteredGoTo.length > 0 && (
+              <RowGroup label="Go to" rows={filteredGoTo} rows0={rows} activeIndex={activeIndex} onHover={setActiveIndex} onSelect={go} />
+            )}
+            {searching && (
+              <div className="mt-1">
+                <p className="px-2 py-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  Results
+                </p>
+                {loading && resultRows.length === 0 ? (
+                  <p className="px-2 py-3 text-sm text-muted-foreground">Searching…</p>
+                ) : resultRows.length === 0 ? (
+                  <p className="px-2 py-3 text-sm text-muted-foreground">No results for &ldquo;{query.trim()}&rdquo;.</p>
+                ) : (
+                  <RowGroup rows={resultRows} rows0={rows} activeIndex={activeIndex} onHover={setActiveIndex} onSelect={go} />
+                )}
+              </div>
+            )}
+            {filteredGoTo.length === 0 && !searching && (
+              <p className="px-2 py-3 text-sm text-muted-foreground">Type to search…</p>
+            )}
+          </div>
 
-            <div className="flex items-center gap-3 border-t border-border px-4 py-2 text-xs text-muted-foreground">
-              <span className="flex items-center gap-1"><kbd className="rounded border border-border-strong bg-muted px-1">↑↓</kbd> navigate</span>
-              <span className="flex items-center gap-1"><kbd className="rounded border border-border-strong bg-muted px-1">↵</kbd> select</span>
-              <span className="flex items-center gap-1"><kbd className="rounded border border-border-strong bg-muted px-1">esc</kbd> close</span>
-            </div>
-          </DialogPrimitive.Content>
-        </DialogPrimitive.Portal>
-      </DialogPrimitive.Root>
+          <div className="flex items-center gap-3 border-t border-border px-4 py-2 text-xs text-muted-foreground">
+            <span className="flex items-center gap-1"><kbd className="rounded border border-border-strong bg-muted px-1">↑↓</kbd> navigate</span>
+            <span className="flex items-center gap-1"><kbd className="rounded border border-border-strong bg-muted px-1">↵</kbd> select</span>
+            <span className="flex items-center gap-1"><kbd className="rounded border border-border-strong bg-muted px-1">esc</kbd> close</span>
+          </div>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

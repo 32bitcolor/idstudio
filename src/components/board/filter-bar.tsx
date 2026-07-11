@@ -1,6 +1,11 @@
 "use client";
 
 import { useState } from "react";
+import { Check } from "lucide-react";
+
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
 
 type Label = { id: string; name: string; color: string };
 type Member = { id: string; name: string | null; email: string };
@@ -37,16 +42,13 @@ export function FilterBar({
   visible: number;
   total: number;
 }) {
-  const input =
-    "rounded-md border border-border-strong bg-transparent px-2 py-1 text-sm outline-none focus:border-foreground/60";
-
   return (
     <div className="flex flex-wrap items-center gap-2 px-6 pb-3">
-      <input
+      <Input
         value={search}
         onChange={(e) => onSearch(e.target.value)}
         placeholder="Search cards…"
-        className={`w-44 ${input}`}
+        className="h-8 w-44"
       />
 
       <Dropdown label="Labels" count={selectedLabels.size} empty={labels.length === 0}>
@@ -72,22 +74,17 @@ export function FilterBar({
         ))}
       </Dropdown>
 
-      <select value={due} onChange={(e) => onDue(e.target.value as DueFilter)} className={input}>
+      <Select value={due} onChange={(e) => onDue(e.target.value as DueFilter)} className="h-8 w-auto py-1">
         <option value="any">Any due date</option>
         <option value="overdue">Overdue</option>
         <option value="week">Due this week</option>
         <option value="none">No due date</option>
-      </select>
+      </Select>
 
       {active && (
         <>
-          <button
-            onClick={onClear}
-            className="rounded-md border border-border-strong px-2 py-1 text-sm text-foreground/70 hover:bg-hover"
-          >
-            Clear
-          </button>
-          <span className="text-xs text-foreground/50">
+          <Button variant="outline" size="sm" onClick={onClear}>Clear</Button>
+          <span className="text-xs text-muted-foreground">
             {visible}/{total} cards · drag disabled
           </span>
         </>
@@ -110,14 +107,10 @@ function Dropdown({
   const [open, setOpen] = useState(false);
   return (
     <div className="relative">
-      <button
-        onClick={() => !empty && setOpen((o) => !o)}
-        disabled={empty}
-        className="rounded-md border border-border-strong px-2 py-1 text-sm text-foreground/70 hover:bg-hover disabled:opacity-40"
-      >
+      <Button variant="outline" size="sm" onClick={() => !empty && setOpen((o) => !o)} disabled={empty}>
         {label}
-        {count > 0 && <span className="ml-1 rounded bg-accent px-1 text-xs text-accent-foreground">{count}</span>}
-      </button>
+        {count > 0 && <span className="rounded bg-accent px-1 text-xs text-accent-foreground">{count}</span>}
+      </Button>
       {open && (
         <>
           <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
@@ -146,7 +139,7 @@ function CheckRow({
       onClick={onClick}
       className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm hover:bg-hover"
     >
-      <span className="w-3 shrink-0 text-foreground/70">{checked ? "✓" : ""}</span>
+      <span className="flex w-3 shrink-0 items-center text-foreground/70">{checked && <Check className="size-3.5" />}</span>
       {color && <span className="h-3 w-3 shrink-0 rounded-full" style={{ backgroundColor: color }} />}
       <span className="truncate">{text}</span>
     </button>

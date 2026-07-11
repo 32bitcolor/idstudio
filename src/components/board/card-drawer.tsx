@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { X, Check } from "lucide-react";
 import { createWhiteboardForCard } from "@/app/actions/whiteboards";
 import {
   getCardDetail,
@@ -24,6 +25,11 @@ import {
   deleteAttachment,
 } from "@/app/actions/attachments";
 import { DescriptionEditor } from "@/components/board/description-editor";
+import { ConfirmDelete } from "@/components/shared/confirm-delete";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 
 export type LabelT = { id: string; name: string; color: string };
 export type MemberT = { id: string; name: string | null; email: string };
@@ -110,14 +116,6 @@ export function CardDrawer({
       active = false;
     };
   }, [cardId]);
-
-  useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
-    }
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
 
   function saveTitle() {
     const t = title.trim();
@@ -265,7 +263,6 @@ export function CardDrawer({
   }
 
   function handleDelete() {
-    if (!confirm("Delete this card?")) return;
     deleteCard(cardId);
     onDeleted(cardId);
     onClose();
@@ -274,21 +271,23 @@ export function CardDrawer({
   const doneCount = checklist.filter((i) => i.done).length;
 
   return (
-    <div className="fixed inset-0 z-40 flex justify-end">
-      <div className="absolute inset-0 bg-black/30" onClick={onClose} />
-      <div className="relative z-10 flex h-full w-full max-w-md flex-col overflow-y-auto border-l border-border bg-surface shadow-xl">
-        <div className="flex items-start justify-between gap-2 border-b border-border px-4 py-3">
-          <textarea
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            onBlur={saveTitle}
-            rows={1}
-            className="min-h-[2rem] flex-1 resize-none rounded bg-transparent px-1 text-base font-semibold outline-none hover:bg-hover focus:bg-hover"
-          />
-          <button onClick={onClose} className="rounded px-2 py-1 text-foreground/60 hover:bg-hover" title="Close">
-            ✕
-          </button>
-        </div>
+    <Sheet open onOpenChange={(v) => !v && onClose()}>
+      <SheetContent
+        side="right"
+        className="w-full gap-0 overflow-y-auto border-l border-border bg-surface p-0 shadow-xl sm:max-w-md"
+      >
+        <SheetHeader className="flex-row items-start justify-between gap-2 space-y-0 border-b border-border px-4 py-3">
+          <SheetTitle asChild>
+            <textarea
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              onBlur={saveTitle}
+              rows={1}
+              className="min-h-[2rem] flex-1 resize-none rounded bg-transparent px-1 text-base font-semibold outline-none hover:bg-hover focus:bg-hover"
+            />
+          </SheetTitle>
+          <SheetDescription className="sr-only">Card details</SheetDescription>
+        </SheetHeader>
 
         {loading ? (
           <p className="p-4 text-sm text-foreground/50">Loading…</p>
@@ -296,16 +295,16 @@ export function CardDrawer({
           <div className="flex flex-col gap-6 p-4">
             <Section title="Due date">
               <div className="flex items-center gap-2">
-                <input
+                <Input
                   type="date"
                   value={dueDate ? dueDate.slice(0, 10) : ""}
                   onChange={(e) => changeDueDate(e.target.value)}
-                  className="rounded-md border border-border-strong bg-transparent px-2 py-1 text-sm outline-none"
+                  className="h-8 w-auto"
                 />
                 {dueDate && (
-                  <button onClick={() => changeDueDate("")} className="text-xs text-foreground/50 hover:underline">
+                  <Button variant="link" className="h-auto p-0 text-xs" onClick={() => changeDueDate("")}>
                     Clear
-                  </button>
+                  </Button>
                 )}
               </div>
             </Section>
@@ -327,12 +326,12 @@ export function CardDrawer({
                 })}
               </div>
               <div className="mt-2 flex items-center gap-1.5">
-                <input
+                <Input
                   value={newLabelName}
                   onChange={(e) => setNewLabelName(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && addLabel()}
                   placeholder="New label…"
-                  className="w-32 rounded-md border border-border-strong bg-transparent px-2 py-1 text-xs outline-none"
+                  className="h-8 w-32 text-xs"
                 />
                 <div className="flex gap-1">
                   {PALETTE.map((c) => (
@@ -345,9 +344,7 @@ export function CardDrawer({
                     />
                   ))}
                 </div>
-                <button onClick={addLabel} className="rounded-md bg-accent px-2 py-1 text-xs font-medium text-accent-foreground">
-                  Add
-                </button>
+                <Button size="xs" onClick={addLabel}>Add</Button>
               </div>
             </Section>
 
@@ -370,10 +367,10 @@ export function CardDrawer({
                     </span>
                     <button
                       onClick={() => removeItem(item)}
-                      className="shrink-0 text-foreground/30 opacity-0 hover:text-red-600 group-hover:opacity-100"
+                      className="shrink-0 text-foreground/30 opacity-0 hover:text-destructive group-hover:opacity-100"
                       title="Remove"
                     >
-                      ×
+                      <X className="size-3.5" />
                     </button>
                   </div>
                 ))}
@@ -405,10 +402,10 @@ export function CardDrawer({
                     </button>
                     <button
                       onClick={() => removeAttachment(a)}
-                      className="shrink-0 text-foreground/30 opacity-0 hover:text-red-600 group-hover:opacity-100"
+                      className="shrink-0 text-foreground/30 opacity-0 hover:text-destructive group-hover:opacity-100"
                       title="Remove"
                     >
-                      ×
+                      <X className="size-3.5" />
                     </button>
                   </div>
                 ))}
@@ -427,7 +424,7 @@ export function CardDrawer({
                     }}
                   />
                 </label>
-                {uploadError && <p className="mt-1 text-xs text-red-600">{uploadError}</p>}
+                {uploadError && <p className="mt-1 text-xs text-destructive">{uploadError}</p>}
               </div>
             </Section>
 
@@ -466,7 +463,7 @@ export function CardDrawer({
                         {(c.author.id === currentUserId || isAdmin) && (
                           <button
                             onClick={() => removeComment(c)}
-                            className="text-xs text-foreground/40 opacity-0 hover:text-red-600 group-hover:opacity-100"
+                            className="text-xs text-foreground/40 opacity-0 hover:text-destructive group-hover:opacity-100"
                           >
                             Delete
                           </button>
@@ -481,21 +478,29 @@ export function CardDrawer({
             </Section>
 
             <div className="border-t border-border pt-4">
-              <button onClick={handleDelete} className="text-sm text-red-600 hover:underline">
-                Delete card
-              </button>
+              <ConfirmDelete
+                title="Delete this card?"
+                description="This action can't be undone."
+                confirmLabel="Delete card"
+                onConfirm={handleDelete}
+                trigger={
+                  <Button variant="link" className="h-auto p-0 text-sm text-destructive">
+                    Delete card
+                  </Button>
+                }
+              />
             </div>
           </div>
         )}
-      </div>
-    </div>
+      </SheetContent>
+    </Sheet>
   );
 }
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section>
-      <h3 className="mb-2 text-xs font-medium uppercase tracking-wide text-foreground/50">{title}</h3>
+      <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{title}</h3>
       {children}
     </section>
   );
@@ -523,7 +528,7 @@ function AssigneePicker({
           >
             {m.name ?? m.email}
             <button onClick={() => onToggle(m)} className="text-accent-foreground/70 hover:text-accent-foreground" title="Remove">
-              ×
+              <X className="size-3" />
             </button>
           </span>
         ))}
@@ -549,7 +554,7 @@ function AssigneePicker({
                   className="flex w-full items-center justify-between gap-2 px-3 py-1.5 text-left text-sm hover:bg-hover"
                 >
                   <span className="truncate">{m.name ?? m.email}</span>
-                  {on && <span className="shrink-0 text-foreground/70">✓</span>}
+                  {on && <Check className="size-3.5 shrink-0 text-foreground/70" />}
                 </button>
               );
             })}
@@ -595,13 +600,10 @@ function InlineComposer({
     setValue("");
   }
 
-  const cls =
-    "w-full rounded-md border border-border-strong bg-transparent px-2 py-1.5 text-sm outline-none focus:border-foreground/60";
-
   return (
     <div className="mt-2 flex flex-col gap-1.5">
       {multiline ? (
-        <textarea
+        <Textarea
           value={value}
           onChange={(e) => setValue(e.target.value)}
           onKeyDown={(e) => {
@@ -612,22 +614,20 @@ function InlineComposer({
           }}
           rows={2}
           placeholder={placeholder}
-          className={`resize-none ${cls}`}
+          className="min-h-0 resize-none text-sm"
         />
       ) : (
-        <input
+        <Input
           value={value}
           onChange={(e) => setValue(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && submit()}
           placeholder={placeholder}
-          className={cls}
+          className="h-8 text-sm"
         />
       )}
       {value.trim() && (
         <div>
-          <button onClick={submit} className="rounded-md bg-accent px-3 py-1 text-xs font-medium text-accent-foreground">
-            {buttonLabel}
-          </button>
+          <Button size="xs" onClick={submit}>{buttonLabel}</Button>
         </div>
       )}
     </div>

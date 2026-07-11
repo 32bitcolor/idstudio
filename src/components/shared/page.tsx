@@ -33,9 +33,11 @@ export function PageHeader({
   return (
     <div className={cn("flex flex-wrap items-start justify-between gap-4", className)}>
       <div className="min-w-0 flex-1">
-        {eyebrow ? <p className="text-sm text-muted-foreground">{eyebrow}</p> : null}
+        {eyebrow ? (
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{eyebrow}</p>
+        ) : null}
         {typeof title === "string" ? (
-          <h1 className="truncate text-2xl font-semibold tracking-tight">{title}</h1>
+          <h1 className="truncate text-3xl font-semibold tracking-tight">{title}</h1>
         ) : (
           title
         )}

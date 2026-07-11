@@ -16,7 +16,7 @@
   --color-hover: var(--hover);
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
-  --font-sans: var(--font-geist-sans);
+  --font-sans: var(--font-sans-body);
   --font-mono: var(--font-geist-mono);
 
   /* ── shadcn/ui token bridge ───────────────────────────────────────────────
@@ -45,10 +45,20 @@
   --color-info: var(--info);
   --color-info-foreground: #ffffff;
   --color-input: var(--border);
-  --color-ring: var(--border-strong);
+  --color-ring: var(--accent);
+  --radius-xl: 0.5rem;
   --radius-lg: var(--radius);
   --radius-md: calc(var(--radius) - 2px);
   --radius-sm: calc(var(--radius) - 4px);
+
+  /* Elevation — subtle, layered, tinted with --shadow-tint (pure black by default
+     so the 15 alternate themes are unaffected; light/dark tint it navy below). */
+  --shadow-2xs: 0 1px 1px 0 rgb(var(--shadow-tint) / 0.06);
+  --shadow-xs: 0 1px 2px 0 rgb(var(--shadow-tint) / 0.08);
+  --shadow-sm: 0 1px 2px 0 rgb(var(--shadow-tint) / 0.1), 0 1px 1px 1px rgb(var(--shadow-tint) / 0.06);
+  --shadow-md: 0 1px 1px 1px rgb(var(--shadow-tint) / 0.1), 0 1px 2px 1px rgb(var(--shadow-tint) / 0.09), 0 1px 4px 0 rgb(var(--shadow-tint) / 0.07);
+  --shadow-lg: 0 2px 4px 0 rgb(var(--shadow-tint) / 0.1), 0 4px 8px 0 rgb(var(--shadow-tint) / 0.08), 0 8px 16px -2px rgb(var(--shadow-tint) / 0.1);
+  --shadow-xl: 0 4px 8px 0 rgb(var(--shadow-tint) / 0.12), 0 12px 24px -4px rgb(var(--shadow-tint) / 0.14);
 
   /* Sidebar — a slightly recessed surface with quiet hovers, theme-driven. */
   --color-sidebar: var(--surface-muted);
@@ -64,69 +74,93 @@
 /* Light (also the default for the "System" option in light mode) */
 :root {
   color-scheme: light;
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #f7f7fb;
+  --foreground: #202d38;
   --surface: #ffffff;
-  --surface-muted: #fafafa;
-  --muted: #f1f1f3;
-  --border: #e6e6e8;
-  --border-strong: #d4d4d8;
-  --hover: #f4f4f5;
-  --accent: #171717;
+  --surface-muted: #f1f3f4;
+  --muted: #eceef0;
+  --border: #e3e8e9;
+  --border-strong: #c9cccf;
+  --hover: #ecf9f9;
+  --accent: #0f766e;
   --accent-foreground: #ffffff;
-  /* Theme-agnostic tokens (not overridden per theme). */
+  /* Theme-agnostic fallback — only the 15 alternate themes below use these as-is.
+     Light/dark override with JumpCloud-specific hues just below. */
   --destructive: #dc2626;
   --success: #16a34a;
   --warning: #d97706;
   --info: #2563eb;
-  --radius: 0.5rem;
+  --shadow-tint: 0 0 0;
+  --radius: 0.375rem;
+}
+
+/* JumpCloud-flavored status colors + shadow tint — light/dark only. Scoped so the
+   15 alternate themes below (which never set these vars) keep inheriting the
+   theme-agnostic fallback from the base :root block above, unchanged. */
+:root:not([data-theme]),
+[data-theme="light"] {
+  --destructive: #e54852;
+  --success: #2cc692;
+  --warning: #ff7d00;
+  --info: #4373c7;
+  --shadow-tint: 32 45 56;
 }
 
 /* System dark: only when no explicit theme is chosen */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme]) {
     color-scheme: dark;
-    --background: #0a0a0a;
-    --foreground: #ededed;
-    --surface: #141414;
-    --surface-muted: #101010;
-    --muted: #1f1f22;
-    --border: #2a2a2e;
-    --border-strong: #3a3a3f;
-    --hover: #1c1c20;
-    --accent: #ededed;
-    --accent-foreground: #0a0a0a;
+    --background: #10182a;
+    --foreground: #e7ebf0;
+    --surface: #202d38;
+    --surface-muted: #161f32;
+    --muted: #2a3849;
+    --border: #34415e;
+    --border-strong: #405066;
+    --hover: #223247;
+    --accent: #41c8c3;
+    --accent-foreground: #10182a;
+    --destructive: #e54852;
+    --success: #2cc692;
+    --warning: #ff7d00;
+    --info: #6fa8e0;
+    --shadow-tint: 32 45 56;
   }
 }
 
 /* Explicit Light (forces light even on a dark OS) */
 [data-theme="light"] {
   color-scheme: light;
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #f7f7fb;
+  --foreground: #202d38;
   --surface: #ffffff;
-  --surface-muted: #fafafa;
-  --muted: #f1f1f3;
-  --border: #e6e6e8;
-  --border-strong: #d4d4d8;
-  --hover: #f4f4f5;
-  --accent: #171717;
+  --surface-muted: #f1f3f4;
+  --muted: #eceef0;
+  --border: #e3e8e9;
+  --border-strong: #c9cccf;
+  --hover: #ecf9f9;
+  --accent: #0f766e;
   --accent-foreground: #ffffff;
 }
 
 /* Explicit Dark */
 [data-theme="dark"] {
   color-scheme: dark;
-  --background: #0a0a0a;
-  --foreground: #ededed;
-  --surface: #141414;
-  --surface-muted: #101010;
-  --muted: #1f1f22;
-  --border: #2a2a2e;
-  --border-strong: #3a3a3f;
-  --hover: #1c1c20;
-  --accent: #ededed;
-  --accent-foreground: #0a0a0a;
+  --background: #10182a;
+  --foreground: #e7ebf0;
+  --surface: #202d38;
+  --surface-muted: #161f32;
+  --muted: #2a3849;
+  --border: #34415e;
+  --border-strong: #405066;
+  --hover: #223247;
+  --accent: #41c8c3;
+  --accent-foreground: #10182a;
+  --destructive: #e54852;
+  --success: #2cc692;
+  --warning: #ff7d00;
+  --info: #6fa8e0;
+  --shadow-tint: 32 45 56;
 }
 
 /* Nord — arctic, frost accent */
@@ -357,7 +391,7 @@
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: var(--font-geist-sans), ui-sans-serif, system-ui, -apple-system, sans-serif;
+  font-family: var(--font-sans-body), ui-sans-serif, system-ui, -apple-system, sans-serif;
 }
 
 /* TipTap editor content (Tailwind preflight resets these). */

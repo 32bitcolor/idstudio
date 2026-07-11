@@ -22,6 +22,7 @@ import {
   sortableKeyboardCoordinates,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import { ChevronLeft, ChevronRight, X, MessageSquare, Paperclip, ListChecks } from "lucide-react";
 import {
   createCard,
   deleteCard,
@@ -38,7 +39,10 @@ import { FilterBar, type DueFilter } from "@/components/board/filter-bar";
 import { useSetPageTitle } from "@/components/app-shell/breadcrumbs";
 import { InlineTitle } from "@/components/shared/inline-title";
 import { ConfirmDelete } from "@/components/shared/confirm-delete";
+import { StatusBadge } from "@/components/shared/status-badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 
 type Label = { id: string; name: string; color: string };
 type Member = { id: string; name: string | null; email: string };
@@ -250,7 +254,6 @@ export function BoardView({
   }
 
   function handleDeleteColumn(columnId: string) {
-    if (!confirm("Delete this column and all its cards?")) return;
     setColumns((prev) => prev.filter((c) => c.id !== columnId));
     startTransition(() => void deleteColumn(columnId));
   }
@@ -340,7 +343,6 @@ function BoardHeader({ boardId, boardName }: { boardId: string; boardName: strin
             if (name.trim() && name !== boardName) startTransition(() => void renameBoard(boardId, name));
           }}
           ariaLabel="Board name"
-          className="text-lg"
         />
       </div>
       <ConfirmDelete
@@ -391,23 +393,47 @@ function ColumnView({
   return (
     <div className="flex w-72 shrink-0 flex-col rounded-xl border border-border bg-surface-muted">
       <div className="flex items-center gap-1 px-3 pt-3">
-        <input
-          aria-label="Column name"
+        <InlineTitle
           value={name}
-          onChange={(e) => setName(e.target.value)}
-          onBlur={() => name.trim() && name !== column.name && onRename(column.id, name.trim())}
-          className="min-w-0 flex-1 rounded bg-transparent px-1 text-sm font-medium outline-none hover:bg-hover focus:bg-hover"
+          onChange={setName}
+          onCommit={() => name.trim() && name !== column.name && onRename(column.id, name.trim())}
+          ariaLabel="Column name"
+          className="text-sm font-medium tracking-normal"
         />
         <span className="shrink-0 text-xs text-muted-foreground">{column.cards.length}</span>
-        <button disabled={!canMoveLeft} onClick={() => onMove(column.id, -1)} className="rounded px-1 text-muted-foreground hover:bg-hover disabled:opacity-25" title="Move left" aria-label="Move column left">
-          ◀
-        </button>
-        <button disabled={!canMoveRight} onClick={() => onMove(column.id, 1)} className="rounded px-1 text-muted-foreground hover:bg-hover disabled:opacity-25" title="Move right" aria-label="Move column right">
-          ▶
-        </button>
-        <button onClick={() => onDelete(column.id)} className="rounded px-1 text-muted-foreground hover:text-destructive" title="Delete column" aria-label="Delete column">
-          ×
-        </button>
+        <Button
+          variant="ghost"
+          size="icon-xs"
+          disabled={!canMoveLeft}
+          onClick={() => onMove(column.id, -1)}
+          className="text-muted-foreground"
+          title="Move left"
+          aria-label="Move column left"
+        >
+          <ChevronLeft className="size-3.5" />
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon-xs"
+          disabled={!canMoveRight}
+          onClick={() => onMove(column.id, 1)}
+          className="text-muted-foreground"
+          title="Move right"
+          aria-label="Move column right"
+        >
+          <ChevronRight className="size-3.5" />
+        </Button>
+        <ConfirmDelete
+          title="Delete this column?"
+          description="This permanently deletes the column and all of its cards."
+          confirmLabel="Delete column"
+          onConfirm={() => onDelete(column.id)}
+          trigger={
+            <Button variant="ghost" size="icon-xs" className="text-muted-foreground hover:text-destructive" title="Delete column" aria-label="Delete column">
+              <X className="size-3.5" />
+            </Button>
+          }
+        />
       </div>
 
       <div ref={setNodeRef} className="flex flex-col gap-2 p-3">
@@ -511,10 +537,10 @@ function CardShell({
               e.stopPropagation();
               onDelete();
             }}
-            className="shrink-0 rounded px-1 text-foreground/30 opacity-0 hover:bg-red-500/10 hover:text-red-600 group-hover:opacity-100"
+            className="shrink-0 rounded p-0.5 text-foreground/30 opacity-0 hover:bg-destructive/10 hover:text-destructive group-hover:opacity-100"
             title="Delete card"
           >
-            ×
+            <X className="size-3.5" />
           </button>
         )}
       </div>
@@ -524,28 +550,27 @@ function CardShell({
         card.attachments > 0 ||
         card.assignees.length > 0) && (
         <div className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-1 text-xs text-foreground/60">
+          <div className="flex items-center gap-1">
             {due && (
-              <span className={`rounded px-1.5 py-0.5 ${due.overdue ? "bg-red-500/15 text-red-600" : "bg-muted"}`}>
-                {due.label}
-              </span>
+              <StatusBadge tone={due.overdue ? "danger" : "neutral"}>{due.label}</StatusBadge>
             )}
             {card.checklist.total > 0 && (
-              <span
-                className={`rounded px-1.5 py-0.5 ${
-                  card.checklist.done === card.checklist.total
-                    ? "bg-green-500/15 text-green-600"
-                    : "bg-muted"
-                }`}
-              >
-                ✓ {card.checklist.done}/{card.checklist.total}
-              </span>
+              <StatusBadge tone={card.checklist.done === card.checklist.total ? "success" : "neutral"}>
+                <ListChecks className="size-3" />
+                {card.checklist.done}/{card.checklist.total}
+              </StatusBadge>
             )}
             {card.comments > 0 && (
-              <span className="rounded bg-muted px-1.5 py-0.5">💬 {card.comments}</span>
+              <StatusBadge tone="neutral">
+                <MessageSquare className="size-3" />
+                {card.comments}
+              </StatusBadge>
             )}
             {card.attachments > 0 && (
-              <span className="rounded bg-muted px-1.5 py-0.5">📎 {card.attachments}</span>
+              <StatusBadge tone="neutral">
+                <Paperclip className="size-3" />
+                {card.attachments}
+              </StatusBadge>
             )}
           </div>
           {card.assignees.length > 0 && (
@@ -588,7 +613,7 @@ function CardComposer({ onAdd }: { onAdd: (title: string) => void }) {
 
   return (
     <div className="flex flex-col gap-1.5">
-      <textarea
+      <Textarea
         autoFocus
         value={value}
         onChange={(e) => setValue(e.target.value)}
@@ -604,15 +629,11 @@ function CardComposer({ onAdd }: { onAdd: (title: string) => void }) {
         }}
         rows={2}
         placeholder="Card title…"
-        className="resize-none rounded-lg border border-border-strong bg-surface px-3 py-2 text-sm outline-none focus:border-foreground/60"
+        className="min-h-0 resize-none bg-surface"
       />
       <div className="flex gap-2">
-        <button onClick={submit} className="rounded-md bg-accent px-3 py-1 text-xs font-medium text-accent-foreground">
-          Add
-        </button>
-        <button onClick={() => { setValue(""); setOpen(false); }} className="rounded-md px-2 py-1 text-xs text-foreground/60 hover:bg-hover">
-          Cancel
-        </button>
+        <Button size="xs" onClick={submit}>Add</Button>
+        <Button size="xs" variant="ghost" onClick={() => { setValue(""); setOpen(false); }}>Cancel</Button>
       </div>
     </div>
   );
@@ -639,7 +660,7 @@ function AddColumn({ onAdd }: { onAdd: (name: string) => void }) {
 
   return (
     <div className="flex w-72 shrink-0 flex-col gap-1.5 rounded-xl border border-border p-3">
-      <input
+      <Input
         autoFocus
         value={value}
         onChange={(e) => setValue(e.target.value)}
@@ -648,15 +669,11 @@ function AddColumn({ onAdd }: { onAdd: (name: string) => void }) {
           if (e.key === "Escape") { setValue(""); setOpen(false); }
         }}
         placeholder="Column name…"
-        className="rounded-md border border-border-strong bg-surface px-3 py-2 text-sm outline-none focus:border-foreground/60"
+        className="bg-surface"
       />
       <div className="flex gap-2">
-        <button onClick={submit} className="rounded-md bg-accent px-3 py-1 text-xs font-medium text-accent-foreground">
-          Add column
-        </button>
-        <button onClick={() => { setValue(""); setOpen(false); }} className="rounded-md px-2 py-1 text-xs text-foreground/60 hover:bg-hover">
-          Cancel
-        </button>
+        <Button size="xs" onClick={submit}>Add column</Button>
+        <Button size="xs" variant="ghost" onClick={() => { setValue(""); setOpen(false); }}>Cancel</Button>
       </div>
     </div>
   );

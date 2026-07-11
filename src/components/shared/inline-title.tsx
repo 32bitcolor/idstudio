@@ -35,7 +35,7 @@ export function InlineTitle({
         }
       }}
       className={cn(
-        "-mx-1 w-full rounded-md bg-transparent px-1 text-2xl font-semibold tracking-tight outline-none hover:bg-hover focus:bg-hover",
+        "-mx-1 w-full rounded-md bg-transparent px-1 text-3xl font-semibold tracking-tight outline-none hover:bg-hover focus:bg-hover",
         className
       )}
     />
