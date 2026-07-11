@@ -59,7 +59,11 @@ export function CardDrawer({
   onPatch: (cardId: string, patch: CardFacePatch) => void;
   onDeleted: (cardId: string) => void;
 }) {
-  const [loading, setLoading] = useState(true);
+  // Loading is derived, not a separate state: we're "loading" whenever the data
+  // we hold isn't for the card currently open. This flips synchronously when
+  // cardId changes (no setState-in-effect) and back once the fetch resolves.
+  const [loadedFor, setLoadedFor] = useState<string | null>(null);
+  const loading = loadedFor !== cardId;
   const [boardId, setBoardId] = useState("");
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState<string | null>(null);
@@ -80,7 +84,6 @@ export function CardDrawer({
 
   useEffect(() => {
     let active = true;
-    setLoading(true);
     getCardDetail(cardId).then((d) => {
       if (!active || !d) return;
       setBoardId(d.boardId);
@@ -96,7 +99,7 @@ export function CardDrawer({
       setAttachments(d.attachments);
       setCurrentUserId(d.currentUserId);
       setIsAdmin(d.isAdmin);
-      setLoading(false);
+      setLoadedFor(cardId);
     });
     return () => {
       active = false;
