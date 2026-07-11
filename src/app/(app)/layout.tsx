@@ -1,4 +1,5 @@
 import { requireUser, getActiveMembership } from "@/lib/dal";
+import { prisma } from "@/lib/db";
 import { AppSidebar } from "@/components/app-shell/app-sidebar";
 import { Breadcrumbs, PageTitleProvider } from "@/components/app-shell/breadcrumbs";
 import { ThemeSwitcher } from "@/components/theme-switcher";
@@ -13,6 +14,11 @@ export default async function AppLayout({
   // Centralized auth gate for every module in the (app) group.
   const user = await requireUser();
   const membership = await getActiveMembership();
+  const memberships = await prisma.membership.findMany({
+    where: { userId: user.id },
+    orderBy: { createdAt: "asc" },
+    select: { workspaceId: true, workspace: { select: { name: true } } },
+  });
 
   return (
     <SidebarProvider>
@@ -22,6 +28,8 @@ export default async function AppLayout({
         userEmail={user.email}
         role={membership?.role ?? "—"}
         isAdmin={membership?.role === "ADMIN"}
+        workspaces={memberships.map((m) => ({ id: m.workspaceId, name: m.workspace.name }))}
+        activeWorkspaceId={membership?.workspaceId ?? null}
       />
       <SidebarInset>
         <PageTitleProvider>

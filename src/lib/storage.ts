@@ -88,3 +88,22 @@ export async function deleteObject(key: string): Promise<void> {
     // best-effort; the DB record is the source of truth
   }
 }
+
+/** Read an object's bytes server-side (used by workspace backup). Null if absent. */
+export async function getObjectBytes(key: string): Promise<Uint8Array | null> {
+  try {
+    const res = await serverClient.send(new GetObjectCommand({ Bucket: BUCKET, Key: key }));
+    const bytes = await res.Body?.transformToByteArray();
+    return bytes ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/** Write an object's bytes server-side (used by workspace restore). */
+export async function putObjectBytes(key: string, bytes: Uint8Array, contentType: string): Promise<void> {
+  await ensureBucket();
+  await serverClient.send(
+    new PutObjectCommand({ Bucket: BUCKET, Key: key, Body: bytes, ContentType: contentType }),
+  );
+}

@@ -5,7 +5,7 @@ import { cookies } from "next/headers";
 export const SESSION_COOKIE = "idstudio_session";
 const MAX_AGE_SECONDS = 60 * 60 * 24 * 7; // 7 days
 
-export type SessionPayload = { userId: string };
+export type SessionPayload = { userId: string; activeWorkspaceId?: string };
 
 function getKey(): Uint8Array {
   const secret = process.env.SESSION_SECRET;
@@ -28,14 +28,16 @@ export async function decrypt(token?: string): Promise<SessionPayload | null> {
   if (!token) return null;
   try {
     const { payload } = await jwtVerify(token, getKey(), { algorithms: ["HS256"] });
-    return typeof payload.userId === "string" ? { userId: payload.userId } : null;
+    if (typeof payload.userId !== "string") return null;
+    const active = typeof payload.activeWorkspaceId === "string" ? payload.activeWorkspaceId : undefined;
+    return { userId: payload.userId, activeWorkspaceId: active };
   } catch {
     return null;
   }
 }
 
-export async function createSession(userId: string): Promise<void> {
-  const token = await encrypt({ userId });
+export async function createSession(userId: string, activeWorkspaceId?: string): Promise<void> {
+  const token = await encrypt({ userId, ...(activeWorkspaceId ? { activeWorkspaceId } : {}) });
   const cookieStore = await cookies();
   cookieStore.set(SESSION_COOKIE, token, {
     httpOnly: true,

@@ -2,9 +2,10 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ChevronsUpDown, LifeBuoy, LogOut, Settings, Users } from "lucide-react";
+import { Check, ChevronsUpDown, LifeBuoy, LogOut, Settings, Users } from "lucide-react";
 
 import { logout } from "@/app/actions/auth";
+import { switchWorkspace } from "@/app/actions/workspace";
 import { NAV_MODULES } from "@/lib/modules";
 import {
   DropdownMenu,
@@ -38,12 +39,16 @@ export function AppSidebar({
   userEmail,
   role,
   isAdmin,
+  workspaces = [],
+  activeWorkspaceId = null,
 }: {
   workspaceName: string;
   userLabel: string;
   userEmail: string;
   role: string;
   isAdmin: boolean;
+  workspaces?: { id: string; name: string }[];
+  activeWorkspaceId?: string | null;
 }) {
   const pathname = usePathname();
   const initial = (userLabel || userEmail || "?").charAt(0).toUpperCase();
@@ -173,6 +178,22 @@ export function AppSidebar({
                       Members &amp; groups
                     </Link>
                   </DropdownMenuItem>
+                )}
+                {workspaces.length > 1 && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuLabel className="text-xs text-muted-foreground">Workspaces</DropdownMenuLabel>
+                    {workspaces.map((w) => (
+                      <form key={w.id} action={switchWorkspace.bind(null, w.id)}>
+                        <DropdownMenuItem asChild>
+                          <button type="submit" className="w-full cursor-pointer">
+                            <Check className={`size-4 ${w.id === activeWorkspaceId ? "opacity-100" : "opacity-0"}`} />
+                            <span className="truncate">{w.name}</span>
+                          </button>
+                        </DropdownMenuItem>
+                      </form>
+                    ))}
+                  </>
                 )}
                 <DropdownMenuSeparator />
                 <form action={logout}>

@@ -23,9 +23,18 @@ export const requireUser = cache(async () => {
   return user;
 });
 
-// Phase 0: a user's "active" workspace is their first (and only) membership.
+// A user's "active" workspace: the one pinned in their session if they're still a
+// member, otherwise their oldest membership. (Most users have exactly one.)
 export const getActiveMembership = cache(async () => {
   const user = await requireUser();
+  const session = await getSession();
+  if (session?.activeWorkspaceId) {
+    const pinned = await prisma.membership.findFirst({
+      where: { userId: user.id, workspaceId: session.activeWorkspaceId },
+      include: { workspace: true },
+    });
+    if (pinned) return pinned;
+  }
   return prisma.membership.findFirst({
     where: { userId: user.id },
     orderBy: { createdAt: "asc" },
