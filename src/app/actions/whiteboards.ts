@@ -4,8 +4,8 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
-import { getActiveMembership } from "@/lib/dal";
-import { getWhiteboardForUser, getStoryboardForUser } from "@/lib/authz";
+import { getActiveMembership, getCurrentUser } from "@/lib/dal";
+import { getWhiteboardForUser, getStoryboardForUser, getCardForUser } from "@/lib/authz";
 
 const Title = z.string().trim().min(1, "Required").max(180);
 // Excalidraw scenes (with embedded image files) can get large; cap generously.
@@ -23,7 +23,7 @@ export async function createWhiteboard(formData: FormData): Promise<void> {
   if (!title.success) return;
 
   const whiteboard = await prisma.whiteboard.create({
-    data: { workspaceId: membership.workspaceId, title: title.data },
+    data: { workspaceId: membership.workspaceId, createdById: membership.userId, title: title.data },
     select: { id: true },
   });
 
@@ -69,4 +69,42 @@ export async function deleteWhiteboard(id: string) {
   if (!wb) return { error: "Whiteboard not found." };
   await prisma.whiteboard.delete({ where: { id } });
   redirect("/whiteboards");
+}
+
+/** Create a whiteboard already linked to a storyboard (from the storyboard page). */
+export async function createWhiteboardForStoryboard(storyboardId: string): Promise<void> {
+  const me = await getCurrentUser();
+  const sb = await getStoryboardForUser(storyboardId);
+  if (!me || !sb) redirect("/storyboards");
+  const storyboard = await prisma.storyboard.findUnique({
+    where: { id: storyboardId },
+    select: { title: true },
+  });
+  const whiteboard = await prisma.whiteboard.create({
+    data: { workspaceId: sb.workspaceId, storyboardId, createdById: me.id, title: `${storyboard?.title ?? "Whiteboard"} — sketch` },
+    select: { id: true },
+  });
+  redirect(whiteboardPath(whiteboard.id));
+}
+
+/** Create a whiteboard already linked to a board card (from the card drawer). */
+export async function createWhiteboardForCard(cardId: string): Promise<void> {
+  const me = await getCurrentUser();
+  const access = await getCardForUser(cardId);
+  if (!me || !access) redirect("/boards");
+  const card = await prisma.card.findUnique({
+    where: { id: cardId },
+    select: { title: true, column: { select: { board: { select: { workspaceId: true } } } } },
+  });
+  if (!card) redirect("/boards");
+  const whiteboard = await prisma.whiteboard.create({
+    data: {
+      workspaceId: card.column.board.workspaceId,
+      cardId,
+      createdById: me.id,
+      title: `${card.title} — sketch`,
+    },
+    select: { id: true },
+  });
+  redirect(whiteboardPath(whiteboard.id));
 }

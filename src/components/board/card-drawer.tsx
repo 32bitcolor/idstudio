@@ -1,6 +1,8 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
+import { createWhiteboardForCard } from "@/app/actions/whiteboards";
 import {
   getCardDetail,
   updateCardDescription,
@@ -27,6 +29,7 @@ export type LabelT = { id: string; name: string; color: string };
 export type MemberT = { id: string; name: string | null; email: string };
 type ChecklistItemT = { id: string; text: string; done: boolean; position: string };
 type AttachmentT = { id: string; fileName: string; mimeType: string; sizeBytes: number; createdAt: string };
+type WhiteboardT = { id: string; title: string };
 type CommentT = {
   id: string;
   body: string;
@@ -73,6 +76,7 @@ export function CardDrawer({
   const [checklist, setChecklist] = useState<ChecklistItemT[]>([]);
   const [comments, setComments] = useState<CommentT[]>([]);
   const [attachments, setAttachments] = useState<AttachmentT[]>([]);
+  const [whiteboards, setWhiteboards] = useState<WhiteboardT[]>([]);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [currentUserId, setCurrentUserId] = useState("");
@@ -94,6 +98,7 @@ export function CardDrawer({
       setChecklist(d.checklist);
       setComments(d.comments);
       setAttachments(d.attachments);
+      setWhiteboards(d.whiteboards);
       setCurrentUserId(d.currentUserId);
       setIsAdmin(d.isAdmin);
       setLoading(false);
@@ -421,6 +426,29 @@ export function CardDrawer({
                 </label>
                 {uploadError && <p className="mt-1 text-xs text-red-600">{uploadError}</p>}
               </div>
+            </Section>
+
+            <Section title="Whiteboards">
+              <div className="flex flex-col gap-1.5">
+                {whiteboards.length === 0 && (
+                  <p className="text-sm text-foreground/40">No whiteboards linked to this card.</p>
+                )}
+                {whiteboards.map((w) => (
+                  <Link
+                    key={w.id}
+                    href={`/whiteboards/${w.id}`}
+                    className="flex items-center gap-2 rounded-md border border-border px-2 py-1.5 text-sm hover:bg-hover"
+                  >
+                    <span className="flex-1 truncate">{w.title}</span>
+                    <span className="shrink-0 text-xs text-foreground/40">Open →</span>
+                  </Link>
+                ))}
+              </div>
+              <form action={createWhiteboardForCard.bind(null, cardId)} className="mt-2">
+                <button className="inline-block cursor-pointer rounded-md border border-border-strong px-3 py-1 text-xs hover:bg-hover">
+                  + New whiteboard
+                </button>
+              </form>
             </Section>
 
             <Section title="Comments">

@@ -1,10 +1,10 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { ClipboardCheck, Columns3, Flag, Send } from "lucide-react";
+import { ClipboardCheck, Columns3, Flag, Send, Shapes } from "lucide-react";
 
 import { prisma } from "@/lib/db";
 import { requireUser, getActiveMembership } from "@/lib/dal";
-import { projectVisibilityWhere, boardVisibilityWhere } from "@/lib/authz";
+import { projectVisibilityWhere, boardVisibilityWhere, whiteboardVisibilityWhere } from "@/lib/authz";
 import { dueMeta, dueToneClass } from "@/lib/due";
 import { REVIEW_STATUS_LABEL, type ReviewStatus } from "@/lib/methodology";
 import { SectionHeader } from "@/components/shared/page";
@@ -27,9 +27,13 @@ export default async function MyWorkPage() {
   if (!membership) redirect("/login");
   const wsId = membership.workspaceId;
 
-  const [projectVis, boardVis] = await Promise.all([projectVisibilityWhere(), boardVisibilityWhere()]);
+  const [projectVis, boardVis, whiteboardVis] = await Promise.all([
+    projectVisibilityWhere(),
+    boardVisibilityWhere(),
+    whiteboardVisibilityWhere(),
+  ]);
 
-  const [toReview, requested, cards, milestones] = await Promise.all([
+  const [toReview, requested, cards, milestones, myWhiteboards] = await Promise.all([
     prisma.reviewCycle.findMany({
       where: {
         reviewerId: me.id,
@@ -68,6 +72,12 @@ export default async function MyWorkPage() {
       take: 8,
       select: { id: true, name: true, dueDate: true, project: { select: { id: true, name: true } } },
     }),
+    // Whiteboards this user owns (created).
+    prisma.whiteboard.findMany({
+      where: { createdById: me.id, workspaceId: wsId, ...whiteboardVis },
+      orderBy: { updatedAt: "desc" },
+      select: { id: true, title: true },
+    }),
   ]);
 
   const inbox: InboxReview[] = toReview.map((r) => ({
@@ -83,15 +93,15 @@ export default async function MyWorkPage() {
     link: artifactLink(r.deliverable),
   }));
 
-  const totalOpen = inbox.length + requested.length + cards.length + milestones.length;
+  const totalItems = inbox.length + requested.length + cards.length + milestones.length + myWhiteboards.length;
 
-  if (totalOpen === 0) {
+  if (totalItems === 0) {
     return (
       <EmptyState
         className="mt-4"
         icon={ClipboardCheck}
         title="You're all caught up"
-        description="No open reviews, assigned cards, or upcoming milestones right now."
+        description="No open reviews, assigned cards, upcoming milestones, or whiteboards right now."
       />
     );
   }
@@ -186,6 +196,25 @@ export default async function MyWorkPage() {
                 </Link>
               );
             })}
+          </Card>
+        )}
+      </section>
+
+      {/* My whiteboards — canvases I own */}
+      <section>
+        <SectionHeader>My whiteboards · {myWhiteboards.length}</SectionHeader>
+        {myWhiteboards.length === 0 ? (
+          <p className="text-sm text-muted-foreground">You haven&apos;t created any whiteboards.</p>
+        ) : (
+          <Card className="divide-y divide-border p-0">
+            {myWhiteboards.map((w) => (
+              <Link key={w.id} href={`/whiteboards/${w.id}`} className="flex flex-wrap items-center gap-3 px-5 py-3 hover:bg-muted/50">
+                <Shapes className="size-4 shrink-0 text-muted-foreground" />
+                <div className="min-w-0 flex-1">
+                  <div className="truncate font-medium">{w.title}</div>
+                </div>
+              </Link>
+            ))}
           </Card>
         )}
       </section>

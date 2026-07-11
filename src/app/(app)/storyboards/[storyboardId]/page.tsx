@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
-import { getStoryboardForUser } from "@/lib/authz";
+import { getStoryboardForUser, whiteboardVisibilityWhere } from "@/lib/authz";
 import { StoryboardView } from "@/components/storyboard/storyboard-view";
 
 export const metadata = { title: "Storyboard · IDStudio" };
@@ -39,8 +39,15 @@ export default async function StoryboardPage({ params }: { params: Promise<{ sto
   });
   if (!storyboard) notFound();
 
+  const whiteboards = await prisma.whiteboard.findMany({
+    where: { storyboardId, ...(await whiteboardVisibilityWhere()) },
+    orderBy: { updatedAt: "desc" },
+    select: { id: true, title: true },
+  });
+
   return (
     <StoryboardView
+      whiteboards={whiteboards}
       storyboard={{
         id: storyboard.id,
         title: storyboard.title,

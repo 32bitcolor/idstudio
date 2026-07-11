@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { getCurrentUser } from "@/lib/dal";
-import { getBoardForUser, getCardForUser } from "@/lib/authz";
+import { getBoardForUser, getCardForUser, whiteboardVisibilityWhere } from "@/lib/authz";
 import { positionBetween } from "@/lib/ordering";
 
 const Hex = z.string().regex(/^#[0-9a-fA-F]{6}$/, "Invalid color");
@@ -75,6 +75,12 @@ export async function getCardDetail(cardId: string) {
   ]);
   if (!card) return null;
 
+  const whiteboards = await prisma.whiteboard.findMany({
+    where: { cardId, ...(await whiteboardVisibilityWhere()) },
+    orderBy: { updatedAt: "desc" },
+    select: { id: true, title: true },
+  });
+
   return {
     boardId,
     card: {
@@ -87,6 +93,7 @@ export async function getCardDetail(cardId: string) {
     },
     boardLabels,
     members,
+    whiteboards,
     currentUserId: me.id,
     isAdmin: membership?.role === "ADMIN",
     checklist: card.checklist,

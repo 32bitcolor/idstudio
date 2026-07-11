@@ -31,6 +31,7 @@ model User {
   requestedReviews ReviewCycle[] @relation("ReviewRequester")
   timeEntries  TimeEntry[]
   groupMemberships GroupMembership[]
+  whiteboards  Whiteboard[]
 }
 
 model Workspace {
@@ -108,6 +109,7 @@ model Card {
   comments     Comment[]
   attachments  Attachment[]
   deliverables Deliverable[]
+  whiteboards  Whiteboard[]
 
   @@index([columnId, position])
 }
@@ -408,16 +410,22 @@ model Whiteboard {
   id           String            @id @default(cuid())
   workspaceId  String
   storyboardId String?
+  cardId       String?
+  createdById  String? // the ID who created/owns it
   title        String
   scene        String? // Excalidraw scene JSON
   createdAt    DateTime          @default(now())
   updatedAt    DateTime          @updatedAt
   workspace    Workspace         @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   storyboard   Storyboard?       @relation(fields: [storyboardId], references: [id], onDelete: SetNull)
+  card         Card?             @relation(fields: [cardId], references: [id], onDelete: SetNull)
+  createdBy    User?             @relation(fields: [createdById], references: [id], onDelete: SetNull)
   groupAccess  WhiteboardGroup[]
 
   @@index([workspaceId])
   @@index([storyboardId])
+  @@index([cardId])
+  @@index([createdById])
 }
 
 model WhiteboardGroup {
