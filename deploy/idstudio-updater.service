@@ -1,0 +1,19 @@
+# IDStudio self-update agent. Install on the VM:
+#   sudo cp deploy/idstudio-updater.service /etc/systemd/system/
+#   sudo systemctl daemon-reload && sudo systemctl enable --now idstudio-updater
+[Unit]
+Description=IDStudio self-update agent
+After=docker.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=idstudio
+WorkingDirectory=/home/idstudio/idstudio
+Environment=IDSTUDIO_REPO=/home/idstudio/idstudio
+ExecStart=/bin/bash /home/idstudio/idstudio/deploy/update-agent.sh
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

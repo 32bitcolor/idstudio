@@ -9,6 +9,7 @@ const TABS = [
   { href: "/settings/members", label: "Members", adminOnly: true },
   { href: "/settings/groups", label: "Groups", adminOnly: true },
   { href: "/settings/backup", label: "Backup", adminOnly: true },
+  { href: "/settings/updates", label: "Updates", adminOnly: true },
 ];
 
 export function SettingsNav({ isAdmin }: { isAdmin: boolean }) {
