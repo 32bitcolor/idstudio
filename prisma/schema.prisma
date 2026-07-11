@@ -146,12 +146,14 @@ model Project {
   status      String      @default("active") // active / on_hold / completed
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
-  workspace    Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  phases       Phase[]
-  deliverables Deliverable[]
-  milestones   Milestone[]
-  timeEntries  TimeEntry[]
-  groupAccess  ProjectGroup[]
+  workspace       Workspace           @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  phases          Phase[]
+  deliverables    Deliverable[]
+  milestones      Milestone[]
+  timeEntries     TimeEntry[]
+  groupAccess     ProjectGroup[]
+  objectives      LearningObjective[]
+  assessmentItems AssessmentItem[]
 
   @@index([workspaceId])
 }
@@ -275,8 +277,63 @@ model Screen {
   createdAt        DateTime   @default(now())
   updatedAt        DateTime   @updatedAt
   storyboard       Storyboard @relation(fields: [storyboardId], references: [id], onDelete: Cascade)
+  objectives       ScreenObjective[]
 
   @@index([storyboardId, position])
+}
+
+// ── Learning objectives & the alignment spine ─────────────────────────────────
+// Objectives belong to a project. Screens "teach" them (ScreenObjective) and
+// assessment items "assess" them (AssessmentItemObjective) — giving a coverage /
+// gap view over the ID's craft: objective → content → assessment.
+
+model LearningObjective {
+  id          String   @id @default(cuid())
+  projectId   String
+  text        String
+  bloomLevel  String   @default("understand") // remember/understand/apply/analyze/evaluate/create
+  position    String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  project     Project                   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  screens     ScreenObjective[]
+  assessments AssessmentItemObjective[]
+
+  @@index([projectId, position])
+}
+
+model ScreenObjective {
+  screenId    String
+  objectiveId String
+  screen      Screen            @relation(fields: [screenId], references: [id], onDelete: Cascade)
+  objective   LearningObjective @relation(fields: [objectiveId], references: [id], onDelete: Cascade)
+
+  @@id([screenId, objectiveId])
+  @@index([objectiveId])
+}
+
+model AssessmentItem {
+  id         String   @id @default(cuid())
+  projectId  String
+  prompt     String
+  itemType   String   @default("multiple_choice") // multiple_choice/true_false/short_answer/scenario/other
+  position   String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  project    Project                   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  objectives AssessmentItemObjective[]
+
+  @@index([projectId, position])
+}
+
+model AssessmentItemObjective {
+  itemId      String
+  objectiveId String
+  item        AssessmentItem    @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  objective   LearningObjective @relation(fields: [objectiveId], references: [id], onDelete: Cascade)
+
+  @@id([itemId, objectiveId])
+  @@index([objectiveId])
 }
 
 model ChecklistItem {

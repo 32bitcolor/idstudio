@@ -173,6 +173,24 @@ export async function getTimeEntryForUser(timeEntryId: string) {
   });
 }
 
+export async function getObjectiveForUser(objectiveId: string) {
+  const ctx = await getAccessContext();
+  if (!ctx) return null;
+  return prisma.learningObjective.findFirst({
+    where: { id: objectiveId, project: { workspace: ownedByUser(ctx.userId), ...projectAccessOR(ctx) } },
+    select: { id: true, projectId: true },
+  });
+}
+
+export async function getAssessmentItemForUser(itemId: string) {
+  const ctx = await getAccessContext();
+  if (!ctx) return null;
+  return prisma.assessmentItem.findFirst({
+    where: { id: itemId, project: { workspace: ownedByUser(ctx.userId), ...projectAccessOR(ctx) } },
+    select: { id: true, projectId: true },
+  });
+}
+
 // ── Storyboards ──────────────────────────────────────────────────────────────
 
 export async function getStoryboardForUser(storyboardId: string) {

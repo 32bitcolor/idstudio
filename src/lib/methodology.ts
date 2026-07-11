@@ -55,6 +55,55 @@ export const DELIVERABLE_STATUS_LABEL: Record<DeliverableStatus, string> = {
   complete: "Complete",
 };
 
+// Bloom's Revised Taxonomy — cognitive levels, low → high. Tagging an objective
+// with its level nudges toward measurable, appropriately-pitched verbs.
+export const BLOOM_LEVELS = [
+  "remember",
+  "understand",
+  "apply",
+  "analyze",
+  "evaluate",
+  "create",
+] as const;
+export type BloomLevel = (typeof BLOOM_LEVELS)[number];
+
+export const BLOOM_LABEL: Record<BloomLevel, string> = {
+  remember: "Remember",
+  understand: "Understand",
+  apply: "Apply",
+  analyze: "Analyze",
+  evaluate: "Evaluate",
+  create: "Create",
+};
+
+// A few strong, observable verbs per level — surfaced as a hint when writing an
+// objective (helps replace fuzzy verbs like "understand" / "know").
+export const BLOOM_VERBS: Record<BloomLevel, string[]> = {
+  remember: ["define", "list", "recall", "identify", "name", "state"],
+  understand: ["explain", "summarize", "classify", "describe", "compare", "interpret"],
+  apply: ["apply", "demonstrate", "use", "solve", "execute", "carry out"],
+  analyze: ["differentiate", "organize", "analyze", "diagnose", "attribute", "compare"],
+  evaluate: ["evaluate", "critique", "justify", "assess", "recommend", "prioritize"],
+  create: ["design", "construct", "produce", "develop", "compose", "plan"],
+};
+
+export const ASSESSMENT_ITEM_TYPES = [
+  "multiple_choice",
+  "true_false",
+  "short_answer",
+  "scenario",
+  "other",
+] as const;
+export type AssessmentItemType = (typeof ASSESSMENT_ITEM_TYPES)[number];
+
+export const ASSESSMENT_ITEM_TYPE_LABEL: Record<AssessmentItemType, string> = {
+  multiple_choice: "Multiple choice",
+  true_false: "True / false",
+  short_answer: "Short answer",
+  scenario: "Scenario",
+  other: "Other",
+};
+
 export const REVIEW_STATUSES = ["requested", "in_review", "changes_requested", "approved"] as const;
 export type ReviewStatus = (typeof REVIEW_STATUSES)[number];
 
