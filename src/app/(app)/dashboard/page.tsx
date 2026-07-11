@@ -7,7 +7,12 @@ import {
   ClipboardCheck,
   CalendarClock,
   ArrowRight,
+  ArrowUpRight,
   Plus,
+  Shield,
+  Users,
+  Settings,
+  LifeBuoy,
 } from "lucide-react";
 
 import { requireUser, getActiveMembership } from "@/lib/dal";
@@ -18,8 +23,15 @@ import { NAV_MODULES } from "@/lib/modules";
 import { PageContainer, PageHeader, SectionHeader } from "@/components/shared/page";
 import { EmptyState } from "@/components/shared/empty-state";
 import { StatusBadge, type StatusTone } from "@/components/shared/status-badge";
-import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+
+/** Soft tinted icon chip, theme-safe via color-mix on a semantic token. */
+function tint(varName: string) {
+  return {
+    backgroundColor: `color-mix(in srgb, var(${varName}) 14%, transparent)`,
+    color: `var(${varName})`,
+  };
+}
 
 export const metadata = { title: "Dashboard · IDStudio" };
 
@@ -93,10 +105,10 @@ export default async function DashboardPage() {
   const activeProjects = projects.filter((p) => p.status === "active");
 
   const stats = [
-    { label: "Active projects", value: activeProjects.length, icon: FolderKanban, href: "/projects" },
-    { label: "Boards", value: boardCount, icon: Columns3, href: "/boards" },
-    { label: "Storyboards", value: storyboardCount, icon: Film, href: "/storyboards" },
-    { label: "Awaiting your review", value: myReviews.length, icon: ClipboardCheck, href: "/my-work" },
+    { label: "Active projects", value: activeProjects.length, icon: FolderKanban, href: "/projects", tint: "--color-accent" },
+    { label: "Boards", value: boardCount, icon: Columns3, href: "/boards", tint: "--color-info" },
+    { label: "Storyboards", value: storyboardCount, icon: Film, href: "/storyboards", tint: "--color-success" },
+    { label: "Awaiting your review", value: myReviews.length, icon: ClipboardCheck, href: "/my-work", tint: "--color-warning" },
   ];
 
   return (
@@ -110,14 +122,19 @@ export default async function DashboardPage() {
 
       <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {stats.map((s) => (
-          <Link key={s.label} href={s.href} className="group">
-            <Card className="gap-0 py-4 transition-colors group-hover:border-border-strong">
-              <div className="flex items-center justify-between px-5">
-                <span className="text-sm text-muted-foreground">{s.label}</span>
-                <s.icon className="size-4 text-muted-foreground" />
+          <Link
+            key={s.label}
+            href={s.href}
+            className="group rounded-xl border border-border bg-surface p-5 transition-all hover:-translate-y-0.5 hover:border-border-strong hover:shadow-sm"
+          >
+            <div className="flex items-start justify-between">
+              <div className="flex size-10 items-center justify-center rounded-lg" style={tint(s.tint)}>
+                <s.icon className="size-5" />
               </div>
-              <div className="mt-2 px-5 text-2xl font-semibold tabular-nums">{s.value}</div>
-            </Card>
+              <ArrowUpRight className="size-4 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
+            </div>
+            <div className="mt-3 text-3xl font-semibold tabular-nums">{s.value}</div>
+            <div className="text-sm text-muted-foreground">{s.label}</div>
           </Link>
         ))}
       </div>
@@ -155,29 +172,31 @@ export default async function DashboardPage() {
                 const done = p.phases.filter((ph) => ph.status === "done").length;
                 const pct = total ? Math.round((done / total) * 100) : 0;
                 return (
-                  <Link key={p.id} href={`/projects/${p.id}`} className="group">
-                    <Card className="gap-3 py-4 transition-colors group-hover:border-border-strong">
-                      <div className="flex items-center justify-between gap-3 px-5">
-                        <span className="truncate font-medium">{p.name}</span>
-                        <div className="flex shrink-0 items-center gap-2">
-                          <StatusBadge tone="neutral">{p.methodology}</StatusBadge>
-                          <StatusBadge tone={projectTone(p.status)}>
-                            {PROJECT_STATUS_LABEL[p.status] ?? p.status}
-                          </StatusBadge>
-                        </div>
+                  <Link
+                    key={p.id}
+                    href={`/projects/${p.id}`}
+                    className="group block rounded-xl border border-border bg-surface p-4 transition-all hover:-translate-y-0.5 hover:border-border-strong hover:shadow-sm"
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="truncate font-medium">{p.name}</span>
+                      <div className="flex shrink-0 items-center gap-2">
+                        <StatusBadge tone="neutral">{p.methodology}</StatusBadge>
+                        <StatusBadge tone={projectTone(p.status)}>
+                          {PROJECT_STATUS_LABEL[p.status] ?? p.status}
+                        </StatusBadge>
                       </div>
-                      <div className="px-5">
-                        <div className="mb-1 flex items-center justify-between text-xs text-muted-foreground">
-                          <span>
-                            {done}/{total} phases done
-                          </span>
-                          <span className="tabular-nums">{pct}%</span>
-                        </div>
-                        <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
-                          <div className="h-full rounded-full bg-primary" style={{ width: `${pct}%` }} />
-                        </div>
+                    </div>
+                    <div className="mt-3">
+                      <div className="mb-1 flex items-center justify-between text-xs text-muted-foreground">
+                        <span>
+                          {done}/{total} phases done
+                        </span>
+                        <span className="tabular-nums">{pct}%</span>
                       </div>
-                    </Card>
+                      <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+                        <div className="h-full rounded-full bg-accent transition-all" style={{ width: `${pct}%` }} />
+                      </div>
+                    </div>
                   </Link>
                 );
               })}
@@ -203,13 +222,15 @@ export default async function DashboardPage() {
             ) : (
               <div className="flex flex-col gap-2">
                 {myReviews.map((r) => (
-                  <Link key={r.id} href="/my-work" className="group">
-                    <Card className="gap-1 py-3 transition-colors group-hover:border-border-strong">
-                      <div className="truncate px-4 text-sm font-medium">{r.deliverable.name}</div>
-                      <div className="truncate px-4 text-xs text-muted-foreground">
-                        {r.deliverable.project.name}
-                      </div>
-                    </Card>
+                  <Link
+                    key={r.id}
+                    href="/my-work"
+                    className="group block rounded-xl border border-border bg-surface p-3 transition-colors hover:border-border-strong hover:bg-hover"
+                  >
+                    <div className="truncate text-sm font-medium">{r.deliverable.name}</div>
+                    <div className="truncate text-xs text-muted-foreground">
+                      {r.deliverable.project.name}
+                    </div>
                   </Link>
                 ))}
               </div>
@@ -225,17 +246,19 @@ export default async function DashboardPage() {
             ) : (
               <div className="flex flex-col gap-2">
                 {milestones.map((m) => (
-                  <Link key={m.id} href={`/projects/${m.project.id}`} className="group">
-                    <Card className="gap-1 py-3 transition-colors group-hover:border-border-strong">
-                      <div className="flex items-center justify-between gap-2 px-4">
-                        <span className="truncate text-sm font-medium">{m.name}</span>
-                        <span className="inline-flex shrink-0 items-center gap-1 text-xs text-muted-foreground">
-                          <CalendarClock className="size-3" />
-                          {m.dueDate ? formatDue(m.dueDate) : ""}
-                        </span>
-                      </div>
-                      <div className="truncate px-4 text-xs text-muted-foreground">{m.project.name}</div>
-                    </Card>
+                  <Link
+                    key={m.id}
+                    href={`/projects/${m.project.id}`}
+                    className="group block rounded-xl border border-border bg-surface p-3 transition-colors hover:border-border-strong hover:bg-hover"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="truncate text-sm font-medium">{m.name}</span>
+                      <span className="inline-flex shrink-0 items-center gap-1 text-xs text-muted-foreground">
+                        <CalendarClock className="size-3" />
+                        {m.dueDate ? formatDue(m.dueDate) : ""}
+                      </span>
+                    </div>
+                    <div className="truncate text-xs text-muted-foreground">{m.project.name}</div>
                   </Link>
                 ))}
               </div>
@@ -244,31 +267,63 @@ export default async function DashboardPage() {
         </section>
       </div>
 
-      <section className="mt-10">
+      <section className="mt-12">
         <SectionHeader>Jump back in</SectionHeader>
-        <div className="grid gap-3 sm:grid-cols-3">
-          {NAV_MODULES.filter((m) => m.href).map((m) => (
-            <Link key={m.key} href={m.href!} className="group">
-              <Card className="gap-2 py-4 transition-colors group-hover:border-border-strong">
-                <div className="flex items-center gap-2 px-5">
-                  <m.icon className="size-4 text-muted-foreground" />
-                  <span className="font-medium">{m.name}</span>
-                </div>
-                <p className="px-5 text-sm text-muted-foreground">{m.tagline}</p>
-              </Card>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {[
+            ...NAV_MODULES.filter((m) => m.href).map((m) => ({
+              key: m.key,
+              href: m.href!,
+              icon: m.icon,
+              name: m.name,
+              tagline: m.tagline,
+            })),
+            { key: "help", href: "/help", icon: LifeBuoy, name: "Help & guides", tagline: "Getting started, ADDIE & SAM, and how-tos" },
+          ].map((m) => (
+            <Link
+              key={m.key}
+              href={m.href}
+              className="group flex items-start gap-3 rounded-xl border border-border bg-surface p-4 transition-all hover:-translate-y-0.5 hover:border-border-strong hover:shadow-sm"
+            >
+              <div className="flex size-9 shrink-0 items-center justify-center rounded-lg" style={tint("--color-accent")}>
+                <m.icon className="size-4.5" />
+              </div>
+              <div className="min-w-0">
+                <div className="font-medium">{m.name}</div>
+                <p className="text-sm leading-relaxed text-muted-foreground">{m.tagline}</p>
+              </div>
             </Link>
           ))}
         </div>
       </section>
 
       {isAdmin && (
-        <section className="mt-10">
-          <Card className="gap-1 py-4">
-            <div className="px-5 text-sm font-medium">Admin tools</div>
-            <p className="px-5 text-sm text-muted-foreground">
-              Only workspace admins see this. Member management and workspace settings will live here.
-            </p>
-          </Card>
+        <section className="mt-12">
+          <div className="rounded-xl border border-border bg-surface p-5">
+            <div className="flex items-start gap-3">
+              <div className="flex size-9 shrink-0 items-center justify-center rounded-lg" style={tint("--color-info")}>
+                <Shield className="size-4.5" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="font-medium">Admin tools</div>
+                <p className="text-sm text-muted-foreground">
+                  You&rsquo;re a workspace admin — manage your team and account.
+                </p>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <Button asChild variant="outline" size="sm">
+                    <Link href="/settings/members">
+                      <Users className="size-4" /> Members &amp; groups
+                    </Link>
+                  </Button>
+                  <Button asChild variant="outline" size="sm">
+                    <Link href="/settings/account">
+                      <Settings className="size-4" /> Account settings
+                    </Link>
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
         </section>
       )}
     </PageContainer>
