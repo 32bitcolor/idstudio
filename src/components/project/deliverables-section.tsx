@@ -14,6 +14,7 @@ import {
   listLinkableCards,
 } from "@/app/actions/deliverables";
 import { createStoryboardForDeliverable } from "@/app/actions/storyboards";
+import { createCourseForDeliverable } from "@/app/actions/courses";
 import {
   DELIVERABLE_TYPES,
   DELIVERABLE_TYPE_LABEL,
@@ -36,6 +37,7 @@ type Review = {
 };
 type CardLink = { id: string; title: string; boardId: string; boardName: string };
 type StoryboardLink = { id: string; title: string };
+type CourseLink = { id: string; title: string };
 type Deliverable = {
   id: string;
   name: string;
@@ -44,6 +46,7 @@ type Deliverable = {
   phaseId: string | null;
   card: CardLink | null;
   storyboard: StoryboardLink | null;
+  course: CourseLink | null;
   reviews: Review[];
 };
 type PhaseRef = { id: string; name: string };
@@ -81,7 +84,7 @@ export function DeliverablesSection({
     const res = await createDeliverable(projectId, name, type);
     if ("deliverable" in res && res.deliverable) {
       const d = res.deliverable;
-      setItems((prev) => [...prev, { id: d.id, name: d.name, type: d.type, status: d.status, phaseId: d.phaseId, card: null, storyboard: null, reviews: [] }]);
+      setItems((prev) => [...prev, { id: d.id, name: d.name, type: d.type, status: d.status, phaseId: d.phaseId, card: null, storyboard: null, course: null, reviews: [] }]);
     }
   }
 
@@ -99,6 +102,18 @@ export function DeliverablesSection({
     if ("storyboard" in res && res.storyboard) {
       patch(d.id, { storyboard: res.storyboard });
       router.push(`/storyboards/${res.storyboard.id}`);
+    }
+  }
+
+  async function openCourse(d: Deliverable) {
+    if (d.course) {
+      router.push(`/courses/${d.course.id}`);
+      return;
+    }
+    const res = await createCourseForDeliverable(d.id);
+    if ("course" in res && res.course) {
+      patch(d.id, { course: res.course });
+      router.push(`/courses/${res.course.id}`);
     }
   }
 
@@ -204,6 +219,16 @@ export function DeliverablesSection({
                   title={d.storyboard ? "Open the linked storyboard" : "Create a storyboard for this deliverable"}
                 >
                   🎬 {d.storyboard ? "Open storyboard" : "Create storyboard"}
+                </button>
+              )}
+
+              {d.type === "course" && (
+                <button
+                  onClick={() => openCourse(d)}
+                  className="flex items-center gap-1 rounded-md bg-muted px-2 py-1 text-xs hover:bg-hover"
+                  title={d.course ? "Open the linked course" : "Create a course for this deliverable"}
+                >
+                  🖥️ {d.course ? "Open course" : "Create course"}
                 </button>
               )}
             </div>

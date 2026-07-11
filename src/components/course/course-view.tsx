@@ -1,0 +1,433 @@
+"use client";
+
+import { useRef, useState, useTransition } from "react";
+import Link from "next/link";
+import {
+  Plus,
+  Trash2,
+  ChevronUp,
+  ChevronDown,
+  GripVertical,
+  Pencil,
+  Eye,
+  X,
+} from "lucide-react";
+
+import {
+  renameCourse,
+  setCourseDescription,
+  setCourseStatus,
+  deleteCourse,
+  createLesson,
+  renameLesson,
+  moveLesson,
+  deleteLesson,
+  createBlock,
+  updateBlockContent,
+  moveBlock,
+  deleteBlock,
+} from "@/app/actions/courses";
+import {
+  BLOCK_TYPES,
+  BLOCK_LABEL,
+  BLOCK_DESCRIPTION,
+  parseBlockContent,
+  type BlockType,
+} from "@/lib/course";
+import { BLOCK_REGISTRY, type ProjectObjective } from "@/components/course/blocks";
+import { useSetPageTitle } from "@/components/app-shell/breadcrumbs";
+import { PageContainer } from "@/components/shared/page";
+import { InlineTitle } from "@/components/shared/inline-title";
+import { ConfirmDelete } from "@/components/shared/confirm-delete";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+
+export type BlockInit = { id: string; blockType: string; content: string; position: string };
+export type LessonInit = { id: string; title: string; position: string; blocks: BlockInit[] };
+type CourseMeta = {
+  id: string;
+  title: string;
+  description: string | null;
+  status: string;
+  deliverable: { id: string; name: string; projectId: string; projectName: string } | null;
+};
+
+function move<T>(arr: T[], from: number, to: number) {
+  const next = arr.slice();
+  const [it] = next.splice(from, 1);
+  next.splice(to, 0, it);
+  return next;
+}
+
+export function CourseView({
+  course,
+  initialLessons,
+  projectObjectives,
+}: {
+  course: CourseMeta;
+  initialLessons: LessonInit[];
+  projectObjectives: ProjectObjective[];
+}) {
+  const [title, setTitle] = useState(course.title);
+  const [description, setDescription] = useState(course.description ?? "");
+  const [status, setStatus] = useState(course.status);
+  const [lessons, setLessons] = useState<LessonInit[]>(initialLessons);
+  const [activeId, setActiveId] = useState<string>(initialLessons[0]?.id ?? "");
+  const [mode, setMode] = useState<"edit" | "preview">("edit");
+  const [, startTransition] = useTransition();
+  useSetPageTitle(title);
+
+  const active = lessons.find((l) => l.id === activeId) ?? lessons[0];
+
+  function setLessonBlocks(lessonId: string, blocks: BlockInit[]) {
+    setLessons((prev) => prev.map((l) => (l.id === lessonId ? { ...l, blocks } : l)));
+  }
+
+  async function addLesson() {
+    const res = await createLesson(course.id, `Lesson ${lessons.length + 1}`);
+    if ("lesson" in res && res.lesson) {
+      setLessons((prev) => [...prev, { ...res.lesson, blocks: [] }]);
+      setActiveId(res.lesson.id);
+    }
+  }
+  function renameLessonLocal(id: string, value: string) {
+    setLessons((prev) => prev.map((l) => (l.id === id ? { ...l, title: value } : l)));
+  }
+  function reorderLesson(index: number, dir: -1 | 1) {
+    const to = index + dir;
+    if (to < 0 || to >= lessons.length) return;
+    setLessons((prev) => move(prev, index, to));
+    startTransition(() => void moveLesson(lessons[index].id, to));
+  }
+  function removeLesson(id: string) {
+    if (lessons.length === 1) return;
+    if (!confirm("Delete this lesson and its content?")) return;
+    const next = lessons.filter((l) => l.id !== id);
+    setLessons(next);
+    if (activeId === id) setActiveId(next[0]?.id ?? "");
+    startTransition(() => void deleteLesson(id));
+  }
+
+  async function addBlock(type: BlockType) {
+    if (!active) return;
+    const res = await createBlock(active.id, type);
+    if ("block" in res && res.block) {
+      setLessonBlocks(active.id, [...active.blocks, res.block]);
+    }
+  }
+
+  return (
+    <PageContainer size="wide">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0 flex-1">
+          <InlineTitle
+            value={title}
+            onChange={setTitle}
+            onCommit={() => title.trim() && startTransition(() => void renameCourse(course.id, title.trim()))}
+            ariaLabel="Course title"
+            className="text-2xl font-semibold tracking-tight"
+          />
+          {course.deliverable && (
+            <Link
+              href={`/projects/${course.deliverable.projectId}`}
+              className="mt-1 inline-block text-sm text-muted-foreground hover:text-foreground hover:underline"
+            >
+              {course.deliverable.projectName} → {course.deliverable.name}
+            </Link>
+          )}
+        </div>
+        <div className="flex shrink-0 items-center gap-2">
+          <select
+            value={status}
+            onChange={(e) => {
+              setStatus(e.target.value);
+              startTransition(() => void setCourseStatus(course.id, e.target.value));
+            }}
+            className="rounded-md border border-border-strong bg-transparent px-2 py-1.5 text-sm"
+          >
+            <option value="draft">Draft</option>
+            <option value="published">Published</option>
+          </select>
+          <div className="flex rounded-lg border border-border p-0.5">
+            <button
+              onClick={() => setMode("edit")}
+              className={cn("flex items-center gap-1.5 rounded-md px-3 py-1 text-sm font-medium", mode === "edit" ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:bg-hover")}
+            >
+              <Pencil className="size-3.5" /> Edit
+            </button>
+            <button
+              onClick={() => setMode("preview")}
+              className={cn("flex items-center gap-1.5 rounded-md px-3 py-1 text-sm font-medium", mode === "preview" ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:bg-hover")}
+            >
+              <Eye className="size-3.5" /> Preview
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {mode === "edit" && (
+        <textarea
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          onBlur={(e) => startTransition(() => void setCourseDescription(course.id, e.target.value))}
+          rows={2}
+          placeholder="Course description (shown on the overview)…"
+          className="mt-3 w-full resize-none rounded-lg border border-border bg-transparent px-3 py-2 text-sm outline-none focus:border-border-strong"
+        />
+      )}
+
+      <div className="mt-6 grid gap-8 lg:grid-cols-[14rem_1fr]">
+        {/* Lessons rail */}
+        <aside className="lg:sticky lg:top-6 lg:h-fit">
+          <p className="mb-2 px-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Lessons</p>
+          <ul className="flex flex-col gap-0.5">
+            {lessons.map((l, i) => (
+              <li key={l.id} className="group flex items-center gap-1">
+                <button
+                  onClick={() => setActiveId(l.id)}
+                  className={cn(
+                    "flex-1 truncate rounded-lg px-2 py-1.5 text-left text-sm",
+                    l.id === active?.id ? "bg-accent/12 font-medium text-foreground" : "text-muted-foreground hover:bg-hover"
+                  )}
+                >
+                  <span className="mr-1 text-xs text-muted-foreground">{i + 1}.</span>
+                  {l.title}
+                </button>
+                {mode === "edit" && (
+                  <div className="flex shrink-0 items-center opacity-0 group-hover:opacity-100">
+                    <button onClick={() => reorderLesson(i, -1)} disabled={i === 0} className="rounded p-0.5 text-foreground/40 hover:text-foreground disabled:opacity-20" title="Move up"><ChevronUp className="size-3.5" /></button>
+                    <button onClick={() => reorderLesson(i, 1)} disabled={i === lessons.length - 1} className="rounded p-0.5 text-foreground/40 hover:text-foreground disabled:opacity-20" title="Move down"><ChevronDown className="size-3.5" /></button>
+                  </div>
+                )}
+              </li>
+            ))}
+          </ul>
+          {mode === "edit" && (
+            <button onClick={addLesson} className="mt-1 w-full rounded-lg px-2 py-1.5 text-left text-sm text-foreground/50 hover:bg-hover">
+              <Plus className="mr-1 inline size-3.5" /> Add lesson
+            </button>
+          )}
+        </aside>
+
+        {/* Lesson body */}
+        <div className="min-w-0">
+          {active ? (
+            mode === "edit" ? (
+              <LessonEditor
+                key={active.id}
+                lesson={active}
+                objectives={projectObjectives}
+                onRename={(v) => {
+                  renameLessonLocal(active.id, v);
+                }}
+                onCommitTitle={(v) => v.trim() && startTransition(() => void renameLesson(active.id, v.trim()))}
+                onDeleteLesson={() => removeLesson(active.id)}
+                canDelete={lessons.length > 1}
+                onBlocksChange={(blocks) => setLessonBlocks(active.id, blocks)}
+                onAddBlock={addBlock}
+              />
+            ) : (
+              <LessonPreview courseTitle={title} lesson={active} />
+            )
+          ) : (
+            <p className="text-sm text-muted-foreground">No lessons.</p>
+          )}
+        </div>
+      </div>
+
+      {mode === "edit" && (
+        <div className="mt-12 border-t border-border pt-4">
+          <ConfirmDelete
+            title="Delete course?"
+            description="This permanently deletes the course and all its lessons and blocks."
+            onConfirm={() => deleteCourse(course.id)}
+            trigger={
+              <Button variant="ghost" className="text-destructive hover:bg-destructive/10 hover:text-destructive">
+                Delete course
+              </Button>
+            }
+          />
+        </div>
+      )}
+    </PageContainer>
+  );
+}
+
+function LessonEditor({
+  lesson,
+  objectives,
+  onRename,
+  onCommitTitle,
+  onDeleteLesson,
+  canDelete,
+  onBlocksChange,
+  onAddBlock,
+}: {
+  lesson: LessonInit;
+  objectives: ProjectObjective[];
+  onRename: (v: string) => void;
+  onCommitTitle: (v: string) => void;
+  onDeleteLesson: () => void;
+  canDelete: boolean;
+  onBlocksChange: (blocks: BlockInit[]) => void;
+  onAddBlock: (type: BlockType) => void;
+}) {
+  const [, startTransition] = useTransition();
+  const [inserterOpen, setInserterOpen] = useState(false);
+
+  function reorderBlock(index: number, dir: -1 | 1) {
+    const to = index + dir;
+    if (to < 0 || to >= lesson.blocks.length) return;
+    onBlocksChange(move(lesson.blocks, index, to));
+    startTransition(() => void moveBlock(lesson.blocks[index].id, to));
+  }
+  function removeBlock(id: string) {
+    onBlocksChange(lesson.blocks.filter((b) => b.id !== id));
+    startTransition(() => void deleteBlock(id));
+  }
+  // Sync a block's edited content up so Preview (which reads parent state) is live.
+  function setBlockContent(id: string, json: string) {
+    onBlocksChange(lesson.blocks.map((b) => (b.id === id ? { ...b, content: json } : b)));
+  }
+
+  return (
+    <div>
+      <div className="mb-4 flex items-center gap-2">
+        <input
+          value={lesson.title}
+          onChange={(e) => onRename(e.target.value)}
+          onBlur={(e) => onCommitTitle(e.target.value)}
+          className="min-w-0 flex-1 rounded bg-transparent px-1 text-lg font-semibold outline-none hover:bg-hover focus:bg-hover"
+        />
+        {canDelete && (
+          <button onClick={onDeleteLesson} className="shrink-0 rounded p-1 text-foreground/40 hover:bg-destructive/10 hover:text-destructive" title="Delete lesson">
+            <Trash2 className="size-4" />
+          </button>
+        )}
+      </div>
+
+      <div className="flex flex-col gap-3">
+        {lesson.blocks.length === 0 && (
+          <p className="rounded-xl border border-dashed border-border px-4 py-10 text-center text-sm text-muted-foreground">
+            This lesson is empty. Add your first block below.
+          </p>
+        )}
+        {lesson.blocks.map((b, i) => (
+          <BlockRow
+            key={b.id}
+            block={b}
+            objectives={objectives}
+            index={i}
+            total={lesson.blocks.length}
+            onReorder={reorderBlock}
+            onRemove={removeBlock}
+            onContent={setBlockContent}
+          />
+        ))}
+      </div>
+
+      {/* Inserter */}
+      <div className="mt-3">
+        {inserterOpen ? (
+          <div className="rounded-xl border border-border-strong p-3">
+            <div className="mb-2 flex items-center justify-between">
+              <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Add a block</span>
+              <button onClick={() => setInserterOpen(false)} className="rounded p-0.5 text-foreground/40 hover:text-foreground"><X className="size-4" /></button>
+            </div>
+            <div className="grid gap-2 sm:grid-cols-2">
+              {BLOCK_TYPES.map((t) => {
+                const Icon = BLOCK_REGISTRY[t].icon;
+                return (
+                  <button
+                    key={t}
+                    onClick={() => { onAddBlock(t); setInserterOpen(false); }}
+                    className="flex items-start gap-2.5 rounded-lg border border-border p-2.5 text-left transition-colors hover:border-border-strong hover:bg-hover"
+                  >
+                    <div className="flex size-8 shrink-0 items-center justify-center rounded-md bg-accent/12 text-accent"><Icon className="size-4" /></div>
+                    <div className="min-w-0">
+                      <div className="text-sm font-medium">{BLOCK_LABEL[t]}</div>
+                      <div className="text-xs text-muted-foreground">{BLOCK_DESCRIPTION[t]}</div>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        ) : (
+          <button onClick={() => setInserterOpen(true)} className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-dashed border-border py-3 text-sm font-medium text-muted-foreground hover:border-border-strong hover:text-foreground">
+            <Plus className="size-4" /> Add a block
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function BlockRow({
+  block,
+  objectives,
+  index,
+  total,
+  onReorder,
+  onRemove,
+  onContent,
+}: {
+  block: BlockInit;
+  objectives: ProjectObjective[];
+  index: number;
+  total: number;
+  onReorder: (index: number, dir: -1 | 1) => void;
+  onRemove: (id: string) => void;
+  onContent: (id: string, json: string) => void;
+}) {
+  const type = block.blockType as BlockType;
+  const reg = BLOCK_REGISTRY[type];
+  const [content, setContent] = useState(() => parseBlockContent(type, block.content));
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [, startTransition] = useTransition();
+
+  function save(next: unknown) {
+    const json = JSON.stringify(next);
+    setContent(next as typeof content);
+    onContent(block.id, json); // keep parent (and Preview) in sync live
+    if (timer.current) clearTimeout(timer.current);
+    timer.current = setTimeout(() => {
+      startTransition(() => void updateBlockContent(block.id, json));
+    }, 600);
+  }
+
+  const Edit = reg.Edit;
+  return (
+    <div className="group relative rounded-xl border border-border p-3 pl-9">
+      <div className="absolute left-1 top-3 flex flex-col items-center text-foreground/30">
+        <GripVertical className="size-4" />
+      </div>
+      <div className="absolute right-2 top-2 flex items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
+        <span className="mr-1 rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">{BLOCK_LABEL[type]}</span>
+        <button onClick={() => onReorder(index, -1)} disabled={index === 0} className="rounded p-0.5 text-foreground/40 hover:text-foreground disabled:opacity-20" title="Move up"><ChevronUp className="size-4" /></button>
+        <button onClick={() => onReorder(index, 1)} disabled={index === total - 1} className="rounded p-0.5 text-foreground/40 hover:text-foreground disabled:opacity-20" title="Move down"><ChevronDown className="size-4" /></button>
+        <button onClick={() => onRemove(block.id)} className="rounded p-0.5 text-foreground/40 hover:text-destructive" title="Delete block"><Trash2 className="size-4" /></button>
+      </div>
+      <div className="pt-4">
+        <Edit content={content} save={save} objectives={objectives} />
+      </div>
+    </div>
+  );
+}
+
+function LessonPreview({ courseTitle, lesson }: { courseTitle: string; lesson: LessonInit }) {
+  return (
+    <div className="mx-auto max-w-2xl">
+      <p className="text-sm font-medium text-muted-foreground">{courseTitle}</p>
+      <h1 className="mt-1 mb-8 text-3xl font-bold tracking-tight">{lesson.title}</h1>
+      <div className="flex flex-col gap-6">
+        {lesson.blocks.length === 0 && <p className="text-muted-foreground">This lesson has no content yet.</p>}
+        {lesson.blocks.map((b) => {
+          const type = b.blockType as BlockType;
+          const View = BLOCK_REGISTRY[type].View;
+          return <View key={b.id} content={parseBlockContent(type, b.content)} />;
+        })}
+      </div>
+    </div>
+  );
+}
