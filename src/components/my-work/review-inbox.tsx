@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { Check, MessageSquare, RotateCcw } from "lucide-react";
 import { setReviewStatus, setReviewFeedback } from "@/app/actions/reviews";
@@ -51,6 +52,7 @@ function ReviewItem({
   onDrop: (id: string) => void;
   onPatch: (id: string, status: string) => void;
 }) {
+  const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [feedback, setFeedback] = useState(review.feedback ?? "");
   const [err, setErr] = useState<string | null>(null);
@@ -67,6 +69,10 @@ function ReviewItem({
       if (res?.error) { setErr(res.error); return; }
       if (status === "in_review") onPatch(review.id, status);
       else onDrop(review.id); // approved / changes_requested leave the reviewer's queue
+      // The server action already revalidates the root layout; router.refresh()
+      // fetches that fresh data now so the header's badge count updates
+      // immediately instead of waiting for the next navigation.
+      router.refresh();
     });
   }
 

@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import {
   addReviewCycle,
@@ -38,6 +39,7 @@ export function ReviewCycles({
   members: Member[];
   initial: Review[];
 }) {
+  const router = useRouter();
   const [reviews, setReviews] = useState<Review[]>(initial);
   const [open, setOpen] = useState(false);
   const [adding, setAdding] = useState(false);
@@ -61,7 +63,12 @@ export function ReviewCycles({
 
   function changeStatus(r: Review, status: string) {
     patch(r.id, { status });
-    startTransition(() => void setReviewStatus(r.id, status));
+    startTransition(async () => {
+      await setReviewStatus(r.id, status);
+      // Picks up the root-layout revalidation so the header's badge count
+      // (reviews awaiting the reviewer's decision) updates immediately.
+      router.refresh();
+    });
   }
   function changeDue(r: Review, value: string) {
     const iso = value ? new Date(value).toISOString() : null;
