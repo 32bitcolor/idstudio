@@ -9,8 +9,12 @@ import {
   moveScreen,
   deleteScreen,
 } from "@/app/actions/storyboards";
+import { toggleScreenObjective } from "@/app/actions/objectives";
 import { SCREEN_TYPES, SCREEN_TYPE_LABEL, SCREEN_FIELDS, type ScreenType } from "@/lib/storyboard";
 import { DescriptionEditor } from "@/components/board/description-editor";
+import { Target } from "lucide-react";
+
+export type ProjectObjective = { id: string; text: string };
 
 export type ScreenInit = {
   id: string;
@@ -22,6 +26,7 @@ export type ScreenInit = {
   visualNotes: string | null;
   interactionNotes: string | null;
   developerNotes: string | null;
+  objectiveIds: string[];
 };
 
 function move<T>(arr: T[], from: number, to: number) {
@@ -31,7 +36,15 @@ function move<T>(arr: T[], from: number, to: number) {
   return next;
 }
 
-export function ScreensSection({ storyboardId, initial }: { storyboardId: string; initial: ScreenInit[] }) {
+export function ScreensSection({
+  storyboardId,
+  initial,
+  projectObjectives = [],
+}: {
+  storyboardId: string;
+  initial: ScreenInit[];
+  projectObjectives?: ProjectObjective[];
+}) {
   const [screens, setScreens] = useState<ScreenInit[]>(initial);
   const [, startTransition] = useTransition();
 
@@ -51,7 +64,7 @@ export function ScreensSection({ storyboardId, initial }: { storyboardId: string
 
   async function add(title: string) {
     const res = await createScreen(storyboardId, title);
-    if ("screen" in res && res.screen) setScreens((prev) => [...prev, res.screen]);
+    if ("screen" in res && res.screen) setScreens((prev) => [...prev, { ...res.screen, objectiveIds: [] }]);
   }
 
   return (
@@ -69,6 +82,7 @@ export function ScreensSection({ storyboardId, initial }: { storyboardId: string
             screen={s}
             index={i}
             total={screens.length}
+            objectives={projectObjectives}
             onReorder={reorder}
             onRemove={remove}
           />
@@ -84,19 +98,28 @@ function ScreenCard({
   screen,
   index,
   total,
+  objectives,
   onReorder,
   onRemove,
 }: {
   screen: ScreenInit;
   index: number;
   total: number;
+  objectives: ProjectObjective[];
   onReorder: (index: number, dir: -1 | 1) => void;
   onRemove: (id: string) => void;
 }) {
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState(screen.title);
   const [type, setType] = useState(screen.screenType);
+  const [taught, setTaught] = useState<string[]>(screen.objectiveIds);
   const [, startTransition] = useTransition();
+
+  function toggleObjective(objectiveId: string) {
+    const on = !taught.includes(objectiveId);
+    setTaught((prev) => (on ? [...prev, objectiveId] : prev.filter((x) => x !== objectiveId)));
+    startTransition(() => void toggleScreenObjective(screen.id, objectiveId, on));
+  }
 
   return (
     <div className="rounded-xl border border-border">
@@ -131,6 +154,14 @@ function ScreenCard({
             </option>
           ))}
         </select>
+        {objectives.length > 0 && taught.length > 0 && (
+          <span
+            className="hidden shrink-0 items-center gap-1 rounded-md bg-accent/12 px-1.5 py-0.5 text-xs font-medium text-accent sm:inline-flex"
+            title={`Teaches ${taught.length} objective${taught.length === 1 ? "" : "s"}`}
+          >
+            <Target className="size-3" /> {taught.length}
+          </span>
+        )}
         <div className="flex shrink-0 items-center gap-1 text-foreground/50">
           <button disabled={index === 0} onClick={() => onReorder(index, -1)} className="rounded px-1 hover:bg-hover disabled:opacity-25" title="Move up">
             ↑
@@ -143,6 +174,35 @@ function ScreenCard({
           </button>
         </div>
       </div>
+
+      {open && objectives.length > 0 && (
+        <div className="border-t border-border px-3 py-3">
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="inline-flex items-center gap-1 text-xs font-medium text-foreground/60">
+              <Target className="size-3.5" /> Teaches:
+            </span>
+            {objectives.map((o, i) => {
+              const on = taught.includes(o.id);
+              return (
+                <button
+                  key={o.id}
+                  onClick={() => toggleObjective(o.id)}
+                  title={o.text}
+                  className={
+                    "rounded-md px-2 py-0.5 text-xs font-medium transition-colors " +
+                    (on ? "bg-accent text-accent-foreground" : "bg-muted text-muted-foreground hover:bg-hover")
+                  }
+                >
+                  O{i + 1}
+                </button>
+              );
+            })}
+            <span className="text-xs text-foreground/40">
+              (hover a chip for the full objective)
+            </span>
+          </div>
+        </div>
+      )}
 
       {open && (
         <div className="grid gap-4 border-t border-border px-3 py-3 sm:grid-cols-2">

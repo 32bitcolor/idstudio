@@ -50,6 +50,26 @@ export default async function ProjectPage({ params }: { params: Promise<{ projec
           },
         },
       },
+      objectives: {
+        orderBy: { position: "asc" },
+        select: {
+          id: true,
+          text: true,
+          bloomLevel: true,
+          position: true,
+          _count: { select: { screens: true } },
+        },
+      },
+      assessmentItems: {
+        orderBy: { position: "asc" },
+        select: {
+          id: true,
+          prompt: true,
+          itemType: true,
+          position: true,
+          objectives: { select: { objectiveId: true } },
+        },
+      },
       milestones: {
         orderBy: { position: "asc" },
         select: { id: true, name: true, dueDate: true, completedAt: true },
@@ -74,6 +94,32 @@ export default async function ProjectPage({ params }: { params: Promise<{ projec
     orderBy: { email: "asc" },
     select: { id: true, name: true, email: true },
   });
+
+  // Coverage: screens across this project's storyboards, and how many teach nothing.
+  const projScreens = await prisma.screen.findMany({
+    where: { storyboard: { deliverable: { projectId } } },
+    select: { objectives: { select: { objectiveId: true }, take: 1 } },
+  });
+  const coverage = {
+    totalScreens: projScreens.length,
+    orphanScreens: projScreens.filter((s) => s.objectives.length === 0).length,
+  };
+
+  const objectives = project.objectives.map((o) => ({
+    id: o.id,
+    text: o.text,
+    bloomLevel: o.bloomLevel,
+    position: o.position,
+    screenCount: o._count.screens,
+  }));
+
+  const assessments = project.assessmentItems.map((a) => ({
+    id: a.id,
+    prompt: a.prompt,
+    itemType: a.itemType,
+    position: a.position,
+    objectiveIds: a.objectives.map((x) => x.objectiveId),
+  }));
 
   const phases = project.phases.map((p) => ({
     id: p.id,
@@ -131,6 +177,9 @@ export default async function ProjectPage({ params }: { params: Promise<{ projec
         status: project.status,
       }}
       initialPhases={phases}
+      initialObjectives={objectives}
+      initialAssessments={assessments}
+      coverage={coverage}
       initialDeliverables={deliverables}
       initialMilestones={milestones}
       initialTimeEntries={timeEntries}

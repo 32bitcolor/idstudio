@@ -16,7 +16,7 @@ import { ConfirmDelete } from "@/components/shared/confirm-delete";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { ScreensSection, type ScreenInit } from "@/components/storyboard/screens-section";
+import { ScreensSection, type ScreenInit, type ProjectObjective } from "@/components/storyboard/screens-section";
 import { StoryboardWhiteboards, type LinkedWhiteboard } from "@/components/storyboard/storyboard-whiteboards";
 
 type StoryboardMeta = {
@@ -30,10 +30,12 @@ type StoryboardMeta = {
 export function StoryboardView({
   storyboard,
   initialScreens,
+  projectObjectives,
   whiteboards,
 }: {
   storyboard: StoryboardMeta;
   initialScreens: ScreenInit[];
+  projectObjectives: ProjectObjective[];
   whiteboards: LinkedWhiteboard[];
 }) {
   const [title, setTitle] = useState(storyboard.title);
@@ -98,7 +100,11 @@ export function StoryboardView({
         className="mt-4 resize-none"
       />
 
-      <ScreensSection storyboardId={storyboard.id} initial={initialScreens} />
+      <ScreensSection
+        storyboardId={storyboard.id}
+        initial={initialScreens}
+        projectObjectives={projectObjectives}
+      />
 
       <StoryboardWhiteboards storyboardId={storyboard.id} whiteboards={whiteboards} />
 

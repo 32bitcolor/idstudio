@@ -33,6 +33,7 @@ export default async function StoryboardPage({ params }: { params: Promise<{ sto
           visualNotes: true,
           interactionNotes: true,
           developerNotes: true,
+          objectives: { select: { objectiveId: true } },
         },
       },
     },
@@ -44,6 +45,29 @@ export default async function StoryboardPage({ params }: { params: Promise<{ sto
     orderBy: { updatedAt: "desc" },
     select: { id: true, title: true },
   });
+
+  // The project's objectives (via the linked deliverable) — screens tag which they teach.
+  const projectId = storyboard.deliverable?.projectId;
+  const projectObjectives = projectId
+    ? await prisma.learningObjective.findMany({
+        where: { projectId },
+        orderBy: { position: "asc" },
+        select: { id: true, text: true },
+      })
+    : [];
+
+  const screens = storyboard.screens.map((s) => ({
+    id: s.id,
+    title: s.title,
+    screenType: s.screenType,
+    position: s.position,
+    onScreenText: s.onScreenText,
+    narration: s.narration,
+    visualNotes: s.visualNotes,
+    interactionNotes: s.interactionNotes,
+    developerNotes: s.developerNotes,
+    objectiveIds: s.objectives.map((o) => o.objectiveId),
+  }));
 
   return (
     <StoryboardView
@@ -62,7 +86,8 @@ export default async function StoryboardPage({ params }: { params: Promise<{ sto
             }
           : null,
       }}
-      initialScreens={storyboard.screens}
+      initialScreens={screens}
+      projectObjectives={projectObjectives}
     />
   );
 }

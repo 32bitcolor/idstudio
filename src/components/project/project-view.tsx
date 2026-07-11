@@ -28,6 +28,11 @@ import { ConfirmDelete } from "@/components/shared/confirm-delete";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  AlignmentSection,
+  type ObjectiveInit,
+  type AssessmentInit,
+} from "@/components/project/alignment-section";
 import { DeliverablesSection } from "@/components/project/deliverables-section";
 import { MilestonesSection } from "@/components/project/milestones-section";
 import { TimeTracking } from "@/components/project/time-tracking";
@@ -100,6 +105,9 @@ type TimeEntryInit = {
 export function ProjectView({
   project,
   initialPhases,
+  initialObjectives,
+  initialAssessments,
+  coverage,
   initialDeliverables,
   initialMilestones,
   initialTimeEntries,
@@ -107,6 +115,9 @@ export function ProjectView({
 }: {
   project: ProjectMeta;
   initialPhases: Phase[];
+  initialObjectives: ObjectiveInit[];
+  initialAssessments: AssessmentInit[];
+  coverage: { totalScreens: number; orphanScreens: number };
   initialDeliverables: DeliverableInit[];
   initialMilestones: MilestoneInit[];
   initialTimeEntries: TimeEntryInit[];
@@ -281,6 +292,13 @@ export function ProjectView({
         </div>
         <PhaseComposer onAdd={addPhase} />
       </section>
+
+      <AlignmentSection
+        projectId={project.id}
+        initialObjectives={initialObjectives}
+        initialAssessments={initialAssessments}
+        coverage={coverage}
+      />
 
       <DeliverablesSection
         projectId={project.id}

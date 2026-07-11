@@ -1,6 +1,7 @@
 import {
   Rocket,
   Route,
+  Target,
   Columns3,
   FolderKanban,
   Film,
@@ -13,6 +14,7 @@ import {
 
 import GettingStarted from "@/components/help/topics/getting-started";
 import AddieSam from "@/components/help/topics/addie-sam";
+import ObjectivesAlignment from "@/components/help/topics/objectives-alignment";
 import Boards from "@/components/help/topics/boards";
 import Projects from "@/components/help/topics/projects";
 import Storyboards from "@/components/help/topics/storyboards";
@@ -49,6 +51,14 @@ export const HELP_TOPICS: HelpTopic[] = [
     icon: Route,
     group: "Methodology",
     Body: AddieSam,
+  },
+  {
+    slug: "objectives-alignment",
+    title: "Objectives & alignment",
+    summary: "Write measurable objectives and align content and assessment to them.",
+    icon: Target,
+    group: "Methodology",
+    Body: ObjectivesAlignment,
   },
   {
     slug: "boards",
