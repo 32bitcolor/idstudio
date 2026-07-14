@@ -8,12 +8,11 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import { Select } from "@/components/ui/select";
 import { SectionHeader } from "@/components/shared/page";
+import { ConfirmDelete } from "@/components/shared/confirm-delete";
 
 export type Member = { id: string; email: string; name: string | null; role: string; isSelf: boolean };
-
-const selectClass =
-  "h-8 rounded-md border border-input bg-transparent px-2 text-sm outline-none focus:border-ring";
 
 export function MembersManager({ members }: { members: Member[] }) {
   return (
@@ -59,17 +58,17 @@ function CreateUser() {
         </div>
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="role">Role</Label>
-          <select id="role" name="role" defaultValue="MEMBER" className={selectClass}>
+          <Select id="role" name="role" defaultValue="MEMBER" className="h-8">
             <option value="MEMBER">Member</option>
             <option value="ADMIN">Admin</option>
-          </select>
+          </Select>
         </div>
         <div className="sm:col-span-2 flex items-center gap-3">
           <Button type="submit" disabled={pending}>
             <UserPlus className="size-4" /> {pending ? "Adding…" : "Add member"}
           </Button>
           {state?.error && <span className="text-sm text-destructive">{state.error}</span>}
-          {state?.success && <span className="text-sm text-green-600">{state.success}</span>}
+          {state?.success && <span className="text-sm text-success">{state.success}</span>}
         </div>
       </form>
     </Card>
@@ -101,7 +100,6 @@ function MemberRow({ member }: { member: Member }) {
   }
 
   function doRemove() {
-    if (!confirm(`Remove ${member.name ?? member.email} from the workspace?`)) return;
     setMsg(null);
     startTransition(async () => {
       const res = await removeUser(member.id);
@@ -117,27 +115,35 @@ function MemberRow({ member }: { member: Member }) {
           {member.isSelf && <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">You</span>}
         </div>
         <div className="truncate text-sm text-muted-foreground">{member.email}</div>
-        {msg && <div className={msg.kind === "ok" ? "mt-1 text-xs text-green-600" : "mt-1 text-xs text-destructive"}>{msg.text}</div>}
+        {msg && <div className={msg.kind === "ok" ? "mt-1 text-xs text-success" : "mt-1 text-xs text-destructive"}>{msg.text}</div>}
       </div>
 
-      <select
+      <Select
         value={member.role}
         onChange={(e) => changeRole(e.target.value)}
         disabled={pending}
-        className={selectClass}
+        className="h-8 w-auto"
         aria-label="Role"
       >
         <option value="MEMBER">Member</option>
         <option value="ADMIN">Admin</option>
-      </select>
+      </Select>
 
       <Button variant="outline" size="sm" onClick={() => setShowReset((s) => !s)} disabled={pending}>
         <KeyRound className="size-4" /> Reset password
       </Button>
       {!member.isSelf && (
-        <Button variant="ghost" size="sm" onClick={doRemove} disabled={pending} className="text-destructive hover:text-destructive">
-          <Trash2 className="size-4" />
-        </Button>
+        <ConfirmDelete
+          title="Remove this member?"
+          description={`Remove ${member.name ?? member.email} from the workspace?`}
+          confirmLabel="Remove"
+          onConfirm={doRemove}
+          trigger={
+            <Button variant="ghost" size="sm" disabled={pending} className="text-destructive hover:text-destructive">
+              <Trash2 className="size-4" />
+            </Button>
+          }
+        />
       )}
 
       {showReset && (

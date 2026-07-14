@@ -27,6 +27,11 @@ import {
 } from "@/lib/methodology";
 import { SectionHeader } from "@/components/shared/page";
 import { StatusBadge } from "@/components/shared/status-badge";
+import { ConfirmDelete } from "@/components/shared/confirm-delete";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Select } from "@/components/ui/select";
 
 export type ObjectiveInit = {
   id: string;
@@ -43,8 +48,6 @@ export type AssessmentInit = {
   objectiveIds: string[];
 };
 type Coverage = { totalScreens: number; orphanScreens: number };
-
-const control = "rounded-md border border-border-strong bg-transparent px-2 py-1 text-xs outline-none";
 
 function move<T>(arr: T[], from: number, to: number) {
   const next = arr.slice();
@@ -95,7 +98,6 @@ export function AlignmentSection({
     startTransition(() => void moveObjective(objectives[index].id, to));
   }
   function removeObjective(id: string) {
-    if (!confirm("Delete this objective? Its screen and assessment links go too.")) return;
     setObjectives((prev) => prev.filter((o) => o.id !== id));
     setItems((prev) => prev.map((it) => ({ ...it, objectiveIds: it.objectiveIds.filter((x) => x !== id) })));
     startTransition(() => void deleteObjective(id));
@@ -176,24 +178,28 @@ export function AlignmentSection({
                   {shortLabel(o, i)}
                 </span>
                 <div className="flex shrink-0 flex-col">
-                  <button
+                  <Button
+                    variant="ghost"
+                    size="icon-xs"
                     onClick={() => reorderObj(i, -1)}
                     disabled={i === 0}
-                    className="text-foreground/40 hover:text-foreground disabled:opacity-25"
+                    className="text-muted-foreground"
                     title="Move up"
                   >
                     <ChevronUp className="size-3.5" />
-                  </button>
-                  <button
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon-xs"
                     onClick={() => reorderObj(i, 1)}
                     disabled={i === objectives.length - 1}
-                    className="text-foreground/40 hover:text-foreground disabled:opacity-25"
+                    className="text-muted-foreground"
                     title="Move down"
                   >
                     <ChevronDown className="size-3.5" />
-                  </button>
+                  </Button>
                 </div>
-                <textarea
+                <Textarea
                   value={o.text}
                   onChange={(e) => patchObj(o.id, { text: e.target.value })}
                   onBlur={(e) => {
@@ -203,30 +209,34 @@ export function AlignmentSection({
                     }
                   }}
                   rows={2}
-                  className="min-w-0 flex-1 resize-none rounded bg-transparent px-1 text-sm outline-none hover:bg-hover focus:bg-hover"
+                  className="min-h-0 flex-1 resize-none"
                 />
-                <button
-                  onClick={() => removeObjective(o.id)}
-                  className="shrink-0 rounded px-1 text-foreground/40 hover:bg-destructive/10 hover:text-destructive"
-                  title="Delete objective"
-                >
-                  <X className="size-4" />
-                </button>
+                <ConfirmDelete
+                  title="Delete this objective?"
+                  description="Its screen and assessment links go too."
+                  confirmLabel="Delete objective"
+                  onConfirm={() => removeObjective(o.id)}
+                  trigger={
+                    <Button variant="ghost" size="icon-xs" className="shrink-0 text-muted-foreground hover:bg-destructive/10 hover:text-destructive" title="Delete objective">
+                      <X className="size-4" />
+                    </Button>
+                  }
+                />
               </div>
               <div className="mt-2 flex flex-wrap items-center gap-2 pl-8">
-                <select
+                <Select
                   value={o.bloomLevel}
                   onChange={(e) => {
                     patchObj(o.id, { bloomLevel: e.target.value });
                     startTransition(() => void setObjectiveBloom(o.id, e.target.value));
                   }}
-                  className={control}
+                  className="h-8 w-auto py-1 text-xs"
                   title="Bloom's cognitive level"
                 >
                   {BLOOM_LEVELS.map((b) => (
                     <option key={b} value={b}>{BLOOM_LABEL[b as BloomLevel]}</option>
                   ))}
-                </select>
+                </Select>
                 <StatusBadge tone={taught ? "success" : "warning"}>
                   {taught ? `Taught · ${taught} screen${taught === 1 ? "" : "s"}` : "Not yet taught"}
                 </StatusBadge>
@@ -256,7 +266,7 @@ export function AlignmentSection({
           {items.map((it) => (
             <div key={it.id} className="rounded-xl border border-border p-3">
               <div className="flex items-start gap-2">
-                <textarea
+                <Textarea
                   value={it.prompt}
                   onChange={(e) => patchItem(it.id, { prompt: e.target.value })}
                   onBlur={(e) => {
@@ -266,29 +276,31 @@ export function AlignmentSection({
                     }
                   }}
                   rows={2}
-                  className="min-w-0 flex-1 resize-none rounded bg-transparent px-1 text-sm outline-none hover:bg-hover focus:bg-hover"
+                  className="min-h-0 flex-1 resize-none"
                 />
-                <button
+                <Button
+                  variant="ghost"
+                  size="icon-xs"
                   onClick={() => removeItem(it.id)}
-                  className="shrink-0 rounded px-1 text-foreground/40 hover:bg-destructive/10 hover:text-destructive"
+                  className="shrink-0 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
                   title="Delete item"
                 >
                   <X className="size-4" />
-                </button>
+                </Button>
               </div>
               <div className="mt-2 flex flex-wrap items-center gap-2">
-                <select
+                <Select
                   value={it.itemType}
                   onChange={(e) => {
                     patchItem(it.id, { itemType: e.target.value });
                     startTransition(() => void setAssessmentItemType(it.id, e.target.value));
                   }}
-                  className={control}
+                  className="h-8 w-auto py-1 text-xs"
                 >
                   {ASSESSMENT_ITEM_TYPES.map((t) => (
                     <option key={t} value={t}>{ASSESSMENT_ITEM_TYPE_LABEL[t as AssessmentItemType]}</option>
                   ))}
-                </select>
+                </Select>
                 {objectives.length === 0 ? (
                   <span className="text-xs text-foreground/40">Add objectives to link this to.</span>
                 ) : (
@@ -348,7 +360,7 @@ function ObjectiveComposer({ onAdd }: { onAdd: (text: string, bloom: string) => 
   }
   return (
     <div className="mt-2 rounded-xl border border-border-strong p-3">
-      <textarea
+      <Textarea
         autoFocus
         value={text}
         onChange={(e) => setText(e.target.value)}
@@ -358,24 +370,20 @@ function ObjectiveComposer({ onAdd }: { onAdd: (text: string, bloom: string) => 
         }}
         rows={2}
         placeholder="After this, the learner will be able to…"
-        className="w-full resize-none rounded-md bg-transparent px-1 text-sm outline-none"
+        className="w-full resize-none border-none px-1 shadow-none focus-visible:ring-0"
       />
       <div className="mt-2 flex flex-wrap items-center gap-2">
-        <select value={bloom} onChange={(e) => setBloom(e.target.value)} className={control}>
+        <Select value={bloom} onChange={(e) => setBloom(e.target.value)} className="w-auto">
           {BLOOM_LEVELS.map((b) => (
             <option key={b} value={b}>{BLOOM_LABEL[b as BloomLevel]}</option>
           ))}
-        </select>
+        </Select>
         <span className="text-xs text-muted-foreground">
           Try: {BLOOM_VERBS[bloom as BloomLevel].slice(0, 4).join(", ")}…
         </span>
         <div className="ml-auto flex gap-2">
-          <button onClick={submit} className="rounded-md bg-accent px-3 py-1 text-sm font-medium text-accent-foreground">
-            Add
-          </button>
-          <button onClick={() => { setText(""); setOpen(false); }} className="rounded-md px-2 py-1 text-sm text-foreground/60 hover:bg-hover">
-            Cancel
-          </button>
+          <Button size="sm" onClick={submit}>Add</Button>
+          <Button size="sm" variant="ghost" onClick={() => { setText(""); setOpen(false); }}>Cancel</Button>
         </div>
       </div>
     </div>
@@ -404,21 +412,21 @@ function ItemComposer({ onAdd }: { onAdd: (prompt: string, type: string) => void
   }
   return (
     <div className="mt-2 flex flex-wrap gap-2">
-      <input
+      <Input
         autoFocus
         value={prompt}
         onChange={(e) => setPrompt(e.target.value)}
         onKeyDown={(e) => { if (e.key === "Enter") submit(); if (e.key === "Escape") { setPrompt(""); setOpen(false); } }}
         placeholder="Question or check…"
-        className="flex-1 rounded-md border border-border-strong bg-transparent px-3 py-2 text-sm outline-none focus:border-foreground/60"
+        className="flex-1"
       />
-      <select value={type} onChange={(e) => setType(e.target.value)} className="rounded-md border border-border-strong bg-transparent px-2 py-1 text-sm">
+      <Select value={type} onChange={(e) => setType(e.target.value)} className="w-auto">
         {ASSESSMENT_ITEM_TYPES.map((t) => (
           <option key={t} value={t}>{ASSESSMENT_ITEM_TYPE_LABEL[t as AssessmentItemType]}</option>
         ))}
-      </select>
-      <button onClick={submit} className="rounded-md bg-accent px-3 py-1 text-sm font-medium text-accent-foreground">Add</button>
-      <button onClick={() => { setPrompt(""); setOpen(false); }} className="rounded-md px-2 py-1 text-sm text-foreground/60 hover:bg-hover">Cancel</button>
+      </Select>
+      <Button size="sm" onClick={submit}>Add</Button>
+      <Button size="sm" variant="ghost" onClick={() => { setPrompt(""); setOpen(false); }}>Cancel</Button>
     </div>
   );
 }

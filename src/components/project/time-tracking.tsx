@@ -1,7 +1,12 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { X } from "lucide-react";
 import { addTimeEntry, deleteTimeEntry } from "@/app/actions/time";
+import { SectionHeader } from "@/components/shared/page";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
 
 type Member = { id: string; name: string | null; email: string };
 type DeliverableRef = { id: string; name: string };
@@ -26,8 +31,6 @@ function fmtDate(iso: string) {
   const [y, m, d] = iso.slice(0, 10).split("-").map(Number);
   return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString(undefined, { month: "short", day: "numeric", timeZone: "UTC" });
 }
-
-const control = "rounded-md border border-border-strong bg-transparent px-2 py-1 text-sm outline-none";
 
 export function TimeTracking({
   projectId,
@@ -69,13 +72,12 @@ export function TimeTracking({
 
   return (
     <section className="mt-8">
-      <div className="flex items-center justify-between">
-        <h2 className="text-sm font-medium uppercase tracking-wide text-foreground/50">Time tracking</h2>
-        {total > 0 && <span className="text-sm text-foreground/60">{fmtHours(total)}h total</span>}
-      </div>
+      <SectionHeader action={total > 0 && <span className="text-sm text-muted-foreground">{fmtHours(total)}h total</span>}>
+        Time tracking
+      </SectionHeader>
 
-      <div className="mt-3 flex flex-col gap-1.5">
-        {entries.length === 0 && <p className="text-sm text-foreground/40">No time logged yet.</p>}
+      <div className="flex flex-col gap-1.5">
+        {entries.length === 0 && <p className="text-sm text-muted-foreground">No time logged yet.</p>}
         {entries.map((e) => (
           <div key={e.id} className="group flex items-center gap-3 rounded-lg border border-border px-3 py-2 text-sm">
             <span className="w-14 shrink-0 text-foreground/50">{fmtDate(e.loggedFor)}</span>
@@ -83,40 +85,40 @@ export function TimeTracking({
             <span className="shrink-0 text-foreground/60">{e.user.name ?? e.user.email}</span>
             {e.deliverable && <span className="truncate rounded bg-muted px-1.5 py-0.5 text-xs text-foreground/70">{e.deliverable.name}</span>}
             <span className="flex-1 truncate text-foreground/60">{e.note}</span>
-            <button onClick={() => remove(e.id)} className="shrink-0 text-foreground/30 opacity-0 hover:text-red-600 group-hover:opacity-100" title="Delete entry">
-              ×
-            </button>
+            <Button variant="ghost" size="icon-xs" onClick={() => remove(e.id)} className="shrink-0 text-foreground/30 opacity-0 hover:text-destructive group-hover:opacity-100" title="Delete entry">
+              <X className="size-3.5" />
+            </Button>
           </div>
         ))}
       </div>
 
       {open ? (
         <div className="mt-2 flex flex-wrap items-center gap-2">
-          <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className={control} />
-          <input
+          <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="w-auto" />
+          <Input
             type="number"
             min="0"
             step="0.25"
             value={hours}
             onChange={(e) => setHours(e.target.value)}
             placeholder="Hours"
-            className={`w-20 ${control}`}
+            className="w-20"
           />
-          <select value={deliverableId} onChange={(e) => setDeliverableId(e.target.value)} className={control}>
+          <Select value={deliverableId} onChange={(e) => setDeliverableId(e.target.value)} className="w-auto">
             <option value="">No deliverable</option>
             {deliverables.map((d) => (
               <option key={d.id} value={d.id}>{d.name}</option>
             ))}
-          </select>
-          <input
+          </Select>
+          <Input
             value={note}
             onChange={(e) => setNote(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && add()}
             placeholder="Note (optional)…"
-            className={`flex-1 ${control}`}
+            className="flex-1"
           />
-          <button onClick={add} className="rounded-md bg-accent px-3 py-1 text-sm font-medium text-accent-foreground">Log</button>
-          <button onClick={() => setOpen(false)} className="rounded-md px-2 py-1 text-sm text-foreground/60 hover:bg-hover">Cancel</button>
+          <Button size="sm" onClick={add}>Log</Button>
+          <Button size="sm" variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
         </div>
       ) : (
         <button onClick={() => setOpen(true)} className="mt-2 rounded-lg px-2 py-1.5 text-left text-sm text-foreground/50 hover:bg-hover">

@@ -100,7 +100,7 @@ export function BackupPanel({ workspaceName }: { workspaceName: string }) {
                   (status.tone === "error"
                     ? "text-destructive"
                     : status.tone === "ok"
-                      ? "text-[var(--color-success)]"
+                      ? "text-success"
                       : "text-muted-foreground")
                 }
               >

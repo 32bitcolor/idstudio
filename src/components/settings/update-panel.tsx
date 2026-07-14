@@ -166,21 +166,20 @@ export function UpdatePanel({ initial }: { initial: UpdateStatus | null }) {
       </section>
 
       {updateAvailable && (
-        <section className="rounded-xl border p-5" style={{ borderColor: "color-mix(in srgb, var(--color-info) 35%, transparent)", backgroundColor: "color-mix(in srgb, var(--color-info) 7%, transparent)" }}>
+        <section className="rounded-xl border border-info/35 bg-info/7 p-5">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
               {(s?.pending?.length ?? 0) > 0 ? (
                 <button
                   onClick={() => setExpanded((v) => !v)}
-                  className="flex items-center gap-1.5 font-medium hover:underline"
-                  style={{ color: "var(--color-info)" }}
+                  className="flex items-center gap-1.5 font-medium text-info hover:underline"
                   aria-expanded={expanded}
                 >
                   {s!.behind} update{s!.behind === 1 ? "" : "s"} available
                   <ChevronDown className={"size-4 transition-transform " + (expanded ? "rotate-180" : "")} />
                 </button>
               ) : (
-                <h2 className="font-medium" style={{ color: "var(--color-info)" }}>
+                <h2 className="font-medium text-info">
                   {s!.behind} update{s!.behind === 1 ? "" : "s"} available
                 </h2>
               )}

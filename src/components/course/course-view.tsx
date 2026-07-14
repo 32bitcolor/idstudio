@@ -11,6 +11,7 @@ import {
   Pencil,
   Eye,
   X,
+  Check,
   Download,
   Folder,
 } from "lucide-react";
@@ -74,6 +75,8 @@ import { PageContainer } from "@/components/shared/page";
 import { InlineTitle } from "@/components/shared/inline-title";
 import { ConfirmDelete } from "@/components/shared/confirm-delete";
 import { Button } from "@/components/ui/button";
+import { Select } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 
 export type BlockInit = { id: string; blockType: string; content: string; position: string };
@@ -153,7 +156,6 @@ export function CourseView({
   }
   function removeLesson(id: string) {
     if (lessons.length === 1) return;
-    if (!confirm("Delete this lesson and its content?")) return;
     setLessons((prev) => prev.filter((l) => l.id !== id));
     if (activeId === id) {
       const idx = orderedLessons.findIndex((l) => l.id === id);
@@ -184,7 +186,6 @@ export function CourseView({
     startTransition(() => void moveSection(sections[index].id, to));
   }
   function removeSection(id: string) {
-    if (!confirm("Delete this section? Its lessons become unsectioned, not deleted.")) return;
     setSections((prev) => prev.filter((s) => s.id !== id));
     setLessons((prev) => prev.map((l) => (l.sectionId === id ? { ...l, sectionId: null } : l)));
     startTransition(() => void deleteSection(id));
@@ -207,7 +208,6 @@ export function CourseView({
             onChange={setTitle}
             onCommit={() => title.trim() && startTransition(() => void renameCourse(course.id, title.trim()))}
             ariaLabel="Course title"
-            className="text-2xl font-semibold tracking-tight"
           />
           {course.deliverable && (
             <Link
@@ -219,36 +219,40 @@ export function CourseView({
           )}
         </div>
         <div className="flex shrink-0 items-center gap-2">
-          <select
+          <Select
             value={status}
             onChange={(e) => {
               setStatus(e.target.value);
               startTransition(() => void setCourseStatus(course.id, e.target.value));
             }}
-            className="rounded-md border border-border-strong bg-transparent px-2 py-1.5 text-sm"
+            className="h-8 w-auto"
           >
             <option value="draft">Draft</option>
             <option value="published">Published</option>
-          </select>
+          </Select>
           <div className="flex rounded-lg border border-border p-0.5">
-            <button
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={() => setMode("edit")}
-              className={cn("flex items-center gap-1.5 rounded-md px-3 py-1 text-sm font-medium", mode === "edit" ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:bg-hover")}
+              className={cn(mode === "edit" && "bg-accent text-accent-foreground hover:bg-accent hover:text-accent-foreground")}
             >
               <Pencil className="size-3.5" /> Edit
-            </button>
-            <button
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={() => setMode("preview")}
-              className={cn("flex items-center gap-1.5 rounded-md px-3 py-1 text-sm font-medium", mode === "preview" ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:bg-hover")}
+              className={cn(mode === "preview" && "bg-accent text-accent-foreground hover:bg-accent hover:text-accent-foreground")}
             >
               <Eye className="size-3.5" /> Preview
-            </button>
+            </Button>
           </div>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <button className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-sm font-medium hover:bg-hover">
+              <Button variant="outline" size="sm">
                 <Download className="size-3.5" /> Export
-              </button>
+              </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuLabel>Export for your LMS</DropdownMenuLabel>
@@ -269,13 +273,13 @@ export function CourseView({
       </div>
 
       {mode === "edit" && (
-        <textarea
+        <Textarea
           value={description}
           onChange={(e) => setDescription(e.target.value)}
           onBlur={(e) => startTransition(() => void setCourseDescription(course.id, e.target.value))}
           rows={2}
           placeholder="Course description (shown on the overview)…"
-          className="mt-3 w-full resize-none rounded-lg border border-border bg-transparent px-3 py-2 text-sm outline-none focus:border-border-strong"
+          className="mt-3 w-full resize-none"
         />
       )}
 
@@ -402,18 +406,27 @@ function LessonRail({
       {rows.map((row) =>
         row.type === "header" ? (
           <li key={`section-${row.section.id}`} className="group mt-3 flex items-center gap-1 px-1 first:mt-0">
-            <input
+            <InlineTitle
               value={row.section.title}
-              onChange={(e) => onRenameSection(row.section.id, e.target.value)}
-              onBlur={(e) => onCommitSectionTitle(row.section.id, e.target.value)}
+              onChange={(v) => onRenameSection(row.section.id, v)}
+              onCommit={() => onCommitSectionTitle(row.section.id, row.section.title)}
+              ariaLabel="Section title"
               disabled={mode !== "edit"}
-              className="min-w-0 flex-1 truncate rounded bg-transparent py-0.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground outline-none hover:bg-hover focus:bg-hover disabled:hover:bg-transparent"
+              className="truncate text-xs font-semibold uppercase tracking-wide text-muted-foreground"
             />
             {mode === "edit" && (
               <div className="flex shrink-0 items-center opacity-0 group-hover:opacity-100">
-                <button onClick={() => onReorderSection(row.sectionIndex, -1)} disabled={row.sectionIndex === 0} className="rounded p-0.5 text-foreground/40 hover:text-foreground disabled:opacity-20" title="Move section up"><ChevronUp className="size-3.5" /></button>
-                <button onClick={() => onReorderSection(row.sectionIndex, 1)} disabled={row.sectionIndex === sections.length - 1} className="rounded p-0.5 text-foreground/40 hover:text-foreground disabled:opacity-20" title="Move section down"><ChevronDown className="size-3.5" /></button>
-                <button onClick={() => onDeleteSection(row.section.id)} className="rounded p-0.5 text-foreground/40 hover:text-destructive" title="Delete section"><Trash2 className="size-3.5" /></button>
+                <Button variant="ghost" size="icon-xs" onClick={() => onReorderSection(row.sectionIndex, -1)} disabled={row.sectionIndex === 0} className="text-muted-foreground" title="Move section up"><ChevronUp className="size-3.5" /></Button>
+                <Button variant="ghost" size="icon-xs" onClick={() => onReorderSection(row.sectionIndex, 1)} disabled={row.sectionIndex === sections.length - 1} className="text-muted-foreground" title="Move section down"><ChevronDown className="size-3.5" /></Button>
+                <ConfirmDelete
+                  title="Delete this section?"
+                  description="Its lessons become unsectioned, not deleted."
+                  confirmLabel="Delete section"
+                  onConfirm={() => onDeleteSection(row.section.id)}
+                  trigger={
+                    <Button variant="ghost" size="icon-xs" className="text-muted-foreground hover:text-destructive" title="Delete section"><Trash2 className="size-3.5" /></Button>
+                  }
+                />
               </div>
             )}
           </li>
@@ -434,22 +447,22 @@ function LessonRail({
                 {sections.length > 0 && (
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <button className="rounded p-0.5 text-foreground/40 hover:text-foreground" title="Move to section"><Folder className="size-3.5" /></button>
+                      <Button variant="ghost" size="icon-xs" className="text-muted-foreground" title="Move to section"><Folder className="size-3.5" /></Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="start">
-                      <DropdownMenuItem onSelect={() => onAssignSection(row.lesson.id, null)} className="cursor-pointer">
-                        {!row.lesson.sectionId && "✓ "}No section
+                      <DropdownMenuItem onSelect={() => onAssignSection(row.lesson.id, null)} className="cursor-pointer gap-1.5">
+                        <Check className={cn("size-3.5", !row.lesson.sectionId ? "opacity-100" : "opacity-0")} />No section
                       </DropdownMenuItem>
                       {sections.map((s) => (
-                        <DropdownMenuItem key={s.id} onSelect={() => onAssignSection(row.lesson.id, s.id)} className="cursor-pointer">
-                          {row.lesson.sectionId === s.id && "✓ "}{s.title}
+                        <DropdownMenuItem key={s.id} onSelect={() => onAssignSection(row.lesson.id, s.id)} className="cursor-pointer gap-1.5">
+                          <Check className={cn("size-3.5", row.lesson.sectionId === s.id ? "opacity-100" : "opacity-0")} />{s.title}
                         </DropdownMenuItem>
                       ))}
                     </DropdownMenuContent>
                   </DropdownMenu>
                 )}
-                <button onClick={() => onReorderLesson(row.index, -1)} disabled={row.index === 0 || orderedLessons[row.index - 1]?.sectionId !== row.lesson.sectionId} className="rounded p-0.5 text-foreground/40 hover:text-foreground disabled:opacity-20" title="Move up"><ChevronUp className="size-3.5" /></button>
-                <button onClick={() => onReorderLesson(row.index, 1)} disabled={row.index === orderedLessons.length - 1 || orderedLessons[row.index + 1]?.sectionId !== row.lesson.sectionId} className="rounded p-0.5 text-foreground/40 hover:text-foreground disabled:opacity-20" title="Move down"><ChevronDown className="size-3.5" /></button>
+                <Button variant="ghost" size="icon-xs" onClick={() => onReorderLesson(row.index, -1)} disabled={row.index === 0 || orderedLessons[row.index - 1]?.sectionId !== row.lesson.sectionId} className="text-muted-foreground" title="Move up"><ChevronUp className="size-3.5" /></Button>
+                <Button variant="ghost" size="icon-xs" onClick={() => onReorderLesson(row.index, 1)} disabled={row.index === orderedLessons.length - 1 || orderedLessons[row.index + 1]?.sectionId !== row.lesson.sectionId} className="text-muted-foreground" title="Move down"><ChevronDown className="size-3.5" /></Button>
               </div>
             )}
           </li>
@@ -517,16 +530,25 @@ function LessonEditor({
   return (
     <div>
       <div className="mb-4 flex items-center gap-2">
-        <input
+        <InlineTitle
           value={lesson.title}
-          onChange={(e) => onRename(e.target.value)}
-          onBlur={(e) => onCommitTitle(e.target.value)}
-          className="min-w-0 flex-1 rounded bg-transparent px-1 text-lg font-semibold outline-none hover:bg-hover focus:bg-hover"
+          onChange={onRename}
+          onCommit={() => onCommitTitle(lesson.title)}
+          ariaLabel="Lesson title"
+          className="text-lg font-semibold tracking-normal"
         />
         {canDelete && (
-          <button onClick={onDeleteLesson} className="shrink-0 rounded p-1 text-foreground/40 hover:bg-destructive/10 hover:text-destructive" title="Delete lesson">
-            <Trash2 className="size-4" />
-          </button>
+          <ConfirmDelete
+            title="Delete this lesson?"
+            description="This permanently deletes the lesson and all its blocks."
+            confirmLabel="Delete lesson"
+            onConfirm={onDeleteLesson}
+            trigger={
+              <Button variant="ghost" size="icon-sm" className="shrink-0 text-muted-foreground hover:bg-destructive/10 hover:text-destructive" title="Delete lesson">
+                <Trash2 className="size-4" />
+              </Button>
+            }
+          />
         )}
       </div>
 
@@ -562,7 +584,7 @@ function LessonEditor({
           <div className="rounded-xl border border-border-strong p-3">
             <div className="mb-2 flex items-center justify-between">
               <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Add a block</span>
-              <button onClick={() => setInserterOpen(false)} className="rounded p-0.5 text-foreground/40 hover:text-foreground"><X className="size-4" /></button>
+              <Button variant="ghost" size="icon-xs" onClick={() => setInserterOpen(false)} className="text-muted-foreground"><X className="size-4" /></Button>
             </div>
             <BlockPicker label="Content" types={CONTENT_TYPES} onPick={(t) => { onAddBlock(t); setInserterOpen(false); }} />
             <BlockPicker label="Interactive" types={INTERACTIVE_TYPES} onPick={(t) => { onAddBlock(t); setInserterOpen(false); }} className="mt-4" />
@@ -666,9 +688,9 @@ function BlockRow({
       </button>
       <div className="absolute right-2 top-2 flex items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
         <span className="mr-1 rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">{BLOCK_LABEL[type]}</span>
-        <button onClick={() => onReorder(index, -1)} disabled={index === 0} className="rounded p-0.5 text-foreground/40 hover:text-foreground disabled:opacity-20" title="Move up"><ChevronUp className="size-4" /></button>
-        <button onClick={() => onReorder(index, 1)} disabled={index === total - 1} className="rounded p-0.5 text-foreground/40 hover:text-foreground disabled:opacity-20" title="Move down"><ChevronDown className="size-4" /></button>
-        <button onClick={() => onRemove(block.id)} className="rounded p-0.5 text-foreground/40 hover:text-destructive" title="Delete block"><Trash2 className="size-4" /></button>
+        <Button variant="ghost" size="icon-xs" onClick={() => onReorder(index, -1)} disabled={index === 0} className="text-muted-foreground" title="Move up"><ChevronUp className="size-4" /></Button>
+        <Button variant="ghost" size="icon-xs" onClick={() => onReorder(index, 1)} disabled={index === total - 1} className="text-muted-foreground" title="Move down"><ChevronDown className="size-4" /></Button>
+        <Button variant="ghost" size="icon-xs" onClick={() => onRemove(block.id)} className="text-muted-foreground hover:text-destructive" title="Delete block"><Trash2 className="size-4" /></Button>
       </div>
       <div className="pt-4">
         <Edit content={content} save={save} courseId={courseId} objectives={objectives} />

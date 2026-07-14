@@ -21,11 +21,13 @@ import {
   type ProjectStatus,
 } from "@/lib/methodology";
 import { useSetPageTitle } from "@/components/app-shell/breadcrumbs";
+import { ChevronUp, ChevronDown, X } from "lucide-react";
 import { PageContainer, PageHeader, SectionHeader } from "@/components/shared/page";
 import { InlineTitle } from "@/components/shared/inline-title";
 import { StatusBadge, type StatusTone } from "@/components/shared/status-badge";
 import { ConfirmDelete } from "@/components/shared/confirm-delete";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -165,7 +167,6 @@ export function ProjectView({
   }
 
   function removePhase(id: string) {
-    if (!confirm("Delete this phase?")) return;
     setPhases((prev) => prev.filter((x) => x.id !== id));
     startTransition(() => void deletePhase(id));
   }
@@ -247,46 +248,54 @@ export function ProjectView({
                 </StatusBadge>
               </button>
               <div className="min-w-0 flex-1">
-                <input
-                  aria-label="Phase name"
+                <InlineTitle
                   value={p.name}
-                  onChange={(e) => renamePhaseLocal(p.id, e.target.value)}
-                  onBlur={(e) => commitPhaseName(p, e.target.value)}
-                  className="w-full rounded bg-transparent px-1 text-sm font-medium outline-none hover:bg-hover focus:bg-hover"
+                  onChange={(v) => renamePhaseLocal(p.id, v)}
+                  onCommit={() => commitPhaseName(p, p.name)}
+                  ariaLabel="Phase name"
+                  className="text-sm font-medium tracking-normal"
                 />
                 <div className="mt-1.5 flex flex-wrap items-center gap-3 px-1 text-xs text-muted-foreground">
                   <label className="flex items-center gap-1">
                     Start
-                    <input
+                    <Input
                       type="date"
                       aria-label="Phase start date"
                       value={p.startDate ? p.startDate.slice(0, 10) : ""}
                       onChange={(e) => changeDate(p, "start", e.target.value)}
-                      className="rounded border border-input bg-transparent px-1 py-0.5"
+                      className="h-7 w-auto px-1.5 py-0.5 text-xs"
                     />
                   </label>
                   <label className="flex items-center gap-1">
                     End
-                    <input
+                    <Input
                       type="date"
                       aria-label="Phase end date"
                       value={p.endDate ? p.endDate.slice(0, 10) : ""}
                       onChange={(e) => changeDate(p, "end", e.target.value)}
-                      className="rounded border border-input bg-transparent px-1 py-0.5"
+                      className="h-7 w-auto px-1.5 py-0.5 text-xs"
                     />
                   </label>
                 </div>
               </div>
               <div className="flex shrink-0 items-center gap-1 text-muted-foreground">
-                <button disabled={i === 0} onClick={() => reorder(i, -1)} className="rounded px-1 hover:bg-hover disabled:opacity-25" title="Move up" aria-label="Move phase up">
-                  ↑
-                </button>
-                <button disabled={i === phases.length - 1} onClick={() => reorder(i, 1)} className="rounded px-1 hover:bg-hover disabled:opacity-25" title="Move down" aria-label="Move phase down">
-                  ↓
-                </button>
-                <button onClick={() => removePhase(p.id)} className="rounded px-1 hover:text-destructive" title="Delete phase" aria-label="Delete phase">
-                  ×
-                </button>
+                <Button variant="ghost" size="icon-xs" disabled={i === 0} onClick={() => reorder(i, -1)} title="Move up" aria-label="Move phase up">
+                  <ChevronUp className="size-3.5" />
+                </Button>
+                <Button variant="ghost" size="icon-xs" disabled={i === phases.length - 1} onClick={() => reorder(i, 1)} title="Move down" aria-label="Move phase down">
+                  <ChevronDown className="size-3.5" />
+                </Button>
+                <ConfirmDelete
+                  title="Delete this phase?"
+                  description="This permanently deletes the phase."
+                  confirmLabel="Delete phase"
+                  onConfirm={() => removePhase(p.id)}
+                  trigger={
+                    <Button variant="ghost" size="icon-xs" className="hover:text-destructive" title="Delete phase" aria-label="Delete phase">
+                      <X className="size-3.5" />
+                    </Button>
+                  }
+                />
               </div>
             </div>
           ))}
@@ -354,7 +363,7 @@ function PhaseComposer({ onAdd }: { onAdd: (name: string) => void }) {
 
   return (
     <div className="mt-2 flex gap-2">
-      <input
+      <Input
         autoFocus
         value={value}
         onChange={(e) => setValue(e.target.value)}
@@ -363,14 +372,10 @@ function PhaseComposer({ onAdd }: { onAdd: (name: string) => void }) {
           if (e.key === "Escape") { setValue(""); setOpen(false); }
         }}
         placeholder="Phase name…"
-        className="flex-1 rounded-md border border-border-strong bg-transparent px-3 py-2 text-sm outline-none focus:border-foreground/60"
+        className="flex-1"
       />
-      <button onClick={submit} className="rounded-md bg-accent px-3 py-1 text-sm font-medium text-accent-foreground">
-        Add
-      </button>
-      <button onClick={() => { setValue(""); setOpen(false); }} className="rounded-md px-2 py-1 text-sm text-foreground/60 hover:bg-hover">
-        Cancel
-      </button>
+      <Button size="sm" onClick={submit}>Add</Button>
+      <Button size="sm" variant="ghost" onClick={() => { setValue(""); setOpen(false); }}>Cancel</Button>
     </div>
   );
 }

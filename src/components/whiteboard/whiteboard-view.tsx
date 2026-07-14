@@ -7,7 +7,9 @@ import { useState, useTransition } from "react";
 import { ArrowLeft, Trash2 } from "lucide-react";
 import { renameWhiteboard, setWhiteboardStoryboard, deleteWhiteboard } from "@/app/actions/whiteboards";
 import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
+import { ConfirmDelete } from "@/components/shared/confirm-delete";
 
 // Excalidraw touches `window`, so it must load client-only.
 const WhiteboardCanvas = dynamic(
@@ -19,9 +21,6 @@ const WhiteboardCanvas = dynamic(
     ),
   },
 );
-
-const selectClass =
-  "h-8 rounded-md border border-input bg-transparent px-2 text-sm outline-none focus:border-ring";
 
 export function WhiteboardView({
   whiteboard,
@@ -51,35 +50,36 @@ export function WhiteboardView({
         />
         <label className="flex items-center gap-2 text-sm text-muted-foreground">
           <span>Storyboard</span>
-          <select
+          <Select
             value={storyboardId}
             onChange={(e) => {
               const v = e.target.value;
               setStoryboardId(v);
               startTransition(() => void setWhiteboardStoryboard(whiteboard.id, v || null));
             }}
-            className={selectClass}
+            className="h-8 w-auto"
           >
             <option value="">— none —</option>
             {storyboards.map((s) => (
               <option key={s.id} value={s.id}>{s.title}</option>
             ))}
-          </select>
+          </Select>
         </label>
         <div className="ml-auto">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="text-destructive hover:text-destructive"
-            onClick={() => {
-              if (confirm("Delete this whiteboard?")) startTransition(async () => {
-                const res = await deleteWhiteboard(whiteboard.id);
-                if (!res?.error) router.push("/whiteboards");
-              });
+          <ConfirmDelete
+            title="Delete this whiteboard?"
+            description="This permanently deletes the whiteboard and its canvas."
+            confirmLabel="Delete"
+            onConfirm={async () => {
+              const res = await deleteWhiteboard(whiteboard.id);
+              if (!res?.error) router.push("/whiteboards");
             }}
-          >
-            <Trash2 className="size-4" /> Delete
-          </Button>
+            trigger={
+              <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive">
+                <Trash2 className="size-4" /> Delete
+              </Button>
+            }
+          />
         </div>
       </header>
 

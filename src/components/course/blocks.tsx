@@ -32,6 +32,10 @@ import {
 
 import { requestCourseImageUpload, getCourseImageViewUrl } from "@/app/actions/courses";
 import { DescriptionEditor } from "@/components/board/description-editor";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Select } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { embedUrl } from "@/lib/course";
 import type {
@@ -77,9 +81,6 @@ function uid() {
   return typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : String(Math.random()).slice(2);
 }
 
-const input =
-  "w-full rounded-md border border-border-strong bg-transparent px-3 py-2 text-sm outline-none focus:border-foreground/60";
-
 /** Read-only TipTap render for the learner view. */
 function TiptapView({ json }: { json: string | null }) {
   const editor = useEditor({
@@ -119,21 +120,21 @@ function useImageSrc(courseId: string | undefined, key: string | null, url: stri
 function HeadingEdit({ content, save }: EditProps<HeadingContent>) {
   return (
     <div className="flex items-center gap-2">
-      <select
+      <Select
         value={content.level}
         onChange={(e) => save({ ...content, level: Number(e.target.value) as 1 | 2 | 3 })}
-        className="rounded-md border border-border-strong bg-transparent px-2 py-1 text-xs"
+        className="w-auto py-1 text-xs"
         aria-label="Heading level"
       >
         <option value={1}>H1</option>
         <option value={2}>H2</option>
         <option value={3}>H3</option>
-      </select>
-      <input
+      </Select>
+      <Input
         value={content.text}
         onChange={(e) => save({ ...content, text: e.target.value })}
         placeholder="Section heading…"
-        className={cn(input, "font-semibold")}
+        className="font-semibold"
       />
     </div>
   );
@@ -161,12 +162,12 @@ function TextView({ content }: ViewProps<TextContent>) {
 // ── Statement ─────────────────────────────────────────────────────────────────
 function StatementEdit({ content, save }: EditProps<StatementContent>) {
   return (
-    <textarea
+    <Textarea
       value={content.text}
       onChange={(e) => save({ text: e.target.value })}
       rows={2}
       placeholder="A short, emphasized statement…"
-      className={cn(input, "resize-none text-lg font-medium")}
+      className="min-h-0 resize-none text-lg font-medium"
     />
   );
 }
@@ -184,18 +185,18 @@ function StatementView({ content }: ViewProps<StatementContent>) {
 function QuoteEdit({ content, save }: EditProps<QuoteContent>) {
   return (
     <div className="flex flex-col gap-2">
-      <textarea
+      <Textarea
         value={content.quote}
         onChange={(e) => save({ ...content, quote: e.target.value })}
         rows={3}
         placeholder="Quote…"
-        className={cn(input, "resize-none italic")}
+        className="min-h-0 resize-none italic"
       />
-      <input
+      <Input
         value={content.attribution}
         onChange={(e) => save({ ...content, attribution: e.target.value })}
         placeholder="Attribution (optional)…"
-        className={cn(input, "text-sm")}
+        className="text-sm"
       />
     </div>
   );
@@ -221,26 +222,26 @@ function ListEdit({ content, save }: EditProps<ListContent>) {
   }
   return (
     <div className="flex flex-col gap-2">
-      <select
+      <Select
         value={content.style}
         onChange={(e) => save({ ...content, style: e.target.value as ListStyle })}
-        className="self-start rounded-md border border-border-strong bg-transparent px-2 py-1 text-xs"
+        className="w-auto self-start py-1 text-xs"
       >
         <option value="bullet">Bulleted</option>
         <option value="number">Numbered</option>
         <option value="check">Checked</option>
-      </select>
+      </Select>
       {content.items.map((it, i) => (
         <div key={i} className="flex items-center gap-2">
-          <input value={it} onChange={(e) => patch(i, e.target.value)} placeholder="List item…" className={cn(input, "text-sm")} />
+          <Input value={it} onChange={(e) => patch(i, e.target.value)} placeholder="List item…" className="text-sm" />
           <button onClick={() => save({ ...content, items: content.items.filter((_, idx) => idx !== i) })} className="shrink-0 rounded px-1 text-foreground/40 hover:text-destructive" title="Remove">
             <X className="size-4" />
           </button>
         </div>
       ))}
-      <button onClick={() => save({ ...content, items: [...content.items, ""] })} className="self-start rounded-md px-2 py-1 text-sm text-foreground/50 hover:bg-hover">
-        <Plus className="mr-1 inline size-3.5" /> Add item
-      </button>
+      <Button variant="ghost" size="sm" className="self-start" onClick={() => save({ ...content, items: [...content.items, ""] })}>
+        <Plus className="size-3.5" /> Add item
+      </Button>
     </div>
   );
 }
@@ -313,38 +314,42 @@ function ImageSourceControls({
   return (
     <div className="flex flex-col gap-2">
       <div className="flex gap-1.5">
-        <button
+        <Button
+          variant="ghost"
+          size="xs"
           onClick={() => setUrlMode(false)}
-          className={cn("flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium", !urlMode ? "bg-accent text-accent-foreground" : "bg-muted text-muted-foreground hover:bg-hover")}
+          className={cn(!urlMode ? "bg-accent text-accent-foreground hover:bg-accent hover:text-accent-foreground" : "bg-muted text-muted-foreground")}
         >
           <Upload className="size-3.5" /> Upload
-        </button>
-        <button
+        </Button>
+        <Button
+          variant="ghost"
+          size="xs"
           onClick={() => setUrlMode(true)}
-          className={cn("flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium", urlMode ? "bg-accent text-accent-foreground" : "bg-muted text-muted-foreground hover:bg-hover")}
+          className={cn(urlMode ? "bg-accent text-accent-foreground hover:bg-accent hover:text-accent-foreground" : "bg-muted text-muted-foreground")}
         >
           <Link2 className="size-3.5" /> Use a URL
-        </button>
+        </Button>
       </div>
 
       {urlMode ? (
-        <input
+        <Input
           value={keyVal ? "" : url}
           onChange={(e) => onChange({ key: null, url: e.target.value })}
           placeholder="Image URL (https://…)"
-          className={input}
         />
       ) : (
         <div>
           <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={(e) => e.target.files?.[0] && handleFile(e.target.files[0])} />
-          <button
+          <Button
+            variant="outline"
             onClick={() => fileRef.current?.click()}
             disabled={uploading || !courseId}
-            className="flex items-center gap-2 rounded-md border border-dashed border-border-strong px-3 py-2 text-sm text-muted-foreground hover:border-foreground/40 disabled:opacity-50"
+            className="text-muted-foreground"
           >
             {uploading ? <Loader2 className="size-4 animate-spin" /> : <Upload className="size-4" />}
             {uploading ? "Uploading…" : "Choose an image…"}
-          </button>
+          </Button>
         </div>
       )}
       {error && <p className="text-xs text-destructive">{error}</p>}
@@ -362,8 +367,8 @@ function ImageEdit({ content, save, courseId }: EditProps<ImageContent>) {
         <img src={src} alt={content.alt} className="max-h-56 w-auto rounded-lg border border-border" />
       )}
       <div className="flex gap-2">
-        <input value={content.alt} onChange={(e) => save({ ...content, alt: e.target.value })} placeholder="Alt text (accessibility)" className={cn(input, "text-xs")} />
-        <input value={content.caption} onChange={(e) => save({ ...content, caption: e.target.value })} placeholder="Caption (optional)" className={cn(input, "text-xs")} />
+        <Input value={content.alt} onChange={(e) => save({ ...content, alt: e.target.value })} placeholder="Alt text (accessibility)" className="text-xs" />
+        <Input value={content.caption} onChange={(e) => save({ ...content, caption: e.target.value })} placeholder="Caption (optional)" className="text-xs" />
       </div>
     </div>
   );
@@ -430,17 +435,17 @@ function LabeledGraphicEdit({ content, save, courseId }: EditProps<LabeledGraphi
           <p className="text-xs text-muted-foreground">Click the image to add a marker; click a marker below to edit it.</p>
         </>
       )}
-      <input value={content.alt} onChange={(e) => save({ ...content, alt: e.target.value })} placeholder="Alt text (accessibility)" className={cn(input, "text-xs")} />
+      <Input value={content.alt} onChange={(e) => save({ ...content, alt: e.target.value })} placeholder="Alt text (accessibility)" className="text-xs" />
       {content.markers.length > 0 && (
         <div className="flex flex-col gap-2">
           {content.markers.map((m, i) => (
             <div key={m.id} className={cn("rounded-lg border p-2", activeMarker === m.id ? "border-accent" : "border-border")}>
               <div className="flex items-center gap-2">
                 <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-accent text-[10px] font-bold text-accent-foreground">{i + 1}</span>
-                <input value={m.title} onChange={(e) => patchMarker(m.id, { title: e.target.value })} placeholder="Marker title…" className={cn(input, "text-sm")} />
+                <Input value={m.title} onChange={(e) => patchMarker(m.id, { title: e.target.value })} placeholder="Marker title…" className="text-sm" />
                 <button onClick={() => removeMarker(m.id)} className="shrink-0 rounded px-1 text-foreground/40 hover:text-destructive" title="Remove marker"><X className="size-4" /></button>
               </div>
-              <textarea value={m.body} onChange={(e) => patchMarker(m.id, { body: e.target.value })} rows={2} placeholder="Marker detail…" className={cn(input, "mt-2 resize-none")} />
+              <Textarea value={m.body} onChange={(e) => patchMarker(m.id, { body: e.target.value })} rows={2} placeholder="Marker detail…" className="mt-2 min-h-0 resize-none" />
             </div>
           ))}
         </div>
@@ -484,11 +489,10 @@ function MultimediaEdit({ content, save }: EditProps<MultimediaContent>) {
   const embed = embedUrl(content.url);
   return (
     <div className="flex flex-col gap-2">
-      <input
+      <Input
         value={content.url}
         onChange={(e) => save({ ...content, url: e.target.value })}
         placeholder="YouTube or Vimeo URL…"
-        className={input}
       />
       {content.url && !embed && <p className="text-xs text-muted-foreground">Paste a YouTube or Vimeo link to embed it.</p>}
       {embed && (
@@ -496,7 +500,7 @@ function MultimediaEdit({ content, save }: EditProps<MultimediaContent>) {
           <iframe src={embed} className="h-full w-full" allow="autoplay; fullscreen; picture-in-picture" allowFullScreen />
         </div>
       )}
-      <input value={content.caption} onChange={(e) => save({ ...content, caption: e.target.value })} placeholder="Caption (optional)" className={cn(input, "text-xs")} />
+      <Input value={content.caption} onChange={(e) => save({ ...content, caption: e.target.value })} placeholder="Caption (optional)" className="text-xs" />
     </div>
   );
 }
@@ -545,20 +549,17 @@ function ItemListEditor<T extends { id: string; title: string; body: string }>({
       {items.map((it) => (
         <div key={it.id} className="rounded-lg border border-border p-2">
           <div className="flex items-center gap-2">
-            <input value={it.title} onChange={(e) => patch(it.id, { title: e.target.value } as Partial<T>)} placeholder="Title…" className={cn(input, "font-medium")} />
+            <Input value={it.title} onChange={(e) => patch(it.id, { title: e.target.value } as Partial<T>)} placeholder="Title…" className="font-medium" />
             <button onClick={() => onChange(items.filter((x) => x.id !== it.id))} className="shrink-0 rounded px-1 text-foreground/40 hover:text-destructive" title="Remove">
               <X className="size-4" />
             </button>
           </div>
-          <textarea value={it.body} onChange={(e) => patch(it.id, { body: e.target.value } as Partial<T>)} rows={2} placeholder="Content…" className={cn(input, "mt-2 resize-none")} />
+          <Textarea value={it.body} onChange={(e) => patch(it.id, { body: e.target.value } as Partial<T>)} rows={2} placeholder="Content…" className="mt-2 min-h-0 resize-none" />
         </div>
       ))}
-      <button
-        onClick={() => onChange([...items, { id: uid(), title: "", body: "" } as T])}
-        className="self-start rounded-md px-2 py-1 text-sm text-foreground/50 hover:bg-hover"
-      >
-        <Plus className="mr-1 inline size-3.5" /> {addLabel}
-      </button>
+      <Button variant="ghost" size="sm" className="self-start" onClick={() => onChange([...items, { id: uid(), title: "", body: "" } as T])}>
+        <Plus className="size-3.5" /> {addLabel}
+      </Button>
     </div>
   );
 }
@@ -669,19 +670,21 @@ function FlashcardsEdit({ content, save }: EditProps<FlashcardsContent>) {
     <div className="flex flex-col gap-2">
       {content.cards.map((c) => (
         <div key={c.id} className="flex items-center gap-2 rounded-lg border border-border p-2">
-          <input value={c.front} onChange={(e) => patch(c.id, { front: e.target.value })} placeholder="Front…" className={cn(input, "text-sm")} />
-          <input value={c.back} onChange={(e) => patch(c.id, { back: e.target.value })} placeholder="Back…" className={cn(input, "text-sm")} />
+          <Input value={c.front} onChange={(e) => patch(c.id, { front: e.target.value })} placeholder="Front…" className="text-sm" />
+          <Input value={c.back} onChange={(e) => patch(c.id, { back: e.target.value })} placeholder="Back…" className="text-sm" />
           <button onClick={() => save({ cards: content.cards.filter((x) => x.id !== c.id) })} className="shrink-0 rounded px-1 text-foreground/40 hover:text-destructive" title="Remove">
             <X className="size-4" />
           </button>
         </div>
       ))}
-      <button
+      <Button
+        variant="ghost"
+        size="sm"
+        className="self-start"
         onClick={() => save({ cards: [...content.cards, { id: uid(), front: "", back: "" }] })}
-        className="self-start rounded-md px-2 py-1 text-sm text-foreground/50 hover:bg-hover"
       >
-        <Plus className="mr-1 inline size-3.5" /> Add card
-      </button>
+        <Plus className="size-3.5" /> Add card
+      </Button>
     </div>
   );
 }
@@ -724,22 +727,22 @@ function KnowledgeCheckEdit({ content, save, objectives = [] }: EditProps<Knowle
   }
   return (
     <div className="flex flex-col gap-3">
-      <select
+      <Select
         value={content.questionType}
         onChange={(e) => save({ ...content, questionType: e.target.value as KnowledgeCheckType })}
-        className="self-start rounded-md border border-border-strong bg-transparent px-2 py-1 text-xs"
+        className="w-auto self-start py-1 text-xs"
       >
         {KNOWLEDGE_CHECK_TYPES.map((t) => (
           <option key={t} value={t}>{KNOWLEDGE_CHECK_TYPE_LABEL[t]}</option>
         ))}
-      </select>
+      </Select>
 
-      <textarea
+      <Textarea
         value={content.question}
         onChange={(e) => save({ ...content, question: e.target.value })}
         rows={2}
         placeholder="Question…"
-        className={cn(input, "resize-none font-medium")}
+        className="min-h-0 resize-none font-medium"
       />
 
       {content.questionType === "fill_blank" ? (
@@ -755,9 +758,9 @@ function KnowledgeCheckEdit({ content, save, objectives = [] }: EditProps<Knowle
               </span>
             ))}
           </div>
-          <input
+          <Input
             placeholder="Type an accepted answer and press Enter…"
-            className={cn(input, "text-sm")}
+            className="text-sm"
             onKeyDown={(e) => {
               if (e.key === "Enter") {
                 e.preventDefault();
@@ -782,31 +785,32 @@ function KnowledgeCheckEdit({ content, save, objectives = [] }: EditProps<Knowle
                   content.questionType === "multi" ? "rounded" : "rounded-full",
                   o.correct ? "border-success bg-success text-white" : "border-border-strong text-transparent hover:border-foreground/40"
                 )}
-                style={o.correct ? { backgroundColor: "var(--color-success)", borderColor: "var(--color-success)" } : undefined}
               >
                 <Check className="size-3" />
               </button>
-              <input value={o.text} onChange={(e) => patchOpt(o.id, { text: e.target.value })} placeholder="Answer option…" className={cn(input, "text-sm")} />
+              <Input value={o.text} onChange={(e) => patchOpt(o.id, { text: e.target.value })} placeholder="Answer option…" className="text-sm" />
               <button onClick={() => save({ ...content, options: content.options.filter((x) => x.id !== o.id) })} className="shrink-0 rounded px-1 text-foreground/40 hover:text-destructive" title="Remove option">
                 <X className="size-4" />
               </button>
             </div>
           ))}
-          <button
+          <Button
+            variant="ghost"
+            size="sm"
+            className="self-start"
             onClick={() => save({ ...content, options: [...content.options, { id: uid(), text: "", correct: false }] })}
-            className="self-start rounded-md px-2 py-1 text-sm text-foreground/50 hover:bg-hover"
           >
-            <Plus className="mr-1 inline size-3.5" /> Add option
-          </button>
+            <Plus className="size-3.5" /> Add option
+          </Button>
         </div>
       )}
 
-      <textarea
+      <Textarea
         value={content.feedback}
         onChange={(e) => save({ ...content, feedback: e.target.value })}
         rows={2}
         placeholder="Feedback shown after answering (optional)…"
-        className={cn(input, "resize-none text-sm")}
+        className="min-h-0 resize-none text-sm"
       />
       {objectives.length > 0 && (
         <div className="flex flex-wrap items-center gap-1.5">
@@ -867,23 +871,23 @@ function KnowledgeCheckView({ content }: ViewProps<KnowledgeCheckContent>) {
           {content.options.map((o) => {
             const answered = picked !== null;
             const chosen = picked === o.id;
-            const style =
-              answered && isRight(o)
-                ? { borderColor: "var(--color-success)", backgroundColor: "color-mix(in srgb, var(--color-success) 8%, transparent)" }
-                : answered && chosen && !isRight(o)
-                  ? { borderColor: "var(--color-destructive)", backgroundColor: "color-mix(in srgb, var(--color-destructive) 8%, transparent)" }
-                  : undefined;
             return (
               <button
                 key={o.id}
                 disabled={answered}
                 onClick={() => setPicked(o.id)}
-                style={style}
-                className="flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-left text-sm transition-colors hover:bg-hover disabled:cursor-default"
+                className={cn(
+                  "flex items-center gap-2 rounded-lg border px-3 py-2 text-left text-sm transition-colors hover:bg-hover disabled:cursor-default",
+                  answered && isRight(o)
+                    ? "border-success bg-success/8"
+                    : answered && chosen && !isRight(o)
+                      ? "border-destructive bg-destructive/8"
+                      : "border-border"
+                )}
               >
                 <span className="flex-1">{o.text}</span>
-                {answered && isRight(o) && <Check className="size-4" style={{ color: "var(--color-success)" }} />}
-                {answered && chosen && !isRight(o) && <X className="size-4" style={{ color: "var(--color-destructive)" }} />}
+                {answered && isRight(o) && <Check className="size-4 text-success" />}
+                {answered && chosen && !isRight(o) && <X className="size-4 text-destructive" />}
               </button>
             );
           })}
@@ -898,13 +902,6 @@ function KnowledgeCheckView({ content }: ViewProps<KnowledgeCheckContent>) {
         <div className="flex flex-col gap-2">
           {content.options.map((o) => {
             const isChecked = checked.has(o.id);
-            const style = submitted
-              ? o.correct
-                ? { borderColor: "var(--color-success)", backgroundColor: "color-mix(in srgb, var(--color-success) 8%, transparent)" }
-                : isChecked
-                  ? { borderColor: "var(--color-destructive)", backgroundColor: "color-mix(in srgb, var(--color-destructive) 8%, transparent)" }
-                  : undefined
-              : undefined;
             return (
               <button
                 key={o.id}
@@ -917,8 +914,16 @@ function KnowledgeCheckView({ content }: ViewProps<KnowledgeCheckContent>) {
                     return next;
                   })
                 }
-                style={style}
-                className="flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-left text-sm transition-colors hover:bg-hover disabled:cursor-default"
+                className={cn(
+                  "flex items-center gap-2 rounded-lg border px-3 py-2 text-left text-sm transition-colors hover:bg-hover disabled:cursor-default",
+                  submitted
+                    ? o.correct
+                      ? "border-success bg-success/8"
+                      : isChecked
+                        ? "border-destructive bg-destructive/8"
+                        : "border-border"
+                    : "border-border"
+                )}
               >
                 <span className={cn("flex size-4 shrink-0 items-center justify-center rounded border", isChecked ? "border-accent bg-accent text-accent-foreground" : "border-border-strong")}>
                   {isChecked && <Check className="size-3" />}
@@ -928,12 +933,12 @@ function KnowledgeCheckView({ content }: ViewProps<KnowledgeCheckContent>) {
             );
           })}
           {!submitted ? (
-            <button onClick={() => setSubmitted(true)} disabled={checked.size === 0} className="mt-1 self-start rounded-md bg-accent px-3 py-1.5 text-sm font-medium text-accent-foreground disabled:opacity-40">
+            <Button size="sm" className="mt-1 self-start" onClick={() => setSubmitted(true)} disabled={checked.size === 0}>
               Submit
-            </button>
+            </Button>
           ) : (
             <>
-              <p className={cn("text-sm font-medium", multiCorrect ? "" : "")} style={{ color: multiCorrect ? "var(--color-success)" : "var(--color-destructive)" }}>
+              <p className={cn("text-sm font-medium", multiCorrect ? "text-success" : "text-destructive")}>
                 {multiCorrect ? "Correct!" : "Not quite."}
               </p>
               {content.feedback && <p className="rounded-lg bg-muted px-3 py-2 text-sm text-foreground/80">{content.feedback}</p>}
@@ -945,28 +950,20 @@ function KnowledgeCheckView({ content }: ViewProps<KnowledgeCheckContent>) {
 
       {type === "fill_blank" && (
         <div className="flex flex-col gap-2">
-          <input
+          <Input
             value={text}
             onChange={(e) => setText(e.target.value)}
             disabled={submitted}
             placeholder="Type your answer…"
-            className={cn(input, "text-sm")}
-            style={
-              submitted
-                ? {
-                    borderColor: fillCorrect ? "var(--color-success)" : "var(--color-destructive)",
-                    backgroundColor: `color-mix(in srgb, var(${fillCorrect ? "--color-success" : "--color-destructive"}) 8%, transparent)`,
-                  }
-                : undefined
-            }
+            className={cn("text-sm", submitted && (fillCorrect ? "border-success bg-success/8" : "border-destructive bg-destructive/8"))}
           />
           {!submitted ? (
-            <button onClick={() => setSubmitted(true)} disabled={!text.trim()} className="self-start rounded-md bg-accent px-3 py-1.5 text-sm font-medium text-accent-foreground disabled:opacity-40">
+            <Button size="sm" className="self-start" onClick={() => setSubmitted(true)} disabled={!text.trim()}>
               Submit
-            </button>
+            </Button>
           ) : (
             <>
-              <p style={{ color: fillCorrect ? "var(--color-success)" : "var(--color-destructive)" }} className="text-sm font-medium">
+              <p className={cn("text-sm font-medium", fillCorrect ? "text-success" : "text-destructive")}>
                 {fillCorrect ? "Correct!" : "Not quite."}
               </p>
               {content.feedback && <p className="rounded-lg bg-muted px-3 py-2 text-sm text-foreground/80">{content.feedback}</p>}
@@ -1003,52 +1000,56 @@ function SortEdit({ content, save }: EditProps<SortContent>) {
         <p className="text-xs font-medium text-muted-foreground">Categories</p>
         {content.categories.map((c) => (
           <div key={c.id} className="flex items-center gap-2">
-            <input value={c.name} onChange={(e) => patchCategory(c.id, e.target.value)} placeholder="Category name…" className={cn(input, "text-sm")} />
+            <Input value={c.name} onChange={(e) => patchCategory(c.id, e.target.value)} placeholder="Category name…" className="text-sm" />
             <button onClick={() => removeCategory(c.id)} className="shrink-0 rounded px-1 text-foreground/40 hover:text-destructive" title="Remove category">
               <X className="size-4" />
             </button>
           </div>
         ))}
-        <button
+        <Button
+          variant="ghost"
+          size="sm"
+          className="self-start"
           onClick={() => save({ ...content, categories: [...content.categories, { id: uid(), name: "" }] })}
-          className="self-start rounded-md px-2 py-1 text-sm text-foreground/50 hover:bg-hover"
         >
-          <Plus className="mr-1 inline size-3.5" /> Add category
-        </button>
+          <Plus className="size-3.5" /> Add category
+        </Button>
       </div>
       <div className="flex flex-col gap-2">
         <p className="text-xs font-medium text-muted-foreground">Items</p>
         {content.items.map((i) => (
           <div key={i.id} className="flex items-center gap-2">
-            <input value={i.text} onChange={(e) => patchItem(i.id, { text: e.target.value })} placeholder="Item text…" className={cn(input, "text-sm")} />
-            <select
+            <Input value={i.text} onChange={(e) => patchItem(i.id, { text: e.target.value })} placeholder="Item text…" className="text-sm" />
+            <Select
               value={i.categoryId ?? ""}
               onChange={(e) => patchItem(i.id, { categoryId: e.target.value || null })}
-              className={cn(input, "w-40 shrink-0 text-sm")}
+              className="w-40 shrink-0 text-sm"
             >
               <option value="">Correct category…</option>
               {content.categories.map((c) => (
                 <option key={c.id} value={c.id}>{c.name || "(untitled)"}</option>
               ))}
-            </select>
+            </Select>
             <button onClick={() => removeItem(i.id)} className="shrink-0 rounded px-1 text-foreground/40 hover:text-destructive" title="Remove item">
               <X className="size-4" />
             </button>
           </div>
         ))}
-        <button
+        <Button
+          variant="ghost"
+          size="sm"
+          className="self-start"
           onClick={() => save({ ...content, items: [...content.items, { id: uid(), text: "", categoryId: null }] })}
-          className="self-start rounded-md px-2 py-1 text-sm text-foreground/50 hover:bg-hover"
         >
-          <Plus className="mr-1 inline size-3.5" /> Add item
-        </button>
+          <Plus className="size-3.5" /> Add item
+        </Button>
       </div>
-      <textarea
+      <Textarea
         value={content.feedback}
         onChange={(e) => save({ ...content, feedback: e.target.value })}
         rows={2}
         placeholder="Feedback shown after checking (optional)…"
-        className={cn(input, "resize-none text-sm")}
+        className="min-h-0 resize-none text-sm"
       />
     </div>
   );
@@ -1116,21 +1117,22 @@ function SortView({ content }: ViewProps<SortContent>) {
             >
               <p className="text-xs font-semibold text-muted-foreground">{c.name || "(category)"}</p>
               {inCat.map((i) => {
-                const style = checked
-                  ? i.categoryId === c.id
-                    ? { borderColor: "var(--color-success)", backgroundColor: "color-mix(in srgb, var(--color-success) 8%, transparent)" }
-                    : { borderColor: "var(--color-destructive)", backgroundColor: "color-mix(in srgb, var(--color-destructive) 8%, transparent)" }
-                  : undefined;
                 return (
                   <button
                     key={i.id}
                     onClick={(e) => { e.stopPropagation(); place(i.id, null); }}
                     disabled={checked}
-                    style={style}
-                    className="flex items-center justify-between gap-2 rounded-md border border-border-strong bg-surface px-2 py-1 text-left text-sm disabled:cursor-default"
+                    className={cn(
+                      "flex items-center justify-between gap-2 rounded-md border bg-surface px-2 py-1 text-left text-sm disabled:cursor-default",
+                      checked
+                        ? i.categoryId === c.id
+                          ? "border-success bg-success/8"
+                          : "border-destructive bg-destructive/8"
+                        : "border-border-strong"
+                    )}
                   >
                     <span>{i.text}</span>
-                    {checked && (i.categoryId === c.id ? <Check className="size-3.5 shrink-0" style={{ color: "var(--color-success)" }} /> : <X className="size-3.5 shrink-0" style={{ color: "var(--color-destructive)" }} />)}
+                    {checked && (i.categoryId === c.id ? <Check className="size-3.5 shrink-0 text-success" /> : <X className="size-3.5 shrink-0 text-destructive" />)}
                   </button>
                 );
               })}
@@ -1140,16 +1142,12 @@ function SortView({ content }: ViewProps<SortContent>) {
       </div>
 
       {!checked ? (
-        <button
-          onClick={() => setChecked(true)}
-          disabled={!allPlaced}
-          className="mt-4 self-start rounded-md bg-accent px-3 py-1.5 text-sm font-medium text-accent-foreground disabled:opacity-40"
-        >
+        <Button size="sm" className="mt-4 self-start" onClick={() => setChecked(true)} disabled={!allPlaced}>
           Check answers
-        </button>
+        </Button>
       ) : (
         <div className="mt-4 flex flex-col items-start gap-2">
-          <p className="text-sm font-medium" style={{ color: correctCount === content.items.length ? "var(--color-success)" : "var(--color-destructive)" }}>
+          <p className={cn("text-sm font-medium", correctCount === content.items.length ? "text-success" : "text-destructive")}>
             {correctCount} of {content.items.length} correct
           </p>
           {content.feedback && <p className="rounded-lg bg-muted px-3 py-2 text-sm text-foreground/80">{content.feedback}</p>}

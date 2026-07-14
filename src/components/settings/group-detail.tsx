@@ -9,15 +9,14 @@ import { setGroupResourceAccess } from "@/app/actions/access";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Select } from "@/components/ui/select";
 import { SectionHeader } from "@/components/shared/page";
+import { ConfirmDelete } from "@/components/shared/confirm-delete";
 
 type Person = { id: string; email: string; name: string | null };
 type Resource = { id: string; name: string; granted: boolean };
 type ResourceKind = "board" | "storyboard" | "project" | "whiteboard";
 type Resources = Record<ResourceKind, Resource[]>;
-
-const selectClass =
-  "h-9 rounded-md border border-input bg-transparent px-2 text-sm outline-none focus:border-ring";
 
 export function GroupDetail({
   group,
@@ -47,7 +46,6 @@ export function GroupDetail({
   }
 
   function doDelete() {
-    if (!confirm(`Delete the group "${group.name}"? Members and its resource-sharing are removed.`)) return;
     startTransition(async () => {
       const res = await deleteGroup(group.id);
       if (res?.error) setErr(res.error);
@@ -88,9 +86,17 @@ export function GroupDetail({
           </div>
           {err && <p className="text-sm text-destructive">{err}</p>}
           <div>
-            <Button variant="ghost" size="sm" onClick={doDelete} disabled={pending} className="text-destructive hover:text-destructive">
-              <Trash2 className="size-4" /> Delete group
-            </Button>
+            <ConfirmDelete
+              title="Delete this group?"
+              description={`Members and its resource-sharing are removed. This won't delete the group's boards, storyboards, projects, or whiteboards themselves.`}
+              confirmLabel="Delete group"
+              onConfirm={doDelete}
+              trigger={
+                <Button variant="ghost" size="sm" disabled={pending} className="text-destructive hover:text-destructive">
+                  <Trash2 className="size-4" /> Delete group
+                </Button>
+              }
+            />
           </div>
         </div>
       </Card>
@@ -116,14 +122,14 @@ export function GroupDetail({
 
         {candidates.length > 0 && (
           <div className="mt-3 flex items-center gap-2">
-            <select value={pick} onChange={(e) => setPick(e.target.value)} className={selectClass}>
+            <Select value={pick} onChange={(e) => setPick(e.target.value)} className="h-9 w-auto">
               <option value="">Add a member…</option>
               {candidates.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.name ? `${c.name} (${c.email})` : c.email}
                 </option>
               ))}
-            </select>
+            </Select>
             <Button size="sm" onClick={add} disabled={pending || !pick}>
               <UserPlus className="size-4" /> Add
             </Button>

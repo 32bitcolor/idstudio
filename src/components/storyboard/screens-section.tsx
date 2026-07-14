@@ -12,7 +12,13 @@ import {
 import { toggleScreenObjective } from "@/app/actions/objectives";
 import { SCREEN_TYPES, SCREEN_TYPE_LABEL, SCREEN_FIELDS, type ScreenType } from "@/lib/storyboard";
 import { DescriptionEditor } from "@/components/board/description-editor";
-import { Target } from "lucide-react";
+import { Target, ChevronDown, ChevronRight, ChevronUp, X } from "lucide-react";
+import { SectionHeader } from "@/components/shared/page";
+import { InlineTitle } from "@/components/shared/inline-title";
+import { ConfirmDelete } from "@/components/shared/confirm-delete";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
 
 export type ProjectObjective = { id: string; text: string };
 
@@ -57,7 +63,6 @@ export function ScreensSection({
   }
 
   function remove(id: string) {
-    if (!confirm("Delete this screen?")) return;
     setScreens((prev) => prev.filter((s) => s.id !== id));
     startTransition(() => void deleteScreen(id));
   }
@@ -69,12 +74,11 @@ export function ScreensSection({
 
   return (
     <section className="mt-8">
-      <div className="flex items-baseline justify-between">
-        <h2 className="text-sm font-medium uppercase tracking-wide text-foreground/50">Screens</h2>
-        {screens.length > 0 && <span className="text-xs text-foreground/40">{screens.length}</span>}
-      </div>
+      <SectionHeader action={screens.length > 0 && <span className="text-xs text-muted-foreground">{screens.length}</span>}>
+        Screens
+      </SectionHeader>
 
-      <div className="mt-3 flex flex-col gap-3">
+      <div className="flex flex-col gap-3">
         {screens.length === 0 && <p className="text-sm text-foreground/40">No screens yet. Add the first one below.</p>}
         {screens.map((s, i) => (
           <ScreenCard
@@ -126,34 +130,35 @@ function ScreenCard({
       <div className="flex items-center gap-2 p-3">
         <button
           onClick={() => setOpen((o) => !o)}
-          className="shrink-0 rounded px-1 text-foreground/40 hover:bg-hover"
+          className="shrink-0 rounded p-0.5 text-muted-foreground hover:bg-hover"
           title={open ? "Collapse" : "Expand"}
         >
-          {open ? "▾" : "▸"}
+          {open ? <ChevronDown className="size-4" /> : <ChevronRight className="size-4" />}
         </button>
         <span className="shrink-0 text-xs tabular-nums text-foreground/40">{index + 1}</span>
-        <input
+        <InlineTitle
           value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          onBlur={() => {
+          onChange={setTitle}
+          onCommit={() => {
             if (title.trim() && title !== screen.title) startTransition(() => void renameScreen(screen.id, title));
           }}
-          className="min-w-0 flex-1 rounded bg-transparent px-1 text-sm font-medium outline-none hover:bg-hover focus:bg-hover"
+          ariaLabel="Screen title"
+          className="text-sm font-medium tracking-normal"
         />
-        <select
+        <Select
           value={type}
           onChange={(e) => {
             setType(e.target.value);
             startTransition(() => void setScreenType(screen.id, e.target.value));
           }}
-          className="shrink-0 rounded-md border border-border-strong bg-transparent px-2 py-1 text-xs outline-none"
+          className="w-auto shrink-0 py-1 text-xs"
         >
           {SCREEN_TYPES.map((t) => (
             <option key={t} value={t}>
               {SCREEN_TYPE_LABEL[t as ScreenType]}
             </option>
           ))}
-        </select>
+        </Select>
         {objectives.length > 0 && taught.length > 0 && (
           <span
             className="hidden shrink-0 items-center gap-1 rounded-md bg-accent/12 px-1.5 py-0.5 text-xs font-medium text-accent sm:inline-flex"
@@ -162,16 +167,24 @@ function ScreenCard({
             <Target className="size-3" /> {taught.length}
           </span>
         )}
-        <div className="flex shrink-0 items-center gap-1 text-foreground/50">
-          <button disabled={index === 0} onClick={() => onReorder(index, -1)} className="rounded px-1 hover:bg-hover disabled:opacity-25" title="Move up">
-            ↑
-          </button>
-          <button disabled={index === total - 1} onClick={() => onReorder(index, 1)} className="rounded px-1 hover:bg-hover disabled:opacity-25" title="Move down">
-            ↓
-          </button>
-          <button onClick={() => onRemove(screen.id)} className="rounded px-1 hover:bg-red-500/10 hover:text-red-600" title="Delete screen">
-            ×
-          </button>
+        <div className="flex shrink-0 items-center gap-1 text-muted-foreground">
+          <Button variant="ghost" size="icon-xs" disabled={index === 0} onClick={() => onReorder(index, -1)} title="Move up">
+            <ChevronUp className="size-3.5" />
+          </Button>
+          <Button variant="ghost" size="icon-xs" disabled={index === total - 1} onClick={() => onReorder(index, 1)} title="Move down">
+            <ChevronDown className="size-3.5" />
+          </Button>
+          <ConfirmDelete
+            title="Delete this screen?"
+            description="This permanently deletes the screen and its content."
+            confirmLabel="Delete screen"
+            onConfirm={() => onRemove(screen.id)}
+            trigger={
+              <Button variant="ghost" size="icon-xs" className="hover:bg-destructive/10 hover:text-destructive" title="Delete screen">
+                <X className="size-3.5" />
+              </Button>
+            }
+          />
         </div>
       </div>
 
@@ -243,7 +256,7 @@ function ScreenComposer({ onAdd }: { onAdd: (title: string) => void }) {
 
   return (
     <div className="mt-3 flex gap-2">
-      <input
+      <Input
         autoFocus
         value={value}
         onChange={(e) => setValue(e.target.value)}
@@ -252,14 +265,10 @@ function ScreenComposer({ onAdd }: { onAdd: (title: string) => void }) {
           if (e.key === "Escape") { setValue(""); setOpen(false); }
         }}
         placeholder="Screen title…"
-        className="flex-1 rounded-md border border-border-strong bg-transparent px-3 py-2 text-sm outline-none focus:border-foreground/60"
+        className="flex-1"
       />
-      <button onClick={submit} className="rounded-md bg-accent px-3 py-1 text-sm font-medium text-accent-foreground">
-        Add
-      </button>
-      <button onClick={() => { setValue(""); setOpen(false); }} className="rounded-md px-2 py-1 text-sm text-foreground/60 hover:bg-hover">
-        Cancel
-      </button>
+      <Button size="sm" onClick={submit}>Add</Button>
+      <Button size="sm" variant="ghost" onClick={() => { setValue(""); setOpen(false); }}>Cancel</Button>
     </div>
   );
 }

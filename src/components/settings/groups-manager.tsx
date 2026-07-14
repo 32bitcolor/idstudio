@@ -46,7 +46,7 @@ export function GroupsManager({ groups }: { groups: GroupRow[] }) {
               <Plus className="size-4" /> {pending ? "Creating…" : "Create group"}
             </Button>
             {state?.error && <span className="text-sm text-destructive">{state.error}</span>}
-            {state?.success && <span className="text-sm text-green-600">{state.success}</span>}
+            {state?.success && <span className="text-sm text-success">{state.success}</span>}
           </div>
         </form>
       </Card>

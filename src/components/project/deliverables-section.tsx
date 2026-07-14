@@ -3,6 +3,13 @@
 import { useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { X, Link2, Film, MonitorPlay } from "lucide-react";
+import { SectionHeader } from "@/components/shared/page";
+import { InlineTitle } from "@/components/shared/inline-title";
+import { ConfirmDelete } from "@/components/shared/confirm-delete";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
 import {
   createDeliverable,
   renameDeliverable,
@@ -51,8 +58,6 @@ type Deliverable = {
 };
 type PhaseRef = { id: string; name: string };
 type LinkableCard = { id: string; title: string; boardName: string };
-
-const control = "rounded-md border border-border-strong bg-transparent px-2 py-1 text-xs outline-none";
 
 export function DeliverablesSection({
   projectId,
@@ -118,118 +123,116 @@ export function DeliverablesSection({
   }
 
   function remove(id: string) {
-    if (!confirm("Delete this deliverable?")) return;
     setItems((prev) => prev.filter((d) => d.id !== id));
     startTransition(() => void deleteDeliverable(id));
   }
 
   return (
     <section className="mt-8">
-      <h2 className="text-sm font-medium uppercase tracking-wide text-foreground/50">Deliverables</h2>
-      <div className="mt-3 flex flex-col gap-2">
-        {items.length === 0 && <p className="text-sm text-foreground/40">No deliverables yet.</p>}
+      <SectionHeader>Deliverables</SectionHeader>
+      <div className="flex flex-col gap-2">
+        {items.length === 0 && <p className="text-sm text-muted-foreground">No deliverables yet.</p>}
         {items.map((d) => (
           <div key={d.id} className="rounded-xl border border-border p-3">
             <div className="flex items-center gap-2">
-              <input
+              <InlineTitle
                 value={d.name}
-                onChange={(e) => patch(d.id, { name: e.target.value })}
-                onBlur={(e) => {
-                  const v = e.target.value.trim();
+                onChange={(v) => patch(d.id, { name: v })}
+                onCommit={() => {
+                  const v = d.name.trim();
                   if (v) startTransition(() => void renameDeliverable(d.id, v));
                 }}
-                className="min-w-0 flex-1 rounded bg-transparent px-1 text-sm font-medium outline-none hover:bg-hover focus:bg-hover"
+                ariaLabel="Deliverable name"
+                className="text-sm font-medium tracking-normal"
               />
-              <button
-                onClick={() => remove(d.id)}
-                className="shrink-0 rounded px-1 text-foreground/40 hover:bg-red-500/10 hover:text-red-600"
-                title="Delete deliverable"
-              >
-                ×
-              </button>
+              <ConfirmDelete
+                title="Delete this deliverable?"
+                description="This permanently deletes the deliverable and its reviews."
+                confirmLabel="Delete deliverable"
+                onConfirm={() => remove(d.id)}
+                trigger={
+                  <Button variant="ghost" size="icon-xs" className="shrink-0 text-muted-foreground hover:bg-destructive/10 hover:text-destructive" title="Delete deliverable">
+                    <X className="size-3.5" />
+                  </Button>
+                }
+              />
             </div>
 
             <div className="mt-2 flex flex-wrap items-center gap-2">
-              <select
+              <Select
                 value={d.type}
                 onChange={(e) => {
                   patch(d.id, { type: e.target.value });
                   startTransition(() => void setDeliverableType(d.id, e.target.value));
                 }}
-                className={control}
+                className="h-8 w-auto py-1 text-xs"
               >
                 {DELIVERABLE_TYPES.map((t) => (
                   <option key={t} value={t}>{DELIVERABLE_TYPE_LABEL[t as DeliverableType]}</option>
                 ))}
-              </select>
+              </Select>
 
-              <select
+              <Select
                 value={d.status}
                 onChange={(e) => {
                   patch(d.id, { status: e.target.value });
                   startTransition(() => void setDeliverableStatus(d.id, e.target.value));
                 }}
-                className={control}
+                className="h-8 w-auto py-1 text-xs"
               >
                 {DELIVERABLE_STATUSES.map((s) => (
                   <option key={s} value={s}>{DELIVERABLE_STATUS_LABEL[s as DeliverableStatus]}</option>
                 ))}
-              </select>
+              </Select>
 
-              <select
+              <Select
                 value={d.phaseId ?? ""}
                 onChange={(e) => {
                   const v = e.target.value || null;
                   patch(d.id, { phaseId: v });
                   startTransition(() => void setDeliverablePhase(d.id, v));
                 }}
-                className={control}
+                className="h-8 w-auto py-1 text-xs"
               >
                 <option value="">No phase</option>
                 {phases.map((p) => (
                   <option key={p.id} value={p.id}>{p.name}</option>
                 ))}
-              </select>
+              </Select>
 
               {d.card ? (
                 <span className="flex items-center gap-1 rounded-md bg-muted px-2 py-1 text-xs">
-                  <Link href={`/boards/${d.card.boardId}`} className="hover:underline" title={`${d.card.boardName}: ${d.card.title}`}>
-                    🔗 {d.card.title}
+                  <Link href={`/boards/${d.card.boardId}`} className="inline-flex items-center gap-1 hover:underline" title={`${d.card.boardName}: ${d.card.title}`}>
+                    <Link2 className="size-3" /> {d.card.title}
                   </Link>
-                  <button onClick={() => link(d, "")} className="text-foreground/40 hover:text-red-600" title="Unlink">×</button>
+                  <button onClick={() => link(d, "")} className="text-foreground/40 hover:text-destructive" title="Unlink">
+                    <X className="size-3" />
+                  </button>
                 </span>
               ) : (
-                <select
+                <Select
                   defaultValue=""
                   onFocus={ensureCards}
                   onChange={(e) => e.target.value && link(d, e.target.value)}
-                  className={control}
+                  className="h-8 w-auto py-1 text-xs"
                 >
                   <option value="">{linkable ? "Link a card…" : "Link a card… (loading)"}</option>
                   {(linkable ?? []).map((c) => (
                     <option key={c.id} value={c.id}>{c.boardName}: {c.title}</option>
                   ))}
-                </select>
+                </Select>
               )}
 
               {d.type === "storyboard" && (
-                <button
-                  onClick={() => openStoryboard(d)}
-                  className="flex items-center gap-1 rounded-md bg-muted px-2 py-1 text-xs hover:bg-hover"
-                  title={d.storyboard ? "Open the linked storyboard" : "Create a storyboard for this deliverable"}
-                >
-                  🎬 {d.storyboard ? "Open storyboard" : "Create storyboard"}
-                </button>
+                <Button variant="secondary" size="xs" onClick={() => openStoryboard(d)} title={d.storyboard ? "Open the linked storyboard" : "Create a storyboard for this deliverable"}>
+                  <Film className="size-3" /> {d.storyboard ? "Open storyboard" : "Create storyboard"}
+                </Button>
               )}
 
               {d.type === "course" && (
-                <button
-                  onClick={() => openCourse(d)}
-                  className="flex items-center gap-1 rounded-md bg-muted px-2 py-1 text-xs hover:bg-hover"
-                  title={d.course ? "Open the linked course" : "Create a course for this deliverable"}
-                >
-                  🖥️ {d.course ? "Open course" : "Create course"}
-                </button>
+                <Button variant="secondary" size="xs" onClick={() => openCourse(d)} title={d.course ? "Open the linked course" : "Create a course for this deliverable"}>
+                  <MonitorPlay className="size-3" /> {d.course ? "Open course" : "Create course"}
+                </Button>
               )}
             </div>
 
@@ -263,21 +266,21 @@ function DeliverableComposer({ onAdd }: { onAdd: (name: string, type: string) =>
 
   return (
     <div className="mt-2 flex flex-wrap gap-2">
-      <input
+      <Input
         autoFocus
         value={name}
         onChange={(e) => setName(e.target.value)}
         onKeyDown={(e) => { if (e.key === "Enter") submit(); if (e.key === "Escape") { setName(""); setOpen(false); } }}
         placeholder="Deliverable name…"
-        className="flex-1 rounded-md border border-border-strong bg-transparent px-3 py-2 text-sm outline-none focus:border-foreground/60"
+        className="flex-1"
       />
-      <select value={type} onChange={(e) => setType(e.target.value)} className="rounded-md border border-border-strong bg-transparent px-2 py-1 text-sm">
+      <Select value={type} onChange={(e) => setType(e.target.value)} className="w-auto">
         {DELIVERABLE_TYPES.map((t) => (
           <option key={t} value={t}>{DELIVERABLE_TYPE_LABEL[t as DeliverableType]}</option>
         ))}
-      </select>
-      <button onClick={submit} className="rounded-md bg-accent px-3 py-1 text-sm font-medium text-accent-foreground">Add</button>
-      <button onClick={() => { setName(""); setOpen(false); }} className="rounded-md px-2 py-1 text-sm text-foreground/60 hover:bg-hover">Cancel</button>
+      </Select>
+      <Button size="sm" onClick={submit}>Add</Button>
+      <Button size="sm" variant="ghost" onClick={() => { setName(""); setOpen(false); }}>Cancel</Button>
     </div>
   );
 }

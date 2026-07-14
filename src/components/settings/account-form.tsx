@@ -62,7 +62,7 @@ export function AccountForm({ email, name }: { email: string; name: string | nul
           />
 
           {state?.error && <p className="text-sm text-destructive">{state.error}</p>}
-          {state?.success && <p className="text-sm text-green-600">{state.success}</p>}
+          {state?.success && <p className="text-sm text-success">{state.success}</p>}
 
           <Button type="submit" disabled={pending} className="mt-1 self-start">
             {pending ? "Saving…" : "Update password"}

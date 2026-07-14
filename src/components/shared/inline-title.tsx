@@ -14,12 +14,14 @@ export function InlineTitle({
   onChange,
   onCommit,
   ariaLabel,
+  disabled,
   className,
 }: {
   value: string;
   onChange: (v: string) => void;
   onCommit: () => void;
   ariaLabel: string;
+  disabled?: boolean;
   className?: string;
 }) {
   return (
@@ -28,6 +30,7 @@ export function InlineTitle({
       value={value}
       onChange={(e) => onChange(e.target.value)}
       onBlur={onCommit}
+      disabled={disabled}
       onKeyDown={(e) => {
         if (e.key === "Enter") {
           e.preventDefault();
@@ -35,7 +38,7 @@ export function InlineTitle({
         }
       }}
       className={cn(
-        "-mx-1 w-full rounded-md bg-transparent px-1 text-3xl font-semibold tracking-tight outline-none hover:bg-hover focus:bg-hover",
+        "-mx-1 w-full rounded-md bg-transparent px-1 text-3xl font-semibold tracking-tight outline-none hover:bg-hover focus:bg-hover disabled:hover:bg-transparent",
         className
       )}
     />
