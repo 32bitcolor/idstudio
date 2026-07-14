@@ -18,35 +18,39 @@ enum Role {
 }
 
 model User {
-  id           String       @id @default(cuid())
-  email        String       @unique
-  name         String?
-  passwordHash String
-  createdAt    DateTime     @default(now())
-  updatedAt    DateTime     @updatedAt
-  memberships  Membership[]
-  assignedCards CardAssignee[]
-  comments     Comment[]
-  reviewCycles ReviewCycle[] @relation("ReviewReviewer")
-  requestedReviews ReviewCycle[] @relation("ReviewRequester")
-  timeEntries  TimeEntry[]
-  groupMemberships GroupMembership[]
-  whiteboards  Whiteboard[]
+  id                      String            @id @default(cuid())
+  email                   String            @unique
+  name                    String?
+  passwordHash            String
+  createdAt               DateTime          @default(now())
+  updatedAt               DateTime          @updatedAt
+  memberships             Membership[]
+  assignedCards           CardAssignee[]
+  comments                Comment[]
+  reviewCycles            ReviewCycle[]     @relation("ReviewReviewer")
+  requestedReviews        ReviewCycle[]     @relation("ReviewRequester")
+  timeEntries             TimeEntry[]
+  groupMemberships        GroupMembership[]
+  whiteboards             Whiteboard[]
+  submittedIntakeRequests IntakeRequest[]   @relation("IntakeRequester")
+  assignedIntakeRequests  IntakeRequest[]   @relation("IntakeAssignee")
 }
 
 model Workspace {
-  id        String       @id @default(cuid())
-  name      String
-  slug      String       @unique
-  createdAt DateTime     @default(now())
-  updatedAt DateTime     @updatedAt
-  members     Membership[]
-  boards      Board[]
-  projects    Project[]
-  storyboards Storyboard[]
-  whiteboards Whiteboard[]
-  courses     Course[]
-  groups      Group[]
+  id             String          @id @default(cuid())
+  name           String
+  slug           String          @unique
+  intakeEnabled  Boolean         @default(true) // admin on/off toggle for the public intake form
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  members        Membership[]
+  boards         Board[]
+  projects       Project[]
+  storyboards    Storyboard[]
+  whiteboards    Whiteboard[]
+  courses        Course[]
+  groups         Group[]
+  intakeRequests IntakeRequest[]
 }
 
 // Role is per-workspace (on Membership), never global on User.
@@ -69,12 +73,12 @@ model Membership {
 // items computes a key between their keys — a single-row update, no renumbering.
 
 model Board {
-  id          String    @id @default(cuid())
+  id          String       @id @default(cuid())
   workspaceId String
   name        String
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  workspace   Workspace    @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   columns     Column[]
   labels      Label[]
   groupAccess BoardGroup[]
@@ -95,15 +99,15 @@ model Column {
 }
 
 model Card {
-  id          String         @id @default(cuid())
-  columnId    String
-  title       String
-  description String? // TipTap document, stored as JSON string
-  dueDate     DateTime?
-  position    String
-  createdAt   DateTime       @default(now())
-  updatedAt   DateTime       @updatedAt
-  column      Column          @relation(fields: [columnId], references: [id], onDelete: Cascade)
+  id           String          @id @default(cuid())
+  columnId     String
+  title        String
+  description  String? // TipTap document, stored as JSON string
+  dueDate      DateTime?
+  position     String
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+  column       Column          @relation(fields: [columnId], references: [id], onDelete: Cascade)
   labels       CardLabel[]
   assignees    CardAssignee[]
   checklist    ChecklistItem[]
@@ -139,14 +143,14 @@ enum Methodology {
 }
 
 model Project {
-  id          String      @id @default(cuid())
-  workspaceId String
-  name        String
-  description String?
-  methodology Methodology @default(ADDIE)
-  status      String      @default("active") // active / on_hold / completed
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
+  id              String              @id @default(cuid())
+  workspaceId     String
+  name            String
+  description     String?
+  methodology     Methodology         @default(ADDIE)
+  status          String              @default("active") // active / on_hold / completed
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
   workspace       Workspace           @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   phases          Phase[]
   deliverables    Deliverable[]
@@ -155,6 +159,7 @@ model Project {
   groupAccess     ProjectGroup[]
   objectives      LearningObjective[]
   assessmentItems AssessmentItem[]
+  intakeRequest   IntakeRequest?
 
   @@index([workspaceId])
 }
@@ -174,15 +179,15 @@ model Phase {
 }
 
 model Deliverable {
-  id        String   @id @default(cuid())
-  projectId String
-  phaseId   String?
-  cardId    String?
-  name      String
-  type      String   @default("other") // storyboard / course / assessment / job_aid / video / document / other
-  status    String   @default("not_started") // not_started / in_progress / in_review / complete
-  position  String
-  createdAt DateTime @default(now())
+  id           String        @id @default(cuid())
+  projectId    String
+  phaseId      String?
+  cardId       String?
+  name         String
+  type         String        @default("other") // storyboard / course / assessment / job_aid / video / document / other
+  status       String        @default("not_started") // not_started / in_progress / in_review / complete
+  position     String
+  createdAt    DateTime      @default(now())
   project      Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
   phase        Phase?        @relation(fields: [phaseId], references: [id], onDelete: SetNull)
   card         Card?         @relation(fields: [cardId], references: [id], onDelete: SetNull)
@@ -243,21 +248,59 @@ model Milestone {
   @@index([projectId, position])
 }
 
+// ── Intake & demand management ───────────────────────────────────────────────
+// The front door: stakeholders (workspace members or, more commonly, external
+// requesters with no login) submit a request; the ID team scores it (impact vs.
+// effort) and, once approved, it converts into a real Project.
+model IntakeRequest {
+  id          String @id @default(cuid())
+  workspaceId String
+  number      Int // sequential per workspace; "REQ-<number>" is display-only
+
+  requesterName  String
+  requesterEmail String
+  requestedById  String? // set only if a logged-in Member submitted it
+
+  title          String
+  description    String
+  targetAudience String?
+  targetDate     DateTime?
+
+  impactScore Int? // 1-5, null until triaged
+  effortScore Int? // 1-5, null until triaged
+
+  status             String  @default("submitted") // submitted / triaging / approved / rejected / converted
+  assignedToId       String?
+  rejectionReason    String?
+  convertedProjectId String? @unique
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  workspace        Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  requestedBy      User?     @relation("IntakeRequester", fields: [requestedById], references: [id], onDelete: SetNull)
+  assignedTo       User?     @relation("IntakeAssignee", fields: [assignedToId], references: [id], onDelete: SetNull)
+  convertedProject Project?  @relation(fields: [convertedProjectId], references: [id], onDelete: SetNull)
+
+  @@unique([workspaceId, number])
+  @@index([workspaceId, status])
+}
+
 // ── Storyboarding (Phase 3) ──────────────────────────────────────────────────
 // A storyboard is workspace-scoped (like a Board) and may optionally be linked to
 // a project Deliverable of type "storyboard". It holds an ordered list of Screens.
 
 model Storyboard {
-  id            String       @id @default(cuid())
+  id            String            @id @default(cuid())
   workspaceId   String
-  deliverableId String?      @unique
+  deliverableId String?           @unique
   title         String
   description   String?
-  status        String       @default("draft") // draft / in_review / approved
-  createdAt     DateTime     @default(now())
-  updatedAt     DateTime     @updatedAt
-  workspace     Workspace    @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  deliverable   Deliverable? @relation(fields: [deliverableId], references: [id], onDelete: SetNull)
+  status        String            @default("draft") // draft / in_review / approved
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+  workspace     Workspace         @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  deliverable   Deliverable?      @relation(fields: [deliverableId], references: [id], onDelete: SetNull)
   screens       Screen[]
   groupAccess   StoryboardGroup[]
   whiteboards   Whiteboard[]
@@ -266,19 +309,19 @@ model Storyboard {
 }
 
 model Screen {
-  id               String     @id @default(cuid())
+  id               String            @id @default(cuid())
   storyboardId     String
   title            String
-  screenType       String     @default("content") // intro / content / video / knowledge_check / interaction / assessment / summary
+  screenType       String            @default("content") // intro / content / video / knowledge_check / interaction / assessment / summary
   position         String
   onScreenText     String? // TipTap document, stored as JSON string
   narration        String? // TipTap document — voiceover / audio script
   visualNotes      String? // TipTap document — visuals, media, layout
   interactionNotes String? // TipTap document — interactions, branching, programming
   developerNotes   String? // TipTap document — production / developer notes
-  createdAt        DateTime   @default(now())
-  updatedAt        DateTime   @updatedAt
-  storyboard       Storyboard @relation(fields: [storyboardId], references: [id], onDelete: Cascade)
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  storyboard       Storyboard        @relation(fields: [storyboardId], references: [id], onDelete: Cascade)
   objectives       ScreenObjective[]
 
   @@index([storyboardId, position])
@@ -290,13 +333,13 @@ model Screen {
 // gap view over the ID's craft: objective → content → assessment.
 
 model LearningObjective {
-  id          String   @id @default(cuid())
+  id          String                    @id @default(cuid())
   projectId   String
   text        String
-  bloomLevel  String   @default("understand") // remember/understand/apply/analyze/evaluate/create
+  bloomLevel  String                    @default("understand") // remember/understand/apply/analyze/evaluate/create
   position    String
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt   DateTime                  @default(now())
+  updatedAt   DateTime                  @updatedAt
   project     Project                   @relation(fields: [projectId], references: [id], onDelete: Cascade)
   screens     ScreenObjective[]
   assessments AssessmentItemObjective[]
@@ -315,13 +358,13 @@ model ScreenObjective {
 }
 
 model AssessmentItem {
-  id         String   @id @default(cuid())
+  id         String                    @id @default(cuid())
   projectId  String
   prompt     String
-  itemType   String   @default("multiple_choice") // multiple_choice/true_false/short_answer/scenario/other
+  itemType   String                    @default("multiple_choice") // multiple_choice/true_false/short_answer/scenario/other
   position   String
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  createdAt  DateTime                  @default(now())
+  updatedAt  DateTime                  @updatedAt
   project    Project                   @relation(fields: [projectId], references: [id], onDelete: Cascade)
   objectives AssessmentItemObjective[]
 
@@ -375,8 +418,8 @@ model Label {
 model CardLabel {
   cardId  String
   labelId String
-  card    Card  @relation(fields: [cardId], references: [id], onDelete: Cascade)
-  label   Label @relation(fields: [labelId], references: [id], onDelete: Cascade)
+  card    Card   @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  label   Label  @relation(fields: [labelId], references: [id], onDelete: Cascade)
 
   @@id([cardId, labelId])
   @@index([labelId])
@@ -385,8 +428,8 @@ model CardLabel {
 model CardAssignee {
   cardId String
   userId String
-  card   Card @relation(fields: [cardId], references: [id], onDelete: Cascade)
-  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  card   Card   @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@id([cardId, userId])
   @@index([userId])
@@ -420,8 +463,8 @@ model Group {
 model GroupMembership {
   groupId String
   userId  String
-  group   Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
-  user    User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  group   Group  @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user    User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@id([groupId, userId])
   @@index([userId])
@@ -433,8 +476,8 @@ model GroupMembership {
 model BoardGroup {
   boardId String
   groupId String
-  board   Board @relation(fields: [boardId], references: [id], onDelete: Cascade)
-  group   Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  board   Board  @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  group   Group  @relation(fields: [groupId], references: [id], onDelete: Cascade)
 
   @@id([boardId, groupId])
   @@index([groupId])
@@ -504,14 +547,14 @@ model WhiteboardGroup {
 // self-contained so it can later be packaged to SCORM / xAPI for an LMS.
 
 model Course {
-  id            String   @id @default(cuid())
+  id            String        @id @default(cuid())
   workspaceId   String
-  deliverableId String?  @unique
+  deliverableId String?       @unique
   title         String
   description   String?
-  status        String   @default("draft") // draft / published
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  status        String        @default("draft") // draft / published
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
   workspace     Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   deliverable   Deliverable?  @relation(fields: [deliverableId], references: [id], onDelete: SetNull)
   lessons       Lesson[]

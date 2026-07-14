@@ -150,6 +150,23 @@ export async function getPhaseForUser(phaseId: string) {
   });
 }
 
+// ── Intake ───────────────────────────────────────────────────────────────────
+// No group-sharing concept here — triage is workspace-wide for every member,
+// same as ReviewCycle — so this skips the xxxAccessOR step the other resources use.
+
+export async function getIntakeRequestForUser(requestId: string) {
+  const ctx = await getAccessContext();
+  if (!ctx) return null;
+  return prisma.intakeRequest.findFirst({
+    where: { id: requestId, workspace: ownedByUser(ctx.userId) },
+  });
+}
+
+export async function intakeVisibilityWhere(): Promise<Prisma.IntakeRequestWhereInput> {
+  const ctx = await getAccessContext();
+  return ctx ? {} : { id: { in: [] } };
+}
+
 export async function getDeliverableForUser(deliverableId: string) {
   const ctx = await getAccessContext();
   if (!ctx) return null;

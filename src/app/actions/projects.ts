@@ -6,8 +6,9 @@ import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { getActiveMembership } from "@/lib/dal";
 import { getProjectForUser, getPhaseForUser } from "@/lib/authz";
-import { positionBetween, positionsAfter, positionForIndex } from "@/lib/ordering";
-import { METHODOLOGY_PHASES, PHASE_STATUSES, PROJECT_STATUSES } from "@/lib/methodology";
+import { positionBetween, positionForIndex } from "@/lib/ordering";
+import { createProjectForWorkspace } from "@/lib/projects";
+import { PHASE_STATUSES, PROJECT_STATUSES } from "@/lib/methodology";
 
 const Name = z.string().trim().min(1, "Required").max(140);
 const Methodology = z.enum(["ADDIE", "SAM", "CUSTOM"]);
@@ -26,17 +27,7 @@ export async function createProject(formData: FormData): Promise<void> {
   if (!name.success) return;
   const methodology = Methodology.catch("ADDIE").parse(formData.get("methodology"));
 
-  const phaseNames = METHODOLOGY_PHASES[methodology];
-  const positions = positionsAfter(null, phaseNames.length);
-  const project = await prisma.project.create({
-    data: {
-      workspaceId: membership.workspaceId,
-      name: name.data,
-      methodology,
-      phases: { create: phaseNames.map((n, i) => ({ name: n, position: positions[i] })) },
-    },
-    select: { id: true },
-  });
+  const project = await createProjectForWorkspace(membership.workspaceId, name.data, methodology);
 
   redirect(projectPath(project.id));
 }

@@ -6,6 +6,7 @@ import { Breadcrumbs, PageTitleProvider } from "@/components/app-shell/breadcrum
 import { CommandPalette } from "@/components/app-shell/command-palette";
 import { QuickCreate } from "@/components/app-shell/quick-create";
 import { NotificationsBadge } from "@/components/app-shell/notifications-badge";
+import { IntakeBadge } from "@/components/app-shell/intake-badge";
 import { UpdatePill } from "@/components/app-shell/update-pill";
 import { readUpdateStatus } from "@/lib/updater";
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
@@ -27,7 +28,7 @@ export default async function AppLayout({
 
   const isAdmin = membership?.role === "ADMIN";
 
-  const [awaitingReviewCount, updateStatus] = await Promise.all([
+  const [awaitingReviewCount, needsTriageCount, updateStatus] = await Promise.all([
     membership
       ? prisma.reviewCycle.count({
           where: {
@@ -35,6 +36,11 @@ export default async function AppLayout({
             status: { in: ["requested", "in_review"] },
             deliverable: { project: { workspaceId: membership.workspaceId, ...(await projectVisibilityWhere()) } },
           },
+        })
+      : Promise.resolve(0),
+    membership
+      ? prisma.intakeRequest.count({
+          where: { workspaceId: membership.workspaceId, status: { in: ["submitted", "triaging"] } },
         })
       : Promise.resolve(0),
     isAdmin ? readUpdateStatus() : Promise.resolve(null),
@@ -60,6 +66,7 @@ export default async function AppLayout({
             <div className="ml-auto flex items-center gap-2">
               {updateStatus && <UpdatePill count={updateStatus.behind} />}
               <CommandPalette />
+              <IntakeBadge count={needsTriageCount} />
               <NotificationsBadge count={awaitingReviewCount} />
               <QuickCreate />
             </div>

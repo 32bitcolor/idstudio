@@ -1,6 +1,7 @@
 import {
   LayoutDashboard,
   ListChecks,
+  Inbox,
   Columns3,
   FolderKanban,
   Film,
@@ -38,6 +39,13 @@ export const MODULES: ModuleDef[] = [
     href: "/my-work",
     icon: ListChecks,
     tagline: "Reviews, action items & what's due",
+  },
+  {
+    key: "intake",
+    name: "Intake",
+    href: "/intake",
+    icon: Inbox,
+    tagline: "Stakeholder requests, triaged and scored",
   },
   {
     key: "boards",
