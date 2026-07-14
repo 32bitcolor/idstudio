@@ -1,10 +1,56 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { RefreshCw, ArrowUpCircle, RotateCcw, GitCommitHorizontal, CircleAlert, ChevronDown } from "lucide-react";
+import { RefreshCw, ArrowUpCircle, RotateCcw, GitCommitHorizontal, CircleAlert, ChevronDown, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getUpdateStatus, checkForUpdates, applyUpdate, rollbackUpdate } from "@/app/actions/updates";
 import type { UpdateStatus } from "@/lib/updater";
+
+const UPDATE_STAGES = [
+  { key: "pulling", label: "Pulling code" },
+  { key: "building", label: "Building" },
+  { key: "starting", label: "Starting" },
+] as const;
+
+// Segmented progress bar for the update/rollback pipeline. `stage` comes straight from
+// the host agent (deploy/update-agent.sh) as it works through each step — an older
+// agent that hasn't picked up this field yet just falls back to lighting up step 1.
+function UpdateProgressBar({ stage }: { stage: string }) {
+  const activeIndex = Math.max(
+    0,
+    UPDATE_STAGES.findIndex((s) => s.key === stage)
+  );
+  return (
+    <div className="flex flex-col gap-2" aria-live="polite">
+      <div className="flex gap-1">
+        {UPDATE_STAGES.map((s, i) => (
+          <div key={s.key} className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
+            <div
+              className={
+                "h-full rounded-full bg-info transition-all duration-500 " +
+                (i < activeIndex ? "w-full" : i === activeIndex ? "w-full animate-pulse" : "w-0")
+              }
+            />
+          </div>
+        ))}
+      </div>
+      <div className="flex items-center gap-4 text-xs">
+        {UPDATE_STAGES.map((s, i) => (
+          <span
+            key={s.key}
+            className={
+              "flex items-center gap-1 " +
+              (i < activeIndex ? "text-foreground" : i === activeIndex ? "font-medium text-info" : "text-muted-foreground")
+            }
+          >
+            {i < activeIndex && <Check className="size-3" />}
+            {s.label}
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 export function UpdatePanel({ initial }: { initial: UpdateStatus | null }) {
   const [status, setStatus] = useState<UpdateStatus | null>(initial);
@@ -231,16 +277,33 @@ export function UpdatePanel({ initial }: { initial: UpdateStatus | null }) {
         </section>
       )}
 
-      {(reloading || reconnecting || s?.state === "updating" || (pending === "update" || pending === "rollback") || s?.state === "checking" || pending === "check") && (
+      {reloading && (
         <p className="flex items-center gap-2 text-sm text-muted-foreground" aria-live="polite">
           <RefreshCw className="size-3.5 shrink-0 animate-spin" />
-          {reloading
-            ? "Update complete — reloading this page…"
-            : reconnecting
-              ? "Updating — the app is rebuilding and will restart. This page will reconnect automatically…"
-              : s?.state === "updating" || pending === "update" || pending === "rollback"
-                ? "Update requested — waiting for the rebuild to start…"
-                : "Checking for updates…"}
+          Update complete — reloading this page…
+        </p>
+      )}
+
+      {!reloading && reconnecting && (
+        <div className="rounded-xl border border-border p-4">
+          <p className="mb-3 flex items-center gap-2 text-sm text-muted-foreground">
+            <RefreshCw className="size-3.5 shrink-0 animate-spin" />
+            Reconnecting — the app just restarted…
+          </p>
+          <UpdateProgressBar stage="starting" />
+        </div>
+      )}
+
+      {!reloading && !reconnecting && (s?.state === "updating" || pending === "update" || pending === "rollback") && (
+        <div className="rounded-xl border border-border p-4">
+          <UpdateProgressBar stage={s?.state === "updating" ? s.stage : "pulling"} />
+        </div>
+      )}
+
+      {!reloading && !reconnecting && (s?.state === "checking" || pending === "check") && (
+        <p className="flex items-center gap-2 text-sm text-muted-foreground" aria-live="polite">
+          <RefreshCw className="size-3.5 shrink-0 animate-spin" />
+          Checking for updates…
         </p>
       )}
       {!reconnecting && !reloading && s?.state === "error" && (

@@ -26,6 +26,7 @@ export type UpdateStatus = {
   latestCommit: string;
   latestMessage: string;
   state: string; // idle | checking | updating | error
+  stage: string; // "" | pulling | building | starting — only meaningful while state is "updating"
   lastResult: string;
   lastChecked: string;
   previousCommit: string;
@@ -73,11 +74,12 @@ export async function readUpdateStatus(): Promise<UpdateStatus | null> {
     "latest_commit",
     "latest_message",
     "state",
+    "stage",
     "last_result",
     "last_checked",
     "previous_commit",
   ];
-  const [cc, cm, cd, be, lc, lm, st, lr, ch, pv] = await Promise.all(names.map(field));
+  const [cc, cm, cd, be, lc, lm, st, sg, lr, ch, pv] = await Promise.all(names.map(field));
   return {
     configured: true,
     currentCommit: cc,
@@ -87,6 +89,7 @@ export async function readUpdateStatus(): Promise<UpdateStatus | null> {
     latestCommit: lc,
     latestMessage: lm,
     state: st || "idle",
+    stage: sg,
     lastResult: lr,
     lastChecked: ch,
     previousCommit: pv,

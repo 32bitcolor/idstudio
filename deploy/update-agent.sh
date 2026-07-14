@@ -34,40 +34,47 @@ refresh_git() {
 
 run_deploy() { # $1 = human label for last_result on success
   set_field state updating
+  set_field stage building
   : > "$CTRL/log"
   # Bakes the commit being deployed into the app's build so Next.js can detect a
   # client still running a previous deploy's JS and force a full reload for it
   # (see next.config.ts's `deploymentId`) instead of leaving it stuck mid-navigation.
   export DEPLOYMENT_ID="$(git rev-parse --short HEAD)"
-  if docker compose build >>"$CTRL/log" 2>&1 && docker compose up -d >>"$CTRL/log" 2>&1; then
-    refresh_git; set_field state idle;  set_field last_result "$1 $(git rev-parse --short HEAD)"
-    # Exit so systemd (Restart=always) relaunches us running the freshly-pulled
-    # version of THIS script — keeps the agent itself up to date after an update.
-    exit 0
-  else
-    refresh_git; set_field state error; set_field last_result "Failed — see update-control/log"
+  if docker compose build >>"$CTRL/log" 2>&1; then
+    set_field stage starting
+    if docker compose up -d >>"$CTRL/log" 2>&1; then
+      refresh_git; set_field state idle; set_field stage ""; set_field last_result "$1 $(git rev-parse --short HEAD)"
+      # Exit so systemd (Restart=always) relaunches us running the freshly-pulled
+      # version of THIS script — keeps the agent itself up to date after an update.
+      exit 0
+    fi
   fi
+  refresh_git; set_field state error; set_field stage ""; set_field last_result "Failed — see update-control/log"
 }
 
 do_update() {
+  set_field state updating
+  set_field stage pulling
   # Only *tracked* modifications should block an update — untracked files (e.g. the
   # runtime update-control/ dir, or a local docker-compose.override.yml) don't
   # conflict with a fast-forward pull.
   if [ -n "$(git status --porcelain --untracked-files=no)" ]; then
-    set_field state error; set_field last_result "Server has local changes to tracked files — aborted"; return
+    set_field state error; set_field stage ""; set_field last_result "Server has local changes to tracked files — aborted"; return
   fi
   set_field previous_commit "$(git rev-parse --short HEAD)"
   git fetch origin --quiet 2>/dev/null || true
   if ! git pull --ff-only origin "$BRANCH" >>"$CTRL/log" 2>&1; then
-    set_field state error; set_field last_result "git pull failed (not a fast-forward?)"; return
+    set_field state error; set_field stage ""; set_field last_result "git pull failed (not a fast-forward?)"; return
   fi
   run_deploy "Updated to"
 }
 
 do_rollback() {
+  set_field state updating
+  set_field stage pulling
   local prev; prev="$(cat "$CTRL/previous_commit" 2>/dev/null)"
-  [ -z "$prev" ] && { set_field state error; set_field last_result "No previous version recorded"; return; }
-  git reset --hard "$prev" >>"$CTRL/log" 2>&1 || { set_field state error; set_field last_result "git reset failed"; return; }
+  [ -z "$prev" ] && { set_field state error; set_field stage ""; set_field last_result "No previous version recorded"; return; }
+  git reset --hard "$prev" >>"$CTRL/log" 2>&1 || { set_field state error; set_field stage ""; set_field last_result "git reset failed"; return; }
   run_deploy "Rolled back to"
 }
 
