@@ -65,6 +65,7 @@ export function UpdatePanel({ initial }: { initial: UpdateStatus | null }) {
   const baselineCommit = useRef<string | null>(null);
   const sawDisconnect = useRef(false);
   const wasReconnecting = useRef(false);
+  const reconnectingSince = useRef<number | null>(null);
 
   function beginTracking(commit: string | null | undefined) {
     baselineCommit.current = commit ?? null;
@@ -76,6 +77,7 @@ export function UpdatePanel({ initial }: { initial: UpdateStatus | null }) {
       const s = await getUpdateStatus();
       if (wasReconnecting.current) sawDisconnect.current = true;
       wasReconnecting.current = false;
+      reconnectingSince.current = null;
       setReconnecting(false);
       setStatus(s);
 
@@ -97,9 +99,21 @@ export function UpdatePanel({ initial }: { initial: UpdateStatus | null }) {
         }
       }
     } catch {
-      // app may be mid-restart during an update — keep trying
+      // app may be mid-restart during an update — keep trying, but only for as
+      // long as a container restart plausibly takes. A failure that never clears
+      // usually isn't "still restarting" — it's this exact tab's bundle hitting a
+      // stale Server Action ID against the new server (the same class of problem
+      // deploymentId protects navigation from, but polling calls don't go through
+      // navigation, so they need their own bailout). No amount of retrying fixes
+      // that; only a full reload, which always fetches current code, does.
       wasReconnecting.current = true;
       setReconnecting(true);
+      const now = Date.now();
+      if (reconnectingSince.current === null) {
+        reconnectingSince.current = now;
+      } else if (now - reconnectingSince.current > 20000) {
+        window.location.reload();
+      }
     }
   }
 
