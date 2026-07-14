@@ -113,7 +113,7 @@ function RequestRow({ request, members }: { request: Request; members: Member[] 
 
           {!resolved && (
             <div className="flex shrink-0 flex-wrap items-center gap-2">
-              <div className="w-24">
+              <div className="w-28">
                 <Select
                   aria-label="Impact"
                   value={impact ?? ""}
@@ -128,7 +128,7 @@ function RequestRow({ request, members }: { request: Request; members: Member[] 
                   ))}
                 </Select>
               </div>
-              <div className="w-24">
+              <div className="w-28">
                 <Select
                   aria-label="Effort"
                   value={effort ?? ""}
