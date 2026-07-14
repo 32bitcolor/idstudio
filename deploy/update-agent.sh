@@ -35,6 +35,10 @@ refresh_git() {
 run_deploy() { # $1 = human label for last_result on success
   set_field state updating
   : > "$CTRL/log"
+  # Bakes the commit being deployed into the app's build so Next.js can detect a
+  # client still running a previous deploy's JS and force a full reload for it
+  # (see next.config.ts's `deploymentId`) instead of leaving it stuck mid-navigation.
+  export DEPLOYMENT_ID="$(git rev-parse --short HEAD)"
   if docker compose build >>"$CTRL/log" 2>&1 && docker compose up -d >>"$CTRL/log" 2>&1; then
     refresh_git; set_field state idle;  set_field last_result "$1 $(git rev-parse --short HEAD)"
     # Exit so systemd (Restart=always) relaunches us running the freshly-pulled

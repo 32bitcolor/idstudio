@@ -77,6 +77,23 @@ export function UpdatePanel({ initial }: { initial: UpdateStatus | null }) {
     return () => clearInterval(id);
   }, [status?.state, reconnecting, pending]);
 
+  // Browsers throttle (or fully suspend) setInterval in a backgrounded tab, so a
+  // multi-minute rebuild can finish long before a hidden tab's next scheduled poll
+  // would've fired — leaving a stale "waiting for the rebuild" message on screen
+  // even though the update is long done. Force an immediate poll the moment the
+  // tab regains focus/visibility so it catches up right away instead of waiting.
+  useEffect(() => {
+    function onVisible() {
+      if (document.visibilityState === "visible") refreshRef.current();
+    }
+    document.addEventListener("visibilitychange", onVisible);
+    window.addEventListener("focus", onVisible);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("focus", onVisible);
+    };
+  }, []);
+
   if (!initial && !status) {
     return (
       <div className="max-w-2xl rounded-xl border border-border p-5">

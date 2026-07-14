@@ -15,7 +15,9 @@ RUN npm ci
 
 # ── build: generate Prisma client + compile Next standalone output ───────────
 FROM base AS build
+ARG DEPLOYMENT_ID=dev
 ENV NODE_ENV=production
+ENV DEPLOYMENT_ID=$DEPLOYMENT_ID
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 RUN npx prisma generate

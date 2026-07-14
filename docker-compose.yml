@@ -64,6 +64,11 @@ services:
     build:
       context: .
       target: app
+      args:
+        # The commit being deployed (set by deploy/update-agent.sh before it builds).
+        # Lets Next.js's version-skew protection force a full reload for tabs still
+        # running a previous deploy's JS instead of leaving client navigation broken.
+        DEPLOYMENT_ID: ${DEPLOYMENT_ID:-dev}
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
       SESSION_SECRET: ${SESSION_SECRET}
