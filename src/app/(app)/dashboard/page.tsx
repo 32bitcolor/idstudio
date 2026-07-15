@@ -11,6 +11,7 @@ import {
   Plus,
   Shield,
   Users,
+  ClipboardList,
   Settings,
   LifeBuoy,
 } from "lucide-react";
@@ -313,6 +314,11 @@ export default async function DashboardPage() {
                   <Button asChild variant="outline" size="sm">
                     <Link href="/settings/members">
                       <Users className="size-4" /> Members &amp; groups
+                    </Link>
+                  </Button>
+                  <Button asChild variant="outline" size="sm">
+                    <Link href="/team">
+                      <ClipboardList className="size-4" /> Team workload
                     </Link>
                   </Button>
                   <Button asChild variant="outline" size="sm">
