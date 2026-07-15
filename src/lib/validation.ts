@@ -24,7 +24,7 @@ export const CreateUserSchema = z.object({
   name: z.string().trim().max(120).optional(),
   email: z.email("Please enter a valid email."),
   password: z.string().min(8, "Password must be at least 8 characters."),
-  role: z.enum(["ADMIN", "MEMBER"]),
+  role: z.enum(["ADMIN", "MANAGER", "MEMBER"]),
 });
 
 export const ResetPasswordSchema = z.object({

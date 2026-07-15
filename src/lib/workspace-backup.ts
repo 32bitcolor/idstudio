@@ -185,8 +185,9 @@ export async function importWorkspace(
   for (const m of exp.members) {
     const uid = emailToUser[m.email];
     if (!uid) continue;
+    const role = m.role === "ADMIN" || m.role === "MANAGER" ? m.role : "MEMBER";
     await prisma.membership.create({
-      data: { userId: uid, workspaceId: ws.id, role: m.role === "ADMIN" ? "ADMIN" : "MEMBER" },
+      data: { userId: uid, workspaceId: ws.id, role },
     });
   }
   // ensure the importer can reach the restored workspace as an admin

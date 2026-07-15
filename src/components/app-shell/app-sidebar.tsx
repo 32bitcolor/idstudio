@@ -40,6 +40,7 @@ export function AppSidebar({
   userEmail,
   role,
   isAdmin,
+  canViewTeam,
   workspaces = [],
   activeWorkspaceId = null,
 }: {
@@ -48,6 +49,7 @@ export function AppSidebar({
   userEmail: string;
   role: string;
   isAdmin: boolean;
+  canViewTeam: boolean;
   workspaces?: { id: string; name: string }[];
   activeWorkspaceId?: string | null;
 }) {
@@ -108,7 +110,7 @@ export function AppSidebar({
                 </SidebarMenuItem>
               );
             })}
-            {isAdmin && (
+            {canViewTeam && (
               <SidebarMenuItem>
                 <SidebarMenuButton asChild isActive={isActive(pathname, "/team")} tooltip="Team">
                   <Link href="/team">

@@ -61,7 +61,7 @@ export async function createUser(_prev: FormState, formData: FormData): Promise<
 export async function setUserRole(userId: string, role: string) {
   const admin = await adminGuard();
   if (!admin) return { error: "You must be a workspace admin." };
-  const parsed = z.enum(["ADMIN", "MEMBER"]).safeParse(role);
+  const parsed = z.enum(["ADMIN", "MANAGER", "MEMBER"]).safeParse(role);
   if (!parsed.success) return { error: "Invalid role." };
 
   const membership = await prisma.membership.findUnique({
@@ -70,7 +70,7 @@ export async function setUserRole(userId: string, role: string) {
   });
   if (!membership) return { error: "User not found in this workspace." };
 
-  if (membership.role === Role.ADMIN && parsed.data === "MEMBER") {
+  if (membership.role === Role.ADMIN && parsed.data !== "ADMIN") {
     const admins = await prisma.membership.count({
       where: { workspaceId: admin.workspaceId, role: Role.ADMIN },
     });

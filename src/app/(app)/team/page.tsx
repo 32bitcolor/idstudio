@@ -11,7 +11,8 @@ export const metadata = { title: "Team · IDStudio" };
 export default async function TeamPage() {
   const membership = await getActiveMembership();
   if (!membership) redirect("/login");
-  if (membership.role !== Role.ADMIN) redirect("/settings/account");
+  // Oversight role: MANAGER gets this "what's everyone working on" view too, same as ADMIN.
+  if (membership.role !== Role.ADMIN && membership.role !== Role.MANAGER) redirect("/settings/account");
 
   const wsId = membership.workspaceId;
   const boardVis = await boardVisibilityWhere();

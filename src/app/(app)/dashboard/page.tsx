@@ -58,6 +58,7 @@ export default async function DashboardPage() {
   if (!membership) redirect("/login");
 
   const isAdmin = membership.role === Role.ADMIN;
+  const isManager = membership.role === Role.MANAGER;
   const wsId = membership.workspaceId;
 
   // Respect group-based access: the dashboard only counts/lists resources the
@@ -118,7 +119,7 @@ export default async function DashboardPage() {
         eyebrow={membership.workspace.name}
         title={`Welcome back, ${user.name ?? user.email.split("@")[0]}`}
         description="Here's what's happening across your workspace."
-        actions={<StatusBadge tone={isAdmin ? "info" : "neutral"}>{membership.role}</StatusBadge>}
+        actions={<StatusBadge tone={isAdmin || isManager ? "info" : "neutral"}>{membership.role}</StatusBadge>}
       />
 
       <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -298,7 +299,7 @@ export default async function DashboardPage() {
         </div>
       </section>
 
-      {isAdmin && (
+      {(isAdmin || isManager) && (
         <section className="mt-12">
           <div className="rounded-xl border border-border bg-surface p-5">
             <div className="flex items-start gap-3">
@@ -306,16 +307,20 @@ export default async function DashboardPage() {
                 <Shield className="size-4.5" />
               </div>
               <div className="min-w-0 flex-1">
-                <div className="font-medium">Admin tools</div>
+                <div className="font-medium">{isAdmin ? "Admin tools" : "Manager tools"}</div>
                 <p className="text-sm text-muted-foreground">
-                  You&rsquo;re a workspace admin — manage your team and account.
+                  {isAdmin
+                    ? "You’re a workspace admin — manage your team and account."
+                    : "You have oversight access — see what everyone’s working on."}
                 </p>
                 <div className="mt-4 flex flex-wrap gap-2">
-                  <Button asChild variant="outline" size="sm">
-                    <Link href="/settings/members">
-                      <Users className="size-4" /> Members &amp; groups
-                    </Link>
-                  </Button>
+                  {isAdmin && (
+                    <Button asChild variant="outline" size="sm">
+                      <Link href="/settings/members">
+                        <Users className="size-4" /> Members &amp; groups
+                      </Link>
+                    </Button>
+                  )}
                   <Button asChild variant="outline" size="sm">
                     <Link href="/team">
                       <ClipboardList className="size-4" /> Team workload

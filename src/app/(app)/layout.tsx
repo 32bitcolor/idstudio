@@ -27,6 +27,9 @@ export default async function AppLayout({
   });
 
   const isAdmin = membership?.role === "ADMIN";
+  // MANAGER is an oversight role: sees the Team workload view like ADMIN does,
+  // but doesn't get ADMIN's user/group/workspace-settings management.
+  const canViewTeam = isAdmin || membership?.role === "MANAGER";
 
   const [awaitingReviewCount, needsTriageCount, myOpenSubtasksCount, updateStatus] = await Promise.all([
     membership
@@ -64,6 +67,7 @@ export default async function AppLayout({
         userEmail={user.email}
         role={membership?.role ?? "—"}
         isAdmin={isAdmin}
+        canViewTeam={canViewTeam}
         workspaces={memberships.map((m) => ({ id: m.workspaceId, name: m.workspace.name }))}
         activeWorkspaceId={membership?.workspaceId ?? null}
       />

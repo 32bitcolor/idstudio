@@ -102,7 +102,7 @@ function MemberRow({ member }: { member: MemberWorkload }) {
       <div className="flex items-center gap-2">
         <span className="font-medium">{member.name ?? member.email}</span>
         <span className="text-sm text-muted-foreground">{member.email}</span>
-        <StatusBadge tone={member.role === "ADMIN" ? "info" : "neutral"} className="ml-auto">
+        <StatusBadge tone={member.role === "ADMIN" || member.role === "MANAGER" ? "info" : "neutral"} className="ml-auto">
           {member.role}
         </StatusBadge>
       </div>

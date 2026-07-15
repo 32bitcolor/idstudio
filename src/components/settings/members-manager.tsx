@@ -60,6 +60,7 @@ function CreateUser() {
           <Label htmlFor="role">Role</Label>
           <Select id="role" name="role" defaultValue="MEMBER" className="h-8">
             <option value="MEMBER">Member</option>
+            <option value="MANAGER">Manager</option>
             <option value="ADMIN">Admin</option>
           </Select>
         </div>
@@ -126,6 +127,7 @@ function MemberRow({ member }: { member: Member }) {
         aria-label="Role"
       >
         <option value="MEMBER">Member</option>
+        <option value="MANAGER">Manager</option>
         <option value="ADMIN">Admin</option>
       </Select>
 

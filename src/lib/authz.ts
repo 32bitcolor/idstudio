@@ -12,7 +12,8 @@ import { Prisma, Role } from "@/generated/prisma/client";
 const ownedByUser = (userId: string) => ({ members: { some: { userId } } });
 
 // Per-request access context, memoized for the render pass: which workspaces the
-// user administers (admins always have access), and which groups they belong to.
+// user has blanket ("see everything") visibility into — ADMIN and MANAGER alike —
+// and which groups they belong to.
 const getAccessContext = cache(async () => {
   const user = await getCurrentUser();
   if (!user) return null;
@@ -22,7 +23,9 @@ const getAccessContext = cache(async () => {
   ]);
   return {
     userId: user.id,
-    adminWorkspaceIds: memberships.filter((m) => m.role === Role.ADMIN).map((m) => m.workspaceId),
+    elevatedWorkspaceIds: memberships
+      .filter((m) => m.role === Role.ADMIN || m.role === Role.MANAGER)
+      .map((m) => m.workspaceId),
     groupIds: groups.map((g) => g.groupId),
   };
 });
@@ -35,7 +38,7 @@ type Ctx = NonNullable<Awaited<ReturnType<typeof getAccessContext>>>;
 function boardAccessOR(ctx: Ctx): Prisma.BoardWhereInput {
   return {
     OR: [
-      { workspaceId: { in: ctx.adminWorkspaceIds } },
+      { workspaceId: { in: ctx.elevatedWorkspaceIds } },
       { groupAccess: { none: {} } },
       { groupAccess: { some: { groupId: { in: ctx.groupIds } } } },
     ],
@@ -44,7 +47,7 @@ function boardAccessOR(ctx: Ctx): Prisma.BoardWhereInput {
 function storyboardAccessOR(ctx: Ctx): Prisma.StoryboardWhereInput {
   return {
     OR: [
-      { workspaceId: { in: ctx.adminWorkspaceIds } },
+      { workspaceId: { in: ctx.elevatedWorkspaceIds } },
       { groupAccess: { none: {} } },
       { groupAccess: { some: { groupId: { in: ctx.groupIds } } } },
     ],
@@ -53,7 +56,7 @@ function storyboardAccessOR(ctx: Ctx): Prisma.StoryboardWhereInput {
 function projectAccessOR(ctx: Ctx): Prisma.ProjectWhereInput {
   return {
     OR: [
-      { workspaceId: { in: ctx.adminWorkspaceIds } },
+      { workspaceId: { in: ctx.elevatedWorkspaceIds } },
       { groupAccess: { none: {} } },
       { groupAccess: { some: { groupId: { in: ctx.groupIds } } } },
     ],
@@ -62,7 +65,7 @@ function projectAccessOR(ctx: Ctx): Prisma.ProjectWhereInput {
 function whiteboardAccessOR(ctx: Ctx): Prisma.WhiteboardWhereInput {
   return {
     OR: [
-      { workspaceId: { in: ctx.adminWorkspaceIds } },
+      { workspaceId: { in: ctx.elevatedWorkspaceIds } },
       { groupAccess: { none: {} } },
       { groupAccess: { some: { groupId: { in: ctx.groupIds } } } },
     ],
@@ -71,7 +74,7 @@ function whiteboardAccessOR(ctx: Ctx): Prisma.WhiteboardWhereInput {
 function courseAccessOR(ctx: Ctx): Prisma.CourseWhereInput {
   return {
     OR: [
-      { workspaceId: { in: ctx.adminWorkspaceIds } },
+      { workspaceId: { in: ctx.elevatedWorkspaceIds } },
       { groupAccess: { none: {} } },
       { groupAccess: { some: { groupId: { in: ctx.groupIds } } } },
     ],
