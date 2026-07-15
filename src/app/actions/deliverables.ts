@@ -97,7 +97,8 @@ export async function linkDeliverableCard(id: string, cardId: string | null) {
       where: { id: cardId },
       select: { id: true, title: true, column: { select: { board: { select: { id: true, name: true } } } } },
     });
-    if (!card) return { error: "Card not found." };
+    // Deliverables only ever link to top-level cards, never subtasks.
+    if (!card || !card.column) return { error: "Card not found." };
     await prisma.deliverable.update({ where: { id }, data: { cardId } });
     revalidatePath(projectPath(d.projectId));
     return { card: { id: card.id, title: card.title, boardId: card.column.board.id, boardName: card.column.board.name } };
@@ -128,7 +129,7 @@ export async function listLinkableCards(projectId: string) {
     select: { id: true, title: true, column: { select: { board: { select: { name: true } } } } },
     take: 500,
   });
-  return { cards: cards.map((c) => ({ id: c.id, title: c.title, boardName: c.column.board.name })) };
+  return { cards: cards.map((c) => ({ id: c.id, title: c.title, boardName: c.column!.board.name })) };
 }
 
 // ── Milestones ───────────────────────────────────────────────────────────────

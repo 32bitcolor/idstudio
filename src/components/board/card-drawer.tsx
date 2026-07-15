@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { X, Check, User, CalendarClock } from "lucide-react";
+import { X, Check, MessageSquare, Paperclip, ArrowUp } from "lucide-react";
 import { createWhiteboardForCard } from "@/app/actions/whiteboards";
 import {
   getCardDetail,
@@ -14,8 +14,6 @@ import {
   addSubtask,
   toggleSubtask,
   deleteSubtask,
-  assignSubtask,
-  setSubtaskDueDate,
   addComment,
   deleteComment,
 } from "@/app/actions/cards";
@@ -28,18 +26,18 @@ import {
 } from "@/app/actions/attachments";
 import { DescriptionEditor } from "@/components/board/description-editor";
 import { ConfirmDelete } from "@/components/shared/confirm-delete";
+import { StatusBadge } from "@/components/shared/status-badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Select } from "@/components/ui/select";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { dueMeta, dueToneClass } from "@/lib/due";
 
 export type LabelT = { id: string; name: string; color: string };
 export type MemberT = { id: string; name: string | null; email: string };
-type ChecklistItemT = {
-  id: string; text: string; done: boolean; position: string;
-  assigneeId: string | null; dueDate: string | null;
+type SubtaskT = {
+  id: string; title: string; done: boolean; dueDate: string | null;
+  assigneeIds: string[]; commentCount: number; attachmentCount: number;
 };
 type AttachmentT = { id: string; fileName: string; mimeType: string; sizeBytes: number; createdAt: string };
 type WhiteboardT = { id: string; title: string };
@@ -69,11 +67,13 @@ export function CardDrawer({
   onClose,
   onPatch,
   onDeleted,
+  onNavigate,
 }: {
   cardId: string;
   onClose: () => void;
   onPatch: (cardId: string, patch: CardFacePatch) => void;
   onDeleted: (cardId: string) => void;
+  onNavigate?: (cardId: string) => void;
 }) {
   // Loading is derived, not a separate state: we're "loading" whenever the data
   // we hold isn't for the card currently open. This flips synchronously when
@@ -90,7 +90,9 @@ export function CardDrawer({
   const [members, setMembers] = useState<MemberT[]>([]);
   const [newLabelName, setNewLabelName] = useState("");
   const [newLabelColor, setNewLabelColor] = useState(PALETTE[4]);
-  const [checklist, setChecklist] = useState<ChecklistItemT[]>([]);
+  const [subtasks, setSubtasks] = useState<SubtaskT[]>([]);
+  const [isSubtask, setIsSubtask] = useState(false);
+  const [parent, setParent] = useState<{ id: string; title: string } | null>(null);
   const [comments, setComments] = useState<CommentT[]>([]);
   const [attachments, setAttachments] = useState<AttachmentT[]>([]);
   const [whiteboards, setWhiteboards] = useState<WhiteboardT[]>([]);
@@ -111,7 +113,9 @@ export function CardDrawer({
       setAssigneeIds(new Set(d.card.assigneeIds));
       setBoardLabels(d.boardLabels);
       setMembers(d.members);
-      setChecklist(d.checklist);
+      setSubtasks(d.subtasks);
+      setIsSubtask(d.isSubtask);
+      setParent(d.parent);
       setComments(d.comments);
       setAttachments(d.attachments);
       setWhiteboards(d.whiteboards);
@@ -177,43 +181,31 @@ export function CardDrawer({
     onPatch(cardId, { assignees: members.filter((x) => next.has(x.id)) });
   }
 
-  function patchChecklistFace(items: ChecklistItemT[]) {
+  function patchSubtasksFace(items: SubtaskT[]) {
     onPatch(cardId, { checklist: { total: items.length, done: items.filter((i) => i.done).length } });
   }
 
-  async function addItem(text: string) {
-    const res = await addSubtask(cardId, text);
+  async function addItem(title: string) {
+    const res = await addSubtask(cardId, title);
     if ("item" in res && res.item) {
-      const next = [...checklist, res.item];
-      setChecklist(next);
-      patchChecklistFace(next);
+      const next = [...subtasks, res.item];
+      setSubtasks(next);
+      patchSubtasksFace(next);
     }
   }
 
-  function toggleItem(item: ChecklistItemT) {
-    const next = checklist.map((i) => (i.id === item.id ? { ...i, done: !i.done } : i));
-    setChecklist(next);
+  function toggleItem(item: SubtaskT) {
+    const next = subtasks.map((i) => (i.id === item.id ? { ...i, done: !i.done } : i));
+    setSubtasks(next);
     toggleSubtask(item.id, !item.done);
-    patchChecklistFace(next);
+    patchSubtasksFace(next);
   }
 
-  function removeItem(item: ChecklistItemT) {
-    const next = checklist.filter((i) => i.id !== item.id);
-    setChecklist(next);
+  function removeItem(item: SubtaskT) {
+    const next = subtasks.filter((i) => i.id !== item.id);
+    setSubtasks(next);
     deleteSubtask(item.id);
-    patchChecklistFace(next);
-  }
-
-  function assignItem(item: ChecklistItemT, userId: string | null) {
-    const next = checklist.map((i) => (i.id === item.id ? { ...i, assigneeId: userId } : i));
-    setChecklist(next);
-    assignSubtask(item.id, userId);
-  }
-
-  function setItemDue(item: ChecklistItemT, iso: string | null) {
-    const next = checklist.map((i) => (i.id === item.id ? { ...i, dueDate: iso } : i));
-    setChecklist(next);
-    setSubtaskDueDate(item.id, iso);
+    patchSubtasksFace(next);
   }
 
   async function postComment(body: string) {
@@ -287,7 +279,7 @@ export function CardDrawer({
     onClose();
   }
 
-  const doneCount = checklist.filter((i) => i.done).length;
+  const doneCount = subtasks.filter((i) => i.done).length;
 
   return (
     <Sheet open onOpenChange={(v) => !v && onClose()}>
@@ -312,6 +304,16 @@ export function CardDrawer({
           <p className="p-4 text-sm text-foreground/50">Loading…</p>
         ) : (
           <div className="flex flex-col gap-6 p-4">
+            {isSubtask && parent && onNavigate && (
+              <button
+                onClick={() => onNavigate(parent.id)}
+                className="-mt-2 flex w-fit items-center gap-1 text-xs text-muted-foreground hover:text-foreground hover:underline"
+              >
+                <ArrowUp className="size-3" />
+                Part of: {parent.title}
+              </button>
+            )}
+
             <Section title="Due date">
               <div className="flex items-center gap-2">
                 <Input
@@ -371,22 +373,23 @@ export function CardDrawer({
               <AssigneePicker members={members} assigneeIds={assigneeIds} onToggle={toggleAssignee} />
             </Section>
 
-            <Section title={`Subtasks${checklist.length ? ` · ${doneCount}/${checklist.length}` : ""}`}>
-              <div className="flex flex-col gap-0.5">
-                {checklist.map((item) => (
-                  <SubtaskRow
-                    key={item.id}
-                    item={item}
-                    members={members}
-                    onToggleDone={() => toggleItem(item)}
-                    onAssign={(userId) => assignItem(item, userId)}
-                    onSetDue={(iso) => setItemDue(item, iso)}
-                    onRemove={() => removeItem(item)}
-                  />
-                ))}
-              </div>
-              <InlineComposer placeholder="Add a subtask…" buttonLabel="Add" onSubmit={addItem} />
-            </Section>
+            {!isSubtask && (
+              <Section title={`Subtasks${subtasks.length ? ` · ${doneCount}/${subtasks.length}` : ""}`}>
+                <div className="flex flex-col gap-0.5">
+                  {subtasks.map((item) => (
+                    <SubtaskRow
+                      key={item.id}
+                      item={item}
+                      members={members}
+                      onToggleDone={() => toggleItem(item)}
+                      onOpen={() => onNavigate?.(item.id)}
+                      onRemove={() => removeItem(item)}
+                    />
+                  ))}
+                </div>
+                <InlineComposer placeholder="Add a subtask…" buttonLabel="Add" onSubmit={addItem} />
+              </Section>
+            )}
 
             <Section title="Description">
               <DescriptionEditor key={cardId} initial={description} onSave={saveDescription} />
@@ -579,116 +582,70 @@ function SubtaskRow({
   item,
   members,
   onToggleDone,
-  onAssign,
-  onSetDue,
+  onOpen,
   onRemove,
 }: {
-  item: ChecklistItemT;
+  item: SubtaskT;
   members: MemberT[];
   onToggleDone: () => void;
-  onAssign: (userId: string | null) => void;
-  onSetDue: (iso: string | null) => void;
+  onOpen: () => void;
   onRemove: () => void;
 }) {
-  const [showAssign, setShowAssign] = useState(false);
-  const [showDue, setShowDue] = useState(false);
-  const assignee = members.find((m) => m.id === item.assigneeId);
+  const assignees = members.filter((m) => item.assigneeIds.includes(m.id));
   const due = dueMeta(item.dueDate);
 
   return (
-    <div className="group flex flex-col gap-1.5 rounded px-1 py-1 hover:bg-hover/50">
-      <div className="flex items-center gap-2">
-        <input
-          type="checkbox"
-          checked={item.done}
-          onChange={onToggleDone}
-          className="h-4 w-4 shrink-0"
-        />
-        <span className={`flex-1 truncate text-sm ${item.done ? "text-foreground/40 line-through" : ""}`}>
-          {item.text}
+    <div className="group flex items-center gap-2 rounded px-1 py-1 hover:bg-hover/50">
+      <input
+        type="checkbox"
+        checked={item.done}
+        onChange={onToggleDone}
+        className="h-4 w-4 shrink-0"
+      />
+      <button
+        onClick={onOpen}
+        className={`flex-1 truncate text-left text-sm hover:underline ${item.done ? "text-foreground/40 line-through" : ""}`}
+      >
+        {item.title}
+      </button>
+
+      {item.commentCount > 0 && (
+        <StatusBadge tone="neutral">
+          <MessageSquare className="size-3" />
+          {item.commentCount}
+        </StatusBadge>
+      )}
+      {item.attachmentCount > 0 && (
+        <StatusBadge tone="neutral">
+          <Paperclip className="size-3" />
+          {item.attachmentCount}
+        </StatusBadge>
+      )}
+      {due && (
+        <span className={`shrink-0 text-[10px] font-medium whitespace-nowrap ${dueToneClass[due.tone]}`}>
+          {due.label}
         </span>
-
-        <button
-          onClick={() => setShowAssign((v) => !v)}
-          title={assignee ? assignee.name ?? assignee.email : "Assign"}
-          className={
-            assignee
-              ? "flex size-5 shrink-0 items-center justify-center rounded-full bg-accent text-[10px] font-medium text-accent-foreground"
-              : "flex size-5 shrink-0 items-center justify-center rounded-full border border-dashed border-border-strong text-foreground/30 opacity-0 hover:text-foreground group-hover:opacity-100"
-          }
-        >
-          {assignee ? (assignee.name ?? assignee.email).charAt(0).toUpperCase() : <User className="size-3" />}
-        </button>
-
-        {due ? (
-          <button
-            onClick={() => setShowDue((v) => !v)}
-            className={`shrink-0 text-[10px] font-medium whitespace-nowrap ${dueToneClass[due.tone]}`}
-          >
-            {due.label}
-          </button>
-        ) : (
-          <button
-            onClick={() => setShowDue((v) => !v)}
-            className="shrink-0 text-foreground/30 opacity-0 hover:text-foreground group-hover:opacity-100"
-            title="Set due date"
-          >
-            <CalendarClock className="size-3.5" />
-          </button>
-        )}
-
-        <button
-          onClick={onRemove}
-          className="shrink-0 text-foreground/30 opacity-0 hover:text-destructive group-hover:opacity-100"
-          title="Remove"
-        >
-          <X className="size-3.5" />
-        </button>
-      </div>
-
-      {showAssign && (
-        <div className="ml-6">
-          <Select
-            aria-label="Assign subtask"
-            value={item.assigneeId ?? ""}
-            onChange={(e) => {
-              onAssign(e.target.value || null);
-              setShowAssign(false);
-            }}
-            className="h-7 w-48 text-xs"
-          >
-            <option value="">Unassigned</option>
-            {members.map((m) => (
-              <option key={m.id} value={m.id}>
-                {m.name ?? m.email}
-              </option>
-            ))}
-          </Select>
-        </div>
       )}
-
-      {showDue && (
-        <div className="ml-6 flex items-center gap-2">
-          <Input
-            type="date"
-            value={item.dueDate ? item.dueDate.slice(0, 10) : ""}
-            onChange={(e) => onSetDue(e.target.value ? new Date(e.target.value).toISOString() : null)}
-            className="h-7 w-auto text-xs"
-          />
-          {item.dueDate && (
-            <Button
-              variant="link"
-              className="h-auto p-0 text-xs"
-              onClick={() => {
-                onSetDue(null);
-                setShowDue(false);
-              }}
+      {assignees.length > 0 && (
+        <div className="flex -space-x-1" title={assignees.map((a) => a.name ?? a.email).join(", ")}>
+          {assignees.slice(0, 3).map((a) => (
+            <span
+              key={a.id}
+              className="flex size-5 shrink-0 items-center justify-center rounded-full border border-background bg-accent text-[10px] font-medium text-accent-foreground"
             >
-              Clear
-            </Button>
-          )}
+              {(a.name ?? a.email).charAt(0).toUpperCase()}
+            </span>
+          ))}
         </div>
       )}
+
+      <button
+        onClick={onRemove}
+        className="shrink-0 text-foreground/30 opacity-0 hover:text-destructive group-hover:opacity-100"
+        title="Remove"
+      >
+        <X className="size-3.5" />
+      </button>
     </div>
   );
 }

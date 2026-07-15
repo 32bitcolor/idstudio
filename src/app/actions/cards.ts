@@ -11,16 +11,20 @@ import { subtaskAssigned } from "@/lib/email-templates";
 
 const Hex = z.string().regex(/^#[0-9a-fA-F]{6}$/, "Invalid color");
 const LabelName = z.string().trim().min(1).max(60);
+const Title = z.string().trim().min(1).max(280);
 
 function boardPath(boardId: string) {
   return `/boards/${boardId}`;
 }
 
-/** Full detail for the card drawer: the card, the board's labels, and the workspace members. */
+/** Full detail for the card drawer: the card, the board's labels, and the workspace members.
+ * A subtask is just a Card with parentCardId set — this returns the identical shape for
+ * either, plus isSubtask/parent so the drawer can show a "back to parent" link and hide
+ * its own Subtasks section (nesting stops at one level). */
 export async function getCardDetail(cardId: string) {
   const access = await getCardForUser(cardId);
   if (!access) return null;
-  const boardId = access.column.boardId;
+  const boardId = access.boardId;
 
   const me = await getCurrentUser();
   if (!me) return null;
@@ -39,11 +43,17 @@ export async function getCardDetail(cardId: string) {
         title: true,
         description: true,
         dueDate: true,
+        parentCardId: true,
+        parentCard: { select: { id: true, title: true } },
         labels: { select: { labelId: true } },
         assignees: { select: { userId: true } },
-        checklist: {
+        subtasks: {
           orderBy: { position: "asc" },
-          select: { id: true, text: true, done: true, position: true, assigneeId: true, dueDate: true },
+          select: {
+            id: true, title: true, done: true, dueDate: true,
+            assignees: { select: { userId: true } },
+            _count: { select: { comments: true, attachments: true } },
+          },
         },
         comments: {
           orderBy: { createdAt: "asc" },
@@ -93,14 +103,21 @@ export async function getCardDetail(cardId: string) {
       labelIds: card.labels.map((l) => l.labelId),
       assigneeIds: card.assignees.map((a) => a.userId),
     },
+    isSubtask: card.parentCardId !== null,
+    parent: card.parentCard,
     boardLabels,
     members,
     whiteboards,
     currentUserId: me.id,
     isAdmin: membership?.role === "ADMIN",
-    checklist: card.checklist.map((it) => ({
-      ...it,
-      dueDate: it.dueDate ? it.dueDate.toISOString() : null,
+    subtasks: card.subtasks.map((s) => ({
+      id: s.id,
+      title: s.title,
+      done: s.done,
+      dueDate: s.dueDate ? s.dueDate.toISOString() : null,
+      assigneeIds: s.assignees.map((a) => a.userId),
+      commentCount: s._count.comments,
+      attachmentCount: s._count.attachments,
     })),
     comments: card.comments.map((c) => ({
       id: c.id,
@@ -125,7 +142,7 @@ export async function updateCardDescription(cardId: string, description: string 
     where: { id: cardId },
     data: { description: description && description.trim() ? description : null },
   });
-  revalidatePath(boardPath(card.column.boardId));
+  revalidatePath(boardPath(card.boardId));
 }
 
 export async function setCardDueDate(cardId: string, iso: string | null) {
@@ -134,7 +151,7 @@ export async function setCardDueDate(cardId: string, iso: string | null) {
   const dueDate = iso ? new Date(iso) : null;
   if (iso && Number.isNaN(dueDate!.getTime())) return { error: "Invalid date." };
   await prisma.card.update({ where: { id: cardId }, data: { dueDate } });
-  revalidatePath(boardPath(card.column.boardId));
+  revalidatePath(boardPath(card.boardId));
 }
 
 // ── Labels ───────────────────────────────────────────────────────────────────
@@ -171,7 +188,7 @@ export async function toggleCardLabel(cardId: string, labelId: string, on: boole
   if (!card) return { error: "Card not found." };
   // ensure the label belongs to the same board as the card
   const label = await prisma.label.findFirst({
-    where: { id: labelId, boardId: card.column.boardId },
+    where: { id: labelId, boardId: card.boardId },
     select: { id: true },
   });
   if (!label) return { error: "Label not found." };
@@ -185,7 +202,7 @@ export async function toggleCardLabel(cardId: string, labelId: string, on: boole
   } else {
     await prisma.cardLabel.deleteMany({ where: { cardId, labelId } });
   }
-  revalidatePath(boardPath(card.column.boardId));
+  revalidatePath(boardPath(card.boardId));
 }
 
 // ── Assignees ────────────────────────────────────────────────────────────────
@@ -195,8 +212,8 @@ export async function toggleCardAssignee(cardId: string, userId: string, on: boo
   if (!card) return { error: "Card not found." };
 
   const board = await prisma.board.findUnique({
-    where: { id: card.column.boardId },
-    select: { workspaceId: true },
+    where: { id: card.boardId },
+    select: { workspaceId: true, name: true },
   });
   if (!board) return { error: "Board not found." };
 
@@ -207,6 +224,11 @@ export async function toggleCardAssignee(cardId: string, userId: string, on: boo
   });
   if (!member) return { error: "Not a workspace member." };
 
+  const wasAssigned = await prisma.cardAssignee.findUnique({
+    where: { cardId_userId: { cardId, userId } },
+    select: { userId: true },
+  });
+
   if (on) {
     await prisma.cardAssignee.upsert({
       where: { cardId_userId: { cardId, userId } },
@@ -216,110 +238,77 @@ export async function toggleCardAssignee(cardId: string, userId: string, on: boo
   } else {
     await prisma.cardAssignee.deleteMany({ where: { cardId, userId } });
   }
-  revalidatePath(boardPath(card.column.boardId));
-}
 
-// ── Subtasks ─────────────────────────────────────────────────────────────────
-// Backed by the ChecklistItem table (kept as-is — this workspace already has real
-// seeded checklist data, and a model rename risks a migration diff that drops and
-// recreates it instead of detecting the rename). Only the code-facing names and
-// UI copy say "subtask"; the table name is an implementation detail.
-
-export async function addSubtask(cardId: string, text: string) {
-  const card = await getCardForUser(cardId);
-  if (!card) return { error: "Card not found." };
-  const parsed = z.string().trim().min(1).max(280).safeParse(text);
-  if (!parsed.success) return { error: "Item text is required." };
-
-  const last = await prisma.checklistItem.findFirst({
-    where: { cardId },
-    orderBy: { position: "desc" },
-    select: { position: true },
-  });
-  const item = await prisma.checklistItem.create({
-    data: { cardId, text: parsed.data, position: positionBetween(last?.position ?? null, null) },
-    select: { id: true, text: true, done: true, position: true, assigneeId: true, dueDate: true },
-  });
-  revalidatePath(boardPath(card.column.boardId));
-  return { item: { ...item, dueDate: item.dueDate ? item.dueDate.toISOString() : null } };
-}
-
-export async function toggleSubtask(itemId: string, done: boolean) {
-  const user = await getCurrentUser();
-  if (!user) return { error: "Unauthorized." };
-  const item = await prisma.checklistItem.findUnique({
-    where: { id: itemId },
-    select: { id: true, cardId: true, card: { select: { column: { select: { boardId: true } } } } },
-  });
-  if (!item || !(await getCardForUser(item.cardId))) return { error: "Item not found." };
-  await prisma.checklistItem.update({ where: { id: itemId }, data: { done } });
-  revalidatePath(boardPath(item.card.column.boardId));
-}
-
-export async function deleteSubtask(itemId: string) {
-  const user = await getCurrentUser();
-  if (!user) return { error: "Unauthorized." };
-  const item = await prisma.checklistItem.findUnique({
-    where: { id: itemId },
-    select: { id: true, cardId: true, card: { select: { column: { select: { boardId: true } } } } },
-  });
-  if (!item || !(await getCardForUser(item.cardId))) return { error: "Item not found." };
-  await prisma.checklistItem.delete({ where: { id: itemId } });
-  revalidatePath(boardPath(item.card.column.boardId));
-}
-
-export async function assignSubtask(itemId: string, userId: string | null) {
-  const user = await getCurrentUser();
-  if (!user) return { error: "Unauthorized." };
-  const item = await prisma.checklistItem.findUnique({
-    where: { id: itemId },
-    select: {
-      id: true, cardId: true, text: true, assigneeId: true,
-      card: { select: { title: true, column: { select: { boardId: true, board: { select: { name: true, workspaceId: true } } } } } },
-    },
-  });
-  if (!item || !(await getCardForUser(item.cardId))) return { error: "Item not found." };
-
-  if (userId) {
-    const member = await prisma.membership.findFirst({
-      where: { userId, workspaceId: item.card.column.board.workspaceId },
-      select: { id: true },
-    });
-    if (!member) return { error: "Not a workspace member." };
-  }
-
-  await prisma.checklistItem.update({ where: { id: itemId }, data: { assigneeId: userId } });
-
-  if (userId && userId !== item.assigneeId) {
-    const assignee = await prisma.user.findUnique({ where: { id: userId }, select: { name: true, email: true } });
-    if (assignee) {
+  // Only subtasks (cards with a parent) send an assignment email — nobody asked
+  // for every top-level card assignment to email people, and that'd be noisy.
+  if (on && !wasAssigned && card.parentCardId) {
+    const [assignee, cardRow] = await Promise.all([
+      prisma.user.findUnique({ where: { id: userId }, select: { name: true, email: true } }),
+      prisma.card.findUnique({ where: { id: cardId }, select: { title: true } }),
+      ]);
+    if (assignee && cardRow) {
+      const parentCard = await prisma.card.findUnique({
+        where: { id: card.parentCardId },
+        select: { title: true },
+      });
       await enqueueEmail({
         to: assignee.email,
         ...subtaskAssigned({
           assigneeName: assignee.name ?? assignee.email,
-          subtaskText: item.text,
-          cardTitle: item.card.title,
-          boardName: item.card.column.board.name,
+          subtaskText: cardRow.title,
+          cardTitle: parentCard?.title ?? "",
+          boardName: board.name,
         }),
       });
     }
   }
 
-  revalidatePath(boardPath(item.card.column.boardId));
+  revalidatePath(boardPath(card.boardId));
 }
 
-export async function setSubtaskDueDate(itemId: string, iso: string | null) {
-  const user = await getCurrentUser();
-  if (!user) return { error: "Unauthorized." };
-  const item = await prisma.checklistItem.findUnique({
-    where: { id: itemId },
-    select: { id: true, cardId: true, card: { select: { column: { select: { boardId: true } } } } },
+// ── Subtasks ─────────────────────────────────────────────────────────────────
+// A subtask is a real Card with parentCardId set and columnId null — it gets
+// comments, attachments, assignees, and labels for free via the same relations
+// a top-level card already has. Nesting stops at one level: a card that's
+// already a subtask never gets its own "Add a subtask" affordance.
+
+export async function addSubtask(parentCardId: string, title: string) {
+  const parent = await getCardForUser(parentCardId);
+  if (!parent) return { error: "Card not found." };
+  const parsed = Title.safeParse(title);
+  if (!parsed.success) return { error: "Title is required." };
+
+  const last = await prisma.card.findFirst({
+    where: { parentCardId },
+    orderBy: { position: "desc" },
+    select: { position: true },
   });
-  if (!item || !(await getCardForUser(item.cardId))) return { error: "Item not found." };
-  const dueDate = iso ? new Date(iso) : null;
-  if (iso && Number.isNaN(dueDate!.getTime())) return { error: "Invalid date." };
-  await prisma.checklistItem.update({ where: { id: itemId }, data: { dueDate } });
-  revalidatePath(boardPath(item.card.column.boardId));
+  const item = await prisma.card.create({
+    data: { parentCardId, title: parsed.data, position: positionBetween(last?.position ?? null, null) },
+    select: { id: true, title: true, done: true, dueDate: true },
+  });
+  revalidatePath(boardPath(parent.boardId));
+  return {
+    item: {
+      id: item.id, title: item.title, done: item.done,
+      dueDate: item.dueDate ? item.dueDate.toISOString() : null,
+      assigneeIds: [] as string[], commentCount: 0, attachmentCount: 0,
+    },
+  };
+}
+
+export async function toggleSubtask(cardId: string, done: boolean) {
+  const card = await getCardForUser(cardId);
+  if (!card) return { error: "Item not found." };
+  await prisma.card.update({ where: { id: cardId }, data: { done } });
+  revalidatePath(boardPath(card.boardId));
+}
+
+export async function deleteSubtask(cardId: string) {
+  const card = await getCardForUser(cardId);
+  if (!card) return { error: "Item not found." };
+  await prisma.card.delete({ where: { id: cardId } });
+  revalidatePath(boardPath(card.boardId));
 }
 
 // ── Comments ─────────────────────────────────────────────────────────────────
@@ -341,7 +330,7 @@ export async function addComment(cardId: string, body: string) {
       author: { select: { id: true, name: true, email: true } },
     },
   });
-  revalidatePath(boardPath(card.column.boardId));
+  revalidatePath(boardPath(card.boardId));
   return { comment: { ...comment, createdAt: comment.createdAt.toISOString() } };
 }
 
@@ -350,20 +339,16 @@ export async function deleteComment(commentId: string) {
   if (!user) return { error: "Unauthorized." };
   const comment = await prisma.comment.findUnique({
     where: { id: commentId },
-    select: {
-      id: true,
-      authorId: true,
-      cardId: true,
-      card: { select: { column: { select: { board: { select: { id: true, workspaceId: true } } } } } },
-    },
+    select: { id: true, authorId: true, cardId: true },
   });
-  if (!comment || !(await getCardForUser(comment.cardId))) return { error: "Comment not found." };
+  const card = comment ? await getCardForUser(comment.cardId) : null;
+  if (!comment || !card) return { error: "Comment not found." };
 
-  const { id: boardId, workspaceId } = comment.card.column.board;
+  const board = await prisma.board.findUnique({ where: { id: card.boardId }, select: { workspaceId: true } });
   let allowed = comment.authorId === user.id;
-  if (!allowed) {
+  if (!allowed && board) {
     const membership = await prisma.membership.findFirst({
-      where: { userId: user.id, workspaceId },
+      where: { userId: user.id, workspaceId: board.workspaceId },
       select: { role: true },
     });
     allowed = membership?.role === "ADMIN";
@@ -371,5 +356,5 @@ export async function deleteComment(commentId: string) {
   if (!allowed) return { error: "Not allowed." };
 
   await prisma.comment.delete({ where: { id: commentId } });
-  revalidatePath(boardPath(boardId));
+  revalidatePath(boardPath(card.boardId));
 }

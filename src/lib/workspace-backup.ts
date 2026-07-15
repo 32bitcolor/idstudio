@@ -9,7 +9,7 @@ import { getObjectBytes, putObjectBytes, buildObjectKey } from "@/lib/storage";
 // can be restored into the same instance (a copy) or a fresh one (disaster
 // recovery). Media re-uploads to object storage under new keys.
 
-export const BACKUP_FORMAT = 2; // bump when the shape changes
+export const BACKUP_FORMAT = 3; // bump when the shape changes
 
 const WS = "__ws";
 const USER = "__user";
@@ -19,16 +19,38 @@ type Spec = {
   model: string; // prisma delegate name
   where: (wsId: string) => any; // export filter scoping the table to the workspace
   fks: Record<string, string>; // column -> map key (an entity key, WS, or USER)
+  sort?: (rows: any[]) => any[]; // reorder before import, for self-referential fks
 };
+
+// A card's column is null when it's a subtask — reach it via its parent's
+// column instead, same one-hop pattern as getCardForUser in authz.ts.
+function cardInWorkspace(w: string): any {
+  return {
+    OR: [
+      { column: { board: { workspaceId: w } } },
+      { parentCard: { column: { board: { workspaceId: w } } } },
+    ],
+  };
+}
 
 // Ordered by foreign-key dependency so parents exist before children on restore.
 const SPECS: Spec[] = [
   { key: "group", model: "group", where: (w) => ({ workspaceId: w }), fks: { workspaceId: WS } },
   { key: "board", model: "board", where: (w) => ({ workspaceId: w }), fks: { workspaceId: WS } },
   { key: "column", model: "column", where: (w) => ({ board: { workspaceId: w } }), fks: { boardId: "board" } },
-  { key: "card", model: "card", where: (w) => ({ column: { board: { workspaceId: w } } }), fks: { columnId: "column" } },
+  // A subtask is a Card with columnId null and parentCardId set — the OR clause
+  // pulls both top-level cards (via their column) and subtask-cards (via their
+  // parent's column) into the same export bucket. On import, self-referential
+  // parentCardId can only remap once the parent row already exists, so `sort`
+  // puts top-level cards (parentCardId null) before subtask-cards.
+  {
+    key: "card",
+    model: "card",
+    where: cardInWorkspace,
+    fks: { columnId: "column", parentCardId: "card" },
+    sort: (rows) => [...rows].sort((a, b) => (a.parentCardId ? 1 : 0) - (b.parentCardId ? 1 : 0)),
+  },
   { key: "label", model: "label", where: (w) => ({ board: { workspaceId: w } }), fks: { boardId: "board" } },
-  { key: "checklistItem", model: "checklistItem", where: (w) => ({ card: { column: { board: { workspaceId: w } } } }), fks: { cardId: "card" } },
   { key: "project", model: "project", where: (w) => ({ workspaceId: w }), fks: { workspaceId: WS } },
   { key: "phase", model: "phase", where: (w) => ({ project: { workspaceId: w } }), fks: { projectId: "project" } },
   { key: "deliverable", model: "deliverable", where: (w) => ({ project: { workspaceId: w } }), fks: { projectId: "project", phaseId: "phase", cardId: "card" } },
@@ -43,10 +65,10 @@ const SPECS: Spec[] = [
   { key: "whiteboard", model: "whiteboard", where: (w) => ({ workspaceId: w }), fks: { workspaceId: WS, storyboardId: "storyboard", cardId: "card", createdById: USER } },
   { key: "reviewCycle", model: "reviewCycle", where: (w) => ({ deliverable: { project: { workspaceId: w } } }), fks: { deliverableId: "deliverable", reviewerId: USER, requestedById: USER } },
   { key: "timeEntry", model: "timeEntry", where: (w) => ({ project: { workspaceId: w } }), fks: { projectId: "project", deliverableId: "deliverable", userId: USER } },
-  { key: "comment", model: "comment", where: (w) => ({ card: { column: { board: { workspaceId: w } } } }), fks: { cardId: "card", authorId: USER } },
+  { key: "comment", model: "comment", where: (w) => ({ card: cardInWorkspace(w) }), fks: { cardId: "card", authorId: USER } },
   // junctions
-  { key: null, model: "cardLabel", where: (w) => ({ card: { column: { board: { workspaceId: w } } } }), fks: { cardId: "card", labelId: "label" } },
-  { key: null, model: "cardAssignee", where: (w) => ({ card: { column: { board: { workspaceId: w } } } }), fks: { cardId: "card", userId: USER } },
+  { key: null, model: "cardLabel", where: (w) => ({ card: cardInWorkspace(w) }), fks: { cardId: "card", labelId: "label" } },
+  { key: null, model: "cardAssignee", where: (w) => ({ card: cardInWorkspace(w) }), fks: { cardId: "card", userId: USER } },
   { key: null, model: "boardGroup", where: (w) => ({ board: { workspaceId: w } }), fks: { boardId: "board", groupId: "group" } },
   { key: null, model: "projectGroup", where: (w) => ({ project: { workspaceId: w } }), fks: { projectId: "project", groupId: "group" } },
   { key: null, model: "storyboardGroup", where: (w) => ({ storyboard: { workspaceId: w } }), fks: { storyboardId: "storyboard", groupId: "group" } },
@@ -90,7 +112,8 @@ export async function exportWorkspace(workspaceId: string): Promise<{
 
   const data: Record<string, any[]> = {};
   for (const spec of SPECS) {
-    data[spec.model] = await (prisma as any)[spec.model].findMany({ where: spec.where(workspaceId) });
+    const rows = await (prisma as any)[spec.model].findMany({ where: spec.where(workspaceId) });
+    data[spec.model] = spec.sort ? spec.sort(rows) : rows;
   }
   const attachments = await prisma.attachment.findMany({ where: { workspaceId } });
   data.attachment = attachments;
@@ -185,7 +208,7 @@ export async function importWorkspace(
   // 3. content graph, in dependency order
   for (const spec of SPECS) {
     if (spec.key) maps[spec.key] = {};
-    const rows = exp.data[spec.model] ?? [];
+    const rows = spec.sort ? spec.sort(exp.data[spec.model] ?? []) : (exp.data[spec.model] ?? []);
     for (const row of rows) {
       const d: any = { ...row };
       delete d.id;

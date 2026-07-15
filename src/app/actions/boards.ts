@@ -134,14 +134,14 @@ export async function renameCard(cardId: string, title: string) {
   const parsed = Title.safeParse(title);
   if (!parsed.success) return { error: "Card title is required." };
   await prisma.card.update({ where: { id: cardId }, data: { title: parsed.data } });
-  revalidatePath(boardPath(card.column.boardId));
+  revalidatePath(boardPath(card.boardId));
 }
 
 export async function deleteCard(cardId: string) {
   const card = await getCardForUser(cardId);
   if (!card) return { error: "Card not found." };
   await prisma.card.delete({ where: { id: cardId } });
-  revalidatePath(boardPath(card.column.boardId));
+  revalidatePath(boardPath(card.boardId));
 }
 
 /** Move a card to `toColumnId` at `targetIndex` (index among the OTHER cards there). */
@@ -150,7 +150,7 @@ export async function moveCard(cardId: string, toColumnId: string, targetIndex: 
   if (!card) return { error: "Card not found." };
   const target = await getColumnForUser(toColumnId);
   if (!target) return { error: "Target column not found." };
-  if (target.boardId !== card.column.boardId) return { error: "Cross-board move not allowed." };
+  if (target.boardId !== card.boardId) return { error: "Cross-board move not allowed." };
 
   const siblings = await prisma.card.findMany({
     where: { columnId: toColumnId, id: { not: cardId } },
@@ -159,5 +159,5 @@ export async function moveCard(cardId: string, toColumnId: string, targetIndex: 
   });
   const position = positionForIndex(siblings.map((c) => c.position), targetIndex);
   await prisma.card.update({ where: { id: cardId }, data: { columnId: toColumnId, position } });
-  revalidatePath(boardPath(card.column.boardId));
+  revalidatePath(boardPath(card.boardId));
 }

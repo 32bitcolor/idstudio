@@ -66,12 +66,17 @@ export default async function MyWorkPage() {
       orderBy: [{ dueDate: "asc" }, { createdAt: "desc" }],
       select: { id: true, title: true, dueDate: true, column: { select: { name: true, board: { select: { id: true, name: true } } } } },
     }),
-    prisma.checklistItem.findMany({
-      where: { assigneeId: me.id, done: false, card: { column: { board: { workspaceId: wsId, ...boardVis } } } },
+    prisma.card.findMany({
+      where: {
+        parentCardId: { not: null },
+        assignees: { some: { userId: me.id } },
+        done: false,
+        parentCard: { column: { board: { workspaceId: wsId, ...boardVis } } },
+      },
       orderBy: [{ dueDate: "asc" }, { id: "desc" }],
       select: {
-        id: true, text: true, dueDate: true,
-        card: { select: { id: true, title: true, column: { select: { name: true, board: { select: { id: true, name: true } } } } } },
+        id: true, title: true, dueDate: true,
+        parentCard: { select: { id: true, title: true, column: { select: { name: true, board: { select: { id: true, name: true } } } } } },
       },
     }),
     prisma.milestone.findMany({
@@ -168,12 +173,12 @@ export default async function MyWorkPage() {
             {cards.map((c) => {
               const due = dueMeta(c.dueDate);
               return (
-                <Link key={c.id} href={`/boards/${c.column.board.id}`} className="flex flex-wrap items-center gap-3 px-5 py-3 hover:bg-muted/50">
+                <Link key={c.id} href={`/boards/${c.column!.board.id}`} className="flex flex-wrap items-center gap-3 px-5 py-3 hover:bg-muted/50">
                   <Columns3 className="size-4 shrink-0 text-muted-foreground" />
                   <div className="min-w-0 flex-1">
                     <div className="truncate font-medium">{c.title}</div>
                     <div className="truncate text-sm text-muted-foreground">
-                      {c.column.board.name} · {c.column.name}
+                      {c.column!.board.name} · {c.column!.name}
                     </div>
                   </div>
                   {due && <span className={`text-xs ${dueToneClass[due.tone]}`}>{due.label}</span>}
@@ -196,14 +201,14 @@ export default async function MyWorkPage() {
               return (
                 <Link
                   key={s.id}
-                  href={`/boards/${s.card.column.board.id}?card=${s.card.id}`}
+                  href={`/boards/${s.parentCard!.column!.board.id}?card=${s.parentCard!.id}`}
                   className="flex flex-wrap items-center gap-3 px-5 py-3 hover:bg-muted/50"
                 >
                   <ListChecks className="size-4 shrink-0 text-muted-foreground" />
                   <div className="min-w-0 flex-1">
-                    <div className="truncate font-medium">{s.text}</div>
+                    <div className="truncate font-medium">{s.title}</div>
                     <div className="truncate text-sm text-muted-foreground">
-                      {s.card.column.board.name} · {s.card.title}
+                      {s.parentCard!.column!.board.name} · {s.parentCard!.title}
                     </div>
                   </div>
                   {due && <span className={`text-xs ${dueToneClass[due.tone]}`}>{due.label}</span>}

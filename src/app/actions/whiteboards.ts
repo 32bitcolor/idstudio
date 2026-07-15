@@ -92,14 +92,13 @@ export async function createWhiteboardForCard(cardId: string): Promise<void> {
   const me = await getCurrentUser();
   const access = await getCardForUser(cardId);
   if (!me || !access) redirect("/boards");
-  const card = await prisma.card.findUnique({
-    where: { id: cardId },
-    select: { title: true, column: { select: { board: { select: { workspaceId: true } } } } },
-  });
+  const card = await prisma.card.findUnique({ where: { id: cardId }, select: { title: true } });
   if (!card) redirect("/boards");
+  const board = await prisma.board.findUnique({ where: { id: access.boardId }, select: { workspaceId: true } });
+  if (!board) redirect("/boards");
   const whiteboard = await prisma.whiteboard.create({
     data: {
-      workspaceId: card.column.board.workspaceId,
+      workspaceId: board.workspaceId,
       cardId,
       createdById: me.id,
       title: `${card.title} — sketch`,

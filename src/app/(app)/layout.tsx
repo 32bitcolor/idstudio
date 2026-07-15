@@ -44,11 +44,12 @@ export default async function AppLayout({
         })
       : Promise.resolve(0),
     membership
-      ? prisma.checklistItem.count({
+      ? prisma.card.count({
           where: {
-            assigneeId: user.id,
+            parentCardId: { not: null },
+            assignees: { some: { userId: user.id } },
             done: false,
-            card: { column: { board: { workspaceId: membership.workspaceId, ...(await boardVisibilityWhere()) } } },
+            parentCard: { column: { board: { workspaceId: membership.workspaceId, ...(await boardVisibilityWhere()) } } },
           },
         })
       : Promise.resolve(0),

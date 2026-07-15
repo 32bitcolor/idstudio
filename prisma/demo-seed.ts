@@ -269,7 +269,7 @@ async function addCards(board: BoardCtx, colName: string, U: Record<string, stri
         columnId, title: c.title, position: pos, description: c.desc, dueDate: c.due,
         labels: c.labels ? { create: c.labels.map((n) => ({ labelId: board.labelByName[n] })) } : undefined,
         assignees: c.assignees ? { create: c.assignees.map((k) => ({ userId: U[k] })) } : undefined,
-        checklist: c.checklist ? { create: c.checklist.map((it, i) => ({ text: it.text, done: it.done, position: clKeys[i] })) } : undefined,
+        subtasks: c.checklist ? { create: c.checklist.map((it, i) => ({ title: it.text, done: it.done, position: clKeys[i] })) } : undefined,
         comments: c.comments ? { create: c.comments.map((cm) => ({ authorId: U[cm.by], body: cm.body })) } : undefined,
       },
     });

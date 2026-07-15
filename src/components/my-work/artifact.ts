@@ -13,12 +13,14 @@ export const DELIVERABLE_SELECT = {
 type Deliverable = {
   project: { id: string; name: string };
   storyboard: { id: string; title: string } | null;
-  card: { title: string; column: { board: { id: string; name: string } } } | null;
+  card: { title: string; column: { board: { id: string; name: string } } | null } | null;
 };
 
-/** The most specific artifact a review points at (storyboard > card > project). */
+/** The most specific artifact a review points at (storyboard > card > project).
+ * Deliverables only ever link to top-level cards, but Card.column is nullable
+ * now that subtasks exist — fall back to the project link if it's ever null. */
 export function artifactLink(d: Deliverable): { href: string; label: string } {
   if (d.storyboard) return { href: `/storyboards/${d.storyboard.id}`, label: `Storyboard · ${d.storyboard.title}` };
-  if (d.card) return { href: `/boards/${d.card.column.board.id}`, label: `Card · ${d.card.title}` };
+  if (d.card?.column) return { href: `/boards/${d.card.column.board.id}`, label: `Card · ${d.card.title}` };
   return { href: `/projects/${d.project.id}`, label: `Project · ${d.project.name}` };
 }

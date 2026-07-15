@@ -32,18 +32,19 @@ export default async function TeamPage() {
         column: { select: { name: true, board: { select: { id: true, name: true } } } },
       },
     }),
-    prisma.checklistItem.findMany({
+    prisma.card.findMany({
       where: {
-        assigneeId: { not: null },
+        parentCardId: { not: null },
+        assignees: { some: {} },
         done: false,
-        card: { column: { board: { workspaceId: wsId, ...boardVis } } },
+        parentCard: { column: { board: { workspaceId: wsId, ...boardVis } } },
       },
       select: {
         id: true,
-        text: true,
+        title: true,
         dueDate: true,
-        assigneeId: true,
-        card: { select: { id: true, title: true, column: { select: { name: true, board: { select: { id: true, name: true } } } } } },
+        assignees: { select: { userId: true } },
+        parentCard: { select: { id: true, title: true, column: { select: { name: true, board: { select: { id: true, name: true } } } } } },
       },
     }),
   ]);
@@ -59,20 +60,20 @@ export default async function TeamPage() {
         id: c.id,
         title: c.title,
         dueDate: c.dueDate ? c.dueDate.toISOString() : null,
-        boardId: c.column.board.id,
-        boardName: c.column.board.name,
-        columnName: c.column.name,
+        boardId: c.column!.board.id,
+        boardName: c.column!.board.name,
+        columnName: c.column!.name,
       })),
     subtasks: subtasks
-      .filter((s) => s.assigneeId === m.user.id)
+      .filter((s) => s.assignees.some((a) => a.userId === m.user.id))
       .map((s) => ({
         id: s.id,
-        text: s.text,
+        text: s.title,
         dueDate: s.dueDate ? s.dueDate.toISOString() : null,
-        cardId: s.card.id,
-        cardTitle: s.card.title,
-        boardId: s.card.column.board.id,
-        boardName: s.card.column.board.name,
+        cardId: s.parentCard!.id,
+        cardTitle: s.parentCard!.title,
+        boardId: s.parentCard!.column!.board.id,
+        boardName: s.parentCard!.column!.board.name,
       })),
   }));
 

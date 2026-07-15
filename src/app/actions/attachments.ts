@@ -21,7 +21,7 @@ async function cardWorkspace(cardId: string) {
   const card = await getCardForUser(cardId);
   if (!card) return null;
   const board = await prisma.board.findUnique({
-    where: { id: card.column.boardId },
+    where: { id: card.boardId },
     select: { id: true, workspaceId: true },
   });
   return board ? { boardId: board.id, workspaceId: board.workspaceId } : null;
@@ -97,10 +97,11 @@ export async function deleteAttachment(attachmentId: string) {
   if (!user) return { error: "Unauthorized." };
   const att = await prisma.attachment.findUnique({
     where: { id: attachmentId },
-    select: { id: true, storageKey: true, cardId: true, card: { select: { column: { select: { boardId: true } } } } },
+    select: { id: true, storageKey: true, cardId: true },
   });
-  if (!att || !(await getCardForUser(att.cardId))) return { error: "Not found." };
+  const card = att ? await getCardForUser(att.cardId) : null;
+  if (!att || !card) return { error: "Not found." };
   await deleteObject(att.storageKey);
   await prisma.attachment.delete({ where: { id: attachmentId } });
-  revalidatePath(boardPath(att.card.column.boardId));
+  revalidatePath(boardPath(card.boardId));
 }

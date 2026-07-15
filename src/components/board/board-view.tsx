@@ -77,11 +77,32 @@ export function BoardView({
   const pathname = usePathname();
   // Seeds from ?card=<id> so links from elsewhere (e.g. My Work's subtasks
   // section) land straight on the right card's drawer, not just the board.
-  const [openCardId, setOpenCardId] = useState<string | null>(() => searchParams.get("card"));
+  // The stack lets a subtask's drawer open "on top of" its parent's: opening
+  // a top-level card resets the stack, opening/returning to a subtask id
+  // pushes/pops it — nesting is capped at one level so the stack never grows
+  // past 2 entries in practice.
+  const [cardStack, setCardStack] = useState<string[]>(() => {
+    const c = searchParams.get("card");
+    return c ? [c] : [];
+  });
+  const openCardId = cardStack.length > 0 ? cardStack[cardStack.length - 1] : null;
   const [, startTransition] = useTransition();
 
+  function openCard(cardId: string) {
+    setCardStack([cardId]);
+  }
+
+  function navigateCard(cardId: string) {
+    setCardStack((prev) => {
+      const idx = prev.indexOf(cardId);
+      // already in the stack (e.g. the subtask's "back to parent" link) -> pop back to it
+      if (idx >= 0) return prev.slice(0, idx + 1);
+      return [...prev, cardId];
+    });
+  }
+
   function closeDrawer() {
-    setOpenCardId(null);
+    setCardStack([]);
     if (searchParams.get("card")) router.replace(pathname, { scroll: false });
   }
 
@@ -315,7 +336,7 @@ export function BoardView({
               dragDisabled={filtersActive}
               onAddCard={handleAddCard}
               onDeleteCard={handleDeleteCard}
-              onOpenCard={setOpenCardId}
+              onOpenCard={openCard}
               onRename={handleRenameColumn}
               onDelete={handleDeleteColumn}
               onMove={handleMoveColumn}
@@ -333,6 +354,7 @@ export function BoardView({
           onClose={closeDrawer}
           onPatch={patchCard}
           onDeleted={handleDeleteCard}
+          onNavigate={navigateCard}
         />
       )}
     </div>

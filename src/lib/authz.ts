@@ -121,13 +121,31 @@ export async function getColumnForUser(columnId: string) {
   });
 }
 
+// A card's columnId is null when it's a subtask (see Card.parentCardId) — access
+// resolves through the parent card's column instead, one hop only (subtasks can't
+// nest further, so this never needs to recurse).
 export async function getCardForUser(cardId: string) {
   const ctx = await getAccessContext();
   if (!ctx) return null;
-  return prisma.card.findFirst({
-    where: { id: cardId, column: { board: { workspace: ownedByUser(ctx.userId), ...boardAccessOR(ctx) } } },
-    select: { id: true, columnId: true, column: { select: { boardId: true } } },
+  const card = await prisma.card.findFirst({
+    where: {
+      id: cardId,
+      OR: [
+        { column: { board: { workspace: ownedByUser(ctx.userId), ...boardAccessOR(ctx) } } },
+        { parentCard: { column: { board: { workspace: ownedByUser(ctx.userId), ...boardAccessOR(ctx) } } } },
+      ],
+    },
+    select: {
+      id: true,
+      columnId: true,
+      parentCardId: true,
+      column: { select: { boardId: true } },
+      parentCard: { select: { column: { select: { boardId: true } } } },
+    },
   });
+  if (!card) return null;
+  const boardId = card.column?.boardId ?? card.parentCard!.column!.boardId;
+  return { id: card.id, columnId: card.columnId, parentCardId: card.parentCardId, boardId };
 }
 
 // ── Projects ─────────────────────────────────────────────────────────────────

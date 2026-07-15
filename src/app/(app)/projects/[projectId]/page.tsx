@@ -137,7 +137,7 @@ export default async function ProjectPage({ params }: { params: Promise<{ projec
     type: d.type,
     status: d.status,
     phaseId: d.phaseId,
-    card: d.card
+    card: d.card?.column
       ? { id: d.card.id, title: d.card.title, boardId: d.card.column.board.id, boardName: d.card.column.board.name }
       : null,
     storyboard: d.storyboard ? { id: d.storyboard.id, title: d.storyboard.title } : null,
