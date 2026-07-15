@@ -108,7 +108,7 @@ export async function getBoardForUser(boardId: string) {
   if (!ctx) return null;
   return prisma.board.findFirst({
     where: { id: boardId, workspace: ownedByUser(ctx.userId), ...boardAccessOR(ctx) },
-    select: { id: true, name: true, workspaceId: true },
+    select: { id: true, name: true, workspaceId: true, cardKeyPrefix: true },
   });
 }
 

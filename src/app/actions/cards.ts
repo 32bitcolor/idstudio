@@ -8,6 +8,7 @@ import { getBoardForUser, getCardForUser, whiteboardVisibilityWhere } from "@/li
 import { positionBetween } from "@/lib/ordering";
 import { enqueueEmail } from "@/lib/queues";
 import { subtaskAssigned } from "@/lib/email-templates";
+import { nextCardKeySeq } from "@/app/actions/boards";
 
 const Hex = z.string().regex(/^#[0-9a-fA-F]{6}$/, "Invalid color");
 const LabelName = z.string().trim().min(1).max(60);
@@ -31,7 +32,7 @@ export async function getCardDetail(cardId: string) {
 
   const board = await prisma.board.findUnique({
     where: { id: boardId },
-    select: { workspaceId: true },
+    select: { workspaceId: true, cardKeyPrefix: true },
   });
   if (!board) return null;
 
@@ -43,6 +44,7 @@ export async function getCardDetail(cardId: string) {
         title: true,
         description: true,
         dueDate: true,
+        keySeq: true,
         parentCardId: true,
         parentCard: { select: { id: true, title: true } },
         labels: { select: { labelId: true } },
@@ -50,7 +52,7 @@ export async function getCardDetail(cardId: string) {
         subtasks: {
           orderBy: { position: "asc" },
           select: {
-            id: true, title: true, done: true, dueDate: true,
+            id: true, title: true, done: true, dueDate: true, keySeq: true,
             assignees: { select: { userId: true } },
             _count: { select: { comments: true, attachments: true } },
           },
@@ -95,11 +97,13 @@ export async function getCardDetail(cardId: string) {
 
   return {
     boardId,
+    boardCardKeyPrefix: board.cardKeyPrefix,
     card: {
       id: card.id,
       title: card.title,
       description: card.description,
       dueDate: card.dueDate ? card.dueDate.toISOString() : null,
+      keySeq: card.keySeq,
       labelIds: card.labels.map((l) => l.labelId),
       assigneeIds: card.assignees.map((a) => a.userId),
     },
@@ -115,6 +119,7 @@ export async function getCardDetail(cardId: string) {
       title: s.title,
       done: s.done,
       dueDate: s.dueDate ? s.dueDate.toISOString() : null,
+      keySeq: s.keySeq,
       assigneeIds: s.assignees.map((a) => a.userId),
       commentCount: s._count.comments,
       attachmentCount: s._count.attachments,
@@ -283,14 +288,15 @@ export async function addSubtask(parentCardId: string, title: string) {
     orderBy: { position: "desc" },
     select: { position: true },
   });
+  const keySeq = await nextCardKeySeq(parent.boardId);
   const item = await prisma.card.create({
-    data: { parentCardId, title: parsed.data, position: positionBetween(last?.position ?? null, null) },
-    select: { id: true, title: true, done: true, dueDate: true },
+    data: { parentCardId, title: parsed.data, keySeq, position: positionBetween(last?.position ?? null, null) },
+    select: { id: true, title: true, done: true, dueDate: true, keySeq: true },
   });
   revalidatePath(boardPath(parent.boardId));
   return {
     item: {
-      id: item.id, title: item.title, done: item.done,
+      id: item.id, title: item.title, done: item.done, keySeq: item.keySeq,
       dueDate: item.dueDate ? item.dueDate.toISOString() : null,
       assigneeIds: [] as string[], commentCount: 0, attachmentCount: 0,
     },

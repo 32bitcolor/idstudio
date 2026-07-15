@@ -36,7 +36,7 @@ import { dueMeta, dueToneClass } from "@/lib/due";
 export type LabelT = { id: string; name: string; color: string };
 export type MemberT = { id: string; name: string | null; email: string };
 type SubtaskT = {
-  id: string; title: string; done: boolean; dueDate: string | null;
+  id: string; title: string; done: boolean; dueDate: string | null; keySeq: number | null;
   assigneeIds: string[]; commentCount: number; attachmentCount: number;
 };
 type AttachmentT = { id: string; fileName: string; mimeType: string; sizeBytes: number; createdAt: string };
@@ -81,6 +81,8 @@ export function CardDrawer({
   const [loadedFor, setLoadedFor] = useState<string | null>(null);
   const loading = loadedFor !== cardId;
   const [boardId, setBoardId] = useState("");
+  const [cardKeyPrefix, setCardKeyPrefix] = useState<string | null>(null);
+  const [keySeq, setKeySeq] = useState<number | null>(null);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState<string | null>(null);
   const [dueDate, setDueDate] = useState<string | null>(null); // ISO
@@ -106,6 +108,8 @@ export function CardDrawer({
     getCardDetail(cardId).then((d) => {
       if (!active || !d) return;
       setBoardId(d.boardId);
+      setCardKeyPrefix(d.boardCardKeyPrefix);
+      setKeySeq(d.card.keySeq);
       setTitle(d.card.title);
       setDescription(d.card.description);
       setDueDate(d.card.dueDate);
@@ -289,13 +293,20 @@ export function CardDrawer({
       >
         <SheetHeader className="flex-row items-start justify-between gap-2 space-y-0 border-b border-border px-4 py-3">
           <SheetTitle asChild>
-            <textarea
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              onBlur={saveTitle}
-              rows={1}
-              className="min-h-[2rem] flex-1 resize-none rounded bg-transparent px-1 text-base font-semibold outline-none hover:bg-hover focus:bg-hover"
-            />
+            <div className="flex-1">
+              {cardKeyPrefix && keySeq != null && (
+                <span className="block px-1 font-mono text-xs font-medium text-muted-foreground">
+                  {cardKeyPrefix}-{keySeq}
+                </span>
+              )}
+              <textarea
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                onBlur={saveTitle}
+                rows={1}
+                className="min-h-[2rem] w-full resize-none rounded bg-transparent px-1 text-base font-semibold outline-none hover:bg-hover focus:bg-hover"
+              />
+            </div>
           </SheetTitle>
           <SheetDescription className="sr-only">Card details</SheetDescription>
         </SheetHeader>
@@ -380,6 +391,7 @@ export function CardDrawer({
                     <SubtaskRow
                       key={item.id}
                       item={item}
+                      cardKeyPrefix={cardKeyPrefix}
                       members={members}
                       onToggleDone={() => toggleItem(item)}
                       onOpen={() => onNavigate?.(item.id)}
@@ -580,12 +592,14 @@ function AssigneePicker({
 
 function SubtaskRow({
   item,
+  cardKeyPrefix,
   members,
   onToggleDone,
   onOpen,
   onRemove,
 }: {
   item: SubtaskT;
+  cardKeyPrefix: string | null;
   members: MemberT[];
   onToggleDone: () => void;
   onOpen: () => void;
@@ -606,6 +620,11 @@ function SubtaskRow({
         onClick={onOpen}
         className={`flex-1 truncate text-left text-sm hover:underline ${item.done ? "text-foreground/40 line-through" : ""}`}
       >
+        {cardKeyPrefix && item.keySeq != null && (
+          <span className="mr-1.5 font-mono text-xs font-medium text-muted-foreground">
+            {cardKeyPrefix}-{item.keySeq}
+          </span>
+        )}
         {item.title}
       </button>
 

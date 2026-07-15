@@ -10,6 +10,12 @@ import { positionBetween, positionsAfter, positionForIndex } from "@/lib/orderin
 
 const Name = z.string().trim().min(1, "Required").max(120);
 const Title = z.string().trim().min(1, "Required").max(280);
+// Card key prefix, e.g. "WP" -> cards are labeled "WP-1", "WP-2", ...
+const CardKeyPrefix = z
+  .string()
+  .trim()
+  .toUpperCase()
+  .regex(/^[A-Z][A-Z0-9]{1,7}$/, "2-8 letters/numbers, starting with a letter");
 
 const DEFAULT_COLUMNS = ["To do", "In progress", "Done"];
 
@@ -26,17 +32,55 @@ export async function createBoard(formData: FormData): Promise<void> {
   const parsed = Name.safeParse(formData.get("name"));
   if (!parsed.success) return; // the input is `required`; empty names are a no-op
 
+  // The prefix is optional — boards created without one just never label cards.
+  const rawPrefix = formData.get("cardKeyPrefix");
+  const prefixParsed = typeof rawPrefix === "string" && rawPrefix.trim() ? CardKeyPrefix.safeParse(rawPrefix) : null;
+
   const positions = positionsAfter(null, DEFAULT_COLUMNS.length);
   const board = await prisma.board.create({
     data: {
       workspaceId: membership.workspaceId,
       name: parsed.data,
+      cardKeyPrefix: prefixParsed?.success ? prefixParsed.data : null,
       columns: { create: DEFAULT_COLUMNS.map((name, i) => ({ name, position: positions[i] })) },
     },
     select: { id: true },
   });
 
   redirect(boardPath(board.id));
+}
+
+/** Set or clear a board's card-key prefix (null/blank clears it — existing
+ * card keys are left as-is, only new cards stop getting one). */
+export async function setBoardCardKeyPrefix(boardId: string, prefix: string) {
+  const board = await getBoardForUser(boardId);
+  if (!board) return { error: "Board not found." };
+  if (!prefix.trim()) {
+    await prisma.board.update({ where: { id: boardId }, data: { cardKeyPrefix: null } });
+    revalidatePath(boardPath(boardId));
+    return { cardKeyPrefix: null };
+  }
+  const parsed = CardKeyPrefix.safeParse(prefix);
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid prefix." };
+  await prisma.board.update({ where: { id: boardId }, data: { cardKeyPrefix: parsed.data } });
+  revalidatePath(boardPath(boardId));
+  return { cardKeyPrefix: parsed.data };
+}
+
+/** Claim the next card key number for a board, or null if it has no prefix
+ * set (checked first so boards without a prefix never burn through the
+ * sequence — otherwise adding a prefix later would start mid-way instead of
+ * at 1). The increment itself is a single atomic UPDATE, safe under
+ * concurrent card creation. Shared by top-level cards and subtasks alike. */
+export async function nextCardKeySeq(boardId: string): Promise<number | null> {
+  const board = await prisma.board.findUnique({ where: { id: boardId }, select: { cardKeyPrefix: true } });
+  if (!board?.cardKeyPrefix) return null;
+  const updated = await prisma.board.update({
+    where: { id: boardId },
+    data: { cardKeySeq: { increment: 1 } },
+    select: { cardKeySeq: true },
+  });
+  return updated.cardKeySeq;
 }
 
 export async function renameBoard(boardId: string, name: string) {
@@ -120,9 +164,10 @@ export async function createCard(columnId: string, title: string) {
     orderBy: { position: "desc" },
     select: { position: true },
   });
+  const keySeq = await nextCardKeySeq(column.boardId);
   const card = await prisma.card.create({
-    data: { columnId, title: parsed.data, position: positionBetween(last?.position ?? null, null) },
-    select: { id: true, columnId: true, title: true, description: true, position: true },
+    data: { columnId, title: parsed.data, keySeq, position: positionBetween(last?.position ?? null, null) },
+    select: { id: true, columnId: true, title: true, description: true, position: true, keySeq: true },
   });
   revalidatePath(boardPath(column.boardId));
   return { card };

@@ -34,6 +34,7 @@ import {
   moveCard,
   renameBoard,
   deleteBoard,
+  setBoardCardKeyPrefix,
 } from "@/app/actions/boards";
 import { CardDrawer, type CardFacePatch } from "@/components/board/card-drawer";
 import { FilterBar, type DueFilter } from "@/components/board/filter-bar";
@@ -53,6 +54,7 @@ type Card = {
   description: string | null;
   position: string;
   dueDate: string | null;
+  keySeq: number | null;
   labels: Label[];
   assignees: Member[];
   checklist: { total: number; done: number };
@@ -64,10 +66,12 @@ type Column = { id: string; name: string; position: string; cards: Card[] };
 export function BoardView({
   boardId,
   boardName,
+  cardKeyPrefix,
   initialColumns,
 }: {
   boardId: string;
   boardName: string;
+  cardKeyPrefix: string | null;
   initialColumns: Column[];
 }) {
   const [columns, setColumns] = useState<Column[]>(initialColumns);
@@ -249,6 +253,7 @@ export function BoardView({
         description: res.card.description,
         position: res.card.position,
         dueDate: null,
+        keySeq: res.card.keySeq,
         labels: [],
         assignees: [],
         checklist: { total: 0, done: 0 },
@@ -300,7 +305,7 @@ export function BoardView({
 
   return (
     <div className="flex h-full min-h-screen flex-col">
-      <BoardHeader boardId={boardId} boardName={boardName} />
+      <BoardHeader boardId={boardId} boardName={boardName} cardKeyPrefix={cardKeyPrefix} />
 
       <FilterBar
         labels={availableLabels}
@@ -331,6 +336,7 @@ export function BoardView({
             <ColumnView
               key={col.id}
               column={col}
+              cardKeyPrefix={cardKeyPrefix}
               canMoveLeft={i > 0}
               canMoveRight={i < filteredColumns.length - 1}
               dragDisabled={filtersActive}
@@ -345,7 +351,7 @@ export function BoardView({
           <AddColumn onAdd={handleAddColumn} />
         </div>
 
-        <DragOverlay>{activeCard ? <CardShell card={activeCard} dragging /> : null}</DragOverlay>
+        <DragOverlay>{activeCard ? <CardShell card={activeCard} cardKeyPrefix={cardKeyPrefix} dragging /> : null}</DragOverlay>
       </DndContext>
 
       {openCardId && (
@@ -361,10 +367,25 @@ export function BoardView({
   );
 }
 
-function BoardHeader({ boardId, boardName }: { boardId: string; boardName: string }) {
+function BoardHeader({
+  boardId,
+  boardName,
+  cardKeyPrefix,
+}: {
+  boardId: string;
+  boardName: string;
+  cardKeyPrefix: string | null;
+}) {
   const [name, setName] = useState(boardName);
+  const [prefix, setPrefix] = useState(cardKeyPrefix ?? "");
   const [, startTransition] = useTransition();
   useSetPageTitle(name);
+
+  function commitPrefix() {
+    const next = prefix.trim().toUpperCase();
+    setPrefix(next);
+    if (next !== (cardKeyPrefix ?? "")) startTransition(() => void setBoardCardKeyPrefix(boardId, next));
+  }
 
   return (
     <header className="flex items-center justify-between gap-4 px-6 py-5">
@@ -376,6 +397,17 @@ function BoardHeader({ boardId, boardName }: { boardId: string; boardName: strin
             if (name.trim() && name !== boardName) startTransition(() => void renameBoard(boardId, name));
           }}
           ariaLabel="Board name"
+        />
+        <input
+          aria-label="Card key prefix"
+          value={prefix}
+          onChange={(e) => setPrefix(e.target.value.toUpperCase())}
+          onBlur={commitPrefix}
+          onKeyDown={(e) => e.key === "Enter" && (e.target as HTMLInputElement).blur()}
+          placeholder="Prefix"
+          maxLength={8}
+          className="w-20 shrink-0 rounded-md border border-dashed border-border-strong bg-transparent px-2 py-1 text-center text-xs font-medium tracking-wide text-muted-foreground outline-none hover:bg-hover focus:border-solid focus:bg-hover"
+          title="Card key prefix — e.g. WP labels cards WP-1, WP-2…"
         />
       </div>
       <ConfirmDelete
@@ -399,6 +431,7 @@ function BoardHeader({ boardId, boardName }: { boardId: string; boardName: strin
 
 function ColumnView({
   column,
+  cardKeyPrefix,
   canMoveLeft,
   canMoveRight,
   dragDisabled,
@@ -410,6 +443,7 @@ function ColumnView({
   onMove,
 }: {
   column: Column;
+  cardKeyPrefix: string | null;
   canMoveLeft: boolean;
   canMoveRight: boolean;
   dragDisabled: boolean;
@@ -475,6 +509,7 @@ function ColumnView({
             <SortableCard
               key={card.id}
               card={card}
+              cardKeyPrefix={cardKeyPrefix}
               disabled={dragDisabled}
               onDelete={onDeleteCard}
               onOpen={onOpenCard}
@@ -489,11 +524,13 @@ function ColumnView({
 
 function SortableCard({
   card,
+  cardKeyPrefix,
   disabled,
   onDelete,
   onOpen,
 }: {
   card: Card;
+  cardKeyPrefix: string | null;
   disabled: boolean;
   onDelete: (id: string) => void;
   onOpen: (id: string) => void;
@@ -510,7 +547,7 @@ function SortableCard({
   };
   return (
     <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
-      <CardShell card={card} onDelete={() => onDelete(card.id)} onOpen={() => onOpen(card.id)} />
+      <CardShell card={card} cardKeyPrefix={cardKeyPrefix} onDelete={() => onDelete(card.id)} onOpen={() => onOpen(card.id)} />
     </div>
   );
 }
@@ -537,11 +574,13 @@ function dueInfo(iso: string) {
 
 function CardShell({
   card,
+  cardKeyPrefix,
   onDelete,
   onOpen,
   dragging,
 }: {
   card: Card;
+  cardKeyPrefix: string | null;
   onDelete?: () => void;
   onOpen?: () => void;
   dragging?: boolean;
@@ -562,7 +601,14 @@ function CardShell({
         </div>
       )}
       <div className="flex items-start justify-between gap-2">
-        <span className="whitespace-pre-wrap break-words">{card.title}</span>
+        <span className="whitespace-pre-wrap break-words">
+          {cardKeyPrefix && card.keySeq != null && (
+            <span className="mr-1.5 font-mono text-xs font-medium text-muted-foreground">
+              {cardKeyPrefix}-{card.keySeq}
+            </span>
+          )}
+          {card.title}
+        </span>
         {onDelete && (
           <button
             onPointerDown={(e) => e.stopPropagation()}

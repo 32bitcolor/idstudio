@@ -26,6 +26,7 @@ export default async function BoardPage({ params }: { params: Promise<{ boardId:
           description: true,
           position: true,
           dueDate: true,
+          keySeq: true,
           labels: { select: { label: { select: { id: true, name: true, color: true } } } },
           assignees: { select: { user: { select: { id: true, name: true, email: true } } } },
           subtasks: { select: { done: true } },
@@ -45,6 +46,7 @@ export default async function BoardPage({ params }: { params: Promise<{ boardId:
       description: card.description,
       position: card.position,
       dueDate: card.dueDate ? card.dueDate.toISOString() : null,
+      keySeq: card.keySeq,
       labels: card.labels.map((l) => l.label),
       assignees: card.assignees.map((a) => a.user),
       checklist: { total: card.subtasks.length, done: card.subtasks.filter((i) => i.done).length },
@@ -53,5 +55,12 @@ export default async function BoardPage({ params }: { params: Promise<{ boardId:
     })),
   }));
 
-  return <BoardView boardId={boardId} boardName={board.name} initialColumns={columns} />;
+  return (
+    <BoardView
+      boardId={boardId}
+      boardName={board.name}
+      cardKeyPrefix={board.cardKeyPrefix}
+      initialColumns={columns}
+    />
+  );
 }

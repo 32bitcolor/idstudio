@@ -68,6 +68,14 @@ export function QuickCreate() {
               </DialogDescription>
               <form action={active.action} className="flex flex-col gap-3">
                 <Input name={active.field} required autoFocus maxLength={200} placeholder={active.placeholder} />
+                {active.key === "board" && (
+                  <Input
+                    name="cardKeyPrefix"
+                    maxLength={8}
+                    placeholder="Card prefix (optional, e.g. WP)"
+                    className="uppercase placeholder:normal-case"
+                  />
+                )}
                 {active.key === "project" && (
                   <input type="hidden" name="methodology" value="ADDIE" />
                 )}

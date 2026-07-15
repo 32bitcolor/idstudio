@@ -34,6 +34,12 @@ export default async function BoardsPage() {
 
       <form action={createBoard} className="mt-6 flex flex-wrap gap-2">
         <Input name="name" required maxLength={120} placeholder="New board name…" className="w-72" />
+        <Input
+          name="cardKeyPrefix"
+          maxLength={8}
+          placeholder="Card prefix (optional, e.g. WP)"
+          className="w-56 uppercase placeholder:normal-case"
+        />
         <Button type="submit">
           <Plus className="size-4" /> Create board
         </Button>
