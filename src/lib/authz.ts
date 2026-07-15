@@ -115,6 +115,35 @@ export async function getBoardForUser(boardId: string) {
   });
 }
 
+/** Resolve a card's short key ("WP-5") to its board + card, for the /c/[key]
+ * short-link route. Prefix match is case-insensitive; access is the same
+ * group-based visibility as everything else. */
+export async function resolveCardKey(prefix: string, keySeq: number) {
+  const ctx = await getAccessContext();
+  if (!ctx) return null;
+  const board = await prisma.board.findFirst({
+    where: {
+      cardKeyPrefix: { equals: prefix, mode: "insensitive" },
+      workspace: ownedByUser(ctx.userId),
+      ...boardAccessOR(ctx),
+    },
+    select: { id: true },
+  });
+  if (!board) return null;
+  const card = await prisma.card.findFirst({
+    where: {
+      keySeq,
+      OR: [
+        { columnId: { not: null }, column: { boardId: board.id } },
+        { parentCardId: { not: null }, parentCard: { column: { boardId: board.id } } },
+      ],
+    },
+    select: { id: true },
+  });
+  if (!card) return null;
+  return { boardId: board.id, cardId: card.id };
+}
+
 export async function getColumnForUser(columnId: string) {
   const ctx = await getAccessContext();
   if (!ctx) return null;

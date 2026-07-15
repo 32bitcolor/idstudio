@@ -378,13 +378,23 @@ function BoardHeader({
 }) {
   const [name, setName] = useState(boardName);
   const [prefix, setPrefix] = useState(cardKeyPrefix ?? "");
+  const [prefixError, setPrefixError] = useState<string | null>(null);
   const [, startTransition] = useTransition();
   useSetPageTitle(name);
 
   function commitPrefix() {
     const next = prefix.trim().toUpperCase();
     setPrefix(next);
-    if (next !== (cardKeyPrefix ?? "")) startTransition(() => void setBoardCardKeyPrefix(boardId, next));
+    if (next === (cardKeyPrefix ?? "")) return;
+    startTransition(async () => {
+      const res = await setBoardCardKeyPrefix(boardId, next);
+      if ("error" in res && res.error) {
+        setPrefixError(res.error);
+        setPrefix(cardKeyPrefix ?? ""); // revert — the server rejected it
+      } else {
+        setPrefixError(null);
+      }
+    });
   }
 
   return (
@@ -398,17 +408,32 @@ function BoardHeader({
           }}
           ariaLabel="Board name"
         />
-        <input
-          aria-label="Card key prefix"
-          value={prefix}
-          onChange={(e) => setPrefix(e.target.value.toUpperCase())}
-          onBlur={commitPrefix}
-          onKeyDown={(e) => e.key === "Enter" && (e.target as HTMLInputElement).blur()}
-          placeholder="Prefix"
-          maxLength={8}
-          className="w-20 shrink-0 rounded-md border border-dashed border-border-strong bg-transparent px-2 py-1 text-center text-xs font-medium tracking-wide text-muted-foreground outline-none hover:bg-hover focus:border-solid focus:bg-hover"
-          title="Card key prefix — e.g. WP labels cards WP-1, WP-2…"
-        />
+        <div className="flex shrink-0 flex-col">
+          <div className="flex items-center gap-1.5">
+            <label htmlFor="card-key-prefix" className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+              Card prefix
+            </label>
+            {!cardKeyPrefix && !prefix && (
+              <span className="text-[10px] text-muted-foreground">— cards get labels like WP-1 once set</span>
+            )}
+          </div>
+          <input
+            id="card-key-prefix"
+            value={prefix}
+            onChange={(e) => {
+              setPrefix(e.target.value.toUpperCase());
+              setPrefixError(null);
+            }}
+            onBlur={commitPrefix}
+            onKeyDown={(e) => e.key === "Enter" && (e.target as HTMLInputElement).blur()}
+            placeholder="e.g. WP"
+            maxLength={8}
+            className={`w-24 rounded-md border bg-surface px-2 py-1 text-sm font-medium tracking-wide outline-none hover:bg-hover focus:bg-hover ${
+              prefixError ? "border-destructive" : "border-border-strong"
+            }`}
+          />
+        </div>
+        {prefixError && <span className="text-xs text-destructive">{prefixError}</span>}
       </div>
       <ConfirmDelete
         title="Delete this board?"

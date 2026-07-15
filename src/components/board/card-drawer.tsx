@@ -102,6 +102,7 @@ export function CardDrawer({
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [currentUserId, setCurrentUserId] = useState("");
   const [isAdmin, setIsAdmin] = useState(false);
+  const [linkCopied, setLinkCopied] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -137,6 +138,15 @@ export function CardDrawer({
     if (!t) return;
     renameCard(cardId, t);
     onPatch(cardId, { title: t });
+  }
+
+  function copyShortLink() {
+    if (!cardKeyPrefix || keySeq == null) return;
+    const url = `${window.location.origin}/c/${cardKeyPrefix}-${keySeq}`;
+    navigator.clipboard.writeText(url).then(() => {
+      setLinkCopied(true);
+      setTimeout(() => setLinkCopied(false), 1500);
+    });
   }
 
   function saveDescription(json: string | null) {
@@ -295,9 +305,15 @@ export function CardDrawer({
           <SheetTitle asChild>
             <div className="flex-1">
               {cardKeyPrefix && keySeq != null && (
-                <span className="block px-1 font-mono text-xs font-medium text-muted-foreground">
+                <button
+                  type="button"
+                  onClick={copyShortLink}
+                  title="Copy shareable link"
+                  className="block px-1 font-mono text-xs font-medium text-muted-foreground hover:text-foreground hover:underline"
+                >
                   {cardKeyPrefix}-{keySeq}
-                </span>
+                  {linkCopied ? " · Copied!" : ""}
+                </button>
               )}
               <textarea
                 value={title}

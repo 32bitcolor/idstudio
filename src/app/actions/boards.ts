@@ -35,13 +35,24 @@ export async function createBoard(formData: FormData): Promise<void> {
   // The prefix is optional — boards created without one just never label cards.
   const rawPrefix = formData.get("cardKeyPrefix");
   const prefixParsed = typeof rawPrefix === "string" && rawPrefix.trim() ? CardKeyPrefix.safeParse(rawPrefix) : null;
+  let cardKeyPrefix: string | null = prefixParsed?.success ? prefixParsed.data : null;
+  if (cardKeyPrefix) {
+    const taken = await prisma.board.findFirst({
+      where: { workspaceId: membership.workspaceId, cardKeyPrefix },
+      select: { id: true },
+    });
+    // Another board already claimed it — the board still gets created, just
+    // without a prefix (the raw create form has no field-error UI to explain
+    // why; the board header's prefix editor does, so they can retry there).
+    if (taken) cardKeyPrefix = null;
+  }
 
   const positions = positionsAfter(null, DEFAULT_COLUMNS.length);
   const board = await prisma.board.create({
     data: {
       workspaceId: membership.workspaceId,
       name: parsed.data,
-      cardKeyPrefix: prefixParsed?.success ? prefixParsed.data : null,
+      cardKeyPrefix,
       columns: { create: DEFAULT_COLUMNS.map((name, i) => ({ name, position: positions[i] })) },
     },
     select: { id: true },
@@ -50,8 +61,10 @@ export async function createBoard(formData: FormData): Promise<void> {
   redirect(boardPath(board.id));
 }
 
-/** Set or clear a board's card-key prefix (null/blank clears it — existing
- * card keys are left as-is, only new cards stop getting one). */
+/** Set or clear a board's card-key prefix (blank clears it — existing card
+ * keys are left as-is, only new cards stop getting one). Setting a prefix
+ * retroactively assigns keys to any of the board's cards/subtasks that
+ * don't have one yet (in creation order), so it isn't just new cards. */
 export async function setBoardCardKeyPrefix(boardId: string, prefix: string) {
   const board = await getBoardForUser(boardId);
   if (!board) return { error: "Board not found." };
@@ -62,9 +75,47 @@ export async function setBoardCardKeyPrefix(boardId: string, prefix: string) {
   }
   const parsed = CardKeyPrefix.safeParse(prefix);
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid prefix." };
+
+  if (parsed.data !== board.cardKeyPrefix) {
+    const taken = await prisma.board.findFirst({
+      where: { workspaceId: board.workspaceId, cardKeyPrefix: parsed.data, id: { not: boardId } },
+      select: { id: true },
+    });
+    if (taken) return { error: `"${parsed.data}" is already used by another board in this workspace.` };
+  }
+
   await prisma.board.update({ where: { id: boardId }, data: { cardKeyPrefix: parsed.data } });
+  await backfillCardKeys(boardId);
   revalidatePath(boardPath(boardId));
   return { cardKeyPrefix: parsed.data };
+}
+
+/** Assign keys to any of a board's cards/subtasks that don't have one yet
+ * (creation order), so setting a prefix on a board that already has cards
+ * labels them immediately instead of only labeling cards created after. */
+async function backfillCardKeys(boardId: string) {
+  const cards = await prisma.card.findMany({
+    where: {
+      keySeq: null,
+      OR: [
+        { columnId: { not: null }, column: { boardId } },
+        { parentCardId: { not: null }, parentCard: { column: { boardId } } },
+      ],
+    },
+    orderBy: { createdAt: "asc" },
+    select: { id: true },
+  });
+  if (cards.length === 0) return;
+
+  await prisma.$transaction(async (tx) => {
+    const current = await tx.board.findUniqueOrThrow({ where: { id: boardId }, select: { cardKeySeq: true } });
+    let seq = current.cardKeySeq;
+    for (const c of cards) {
+      seq += 1;
+      await tx.card.update({ where: { id: c.id }, data: { keySeq: seq } });
+    }
+    await tx.board.update({ where: { id: boardId }, data: { cardKeySeq: seq } });
+  });
 }
 
 /** Claim the next card key number for a board, or null if it has no prefix
