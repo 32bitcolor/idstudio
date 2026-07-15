@@ -304,7 +304,7 @@ export function BoardView({
   }
 
   return (
-    <div className="flex h-full min-h-screen flex-col">
+    <div className="flex h-full min-h-screen min-w-0 flex-col">
       <BoardHeader boardId={boardId} boardName={boardName} cardKeyPrefix={cardKeyPrefix} />
 
       <FilterBar
@@ -331,7 +331,7 @@ export function BoardView({
         onDragOver={onDragOver}
         onDragEnd={onDragEnd}
       >
-        <div className="flex flex-1 items-start gap-4 overflow-x-auto px-6 pb-10">
+        <div className="flex min-w-0 flex-1 items-start gap-4 overflow-x-auto px-6 pb-10">
           {filteredColumns.map((col, i) => (
             <ColumnView
               key={col.id}
@@ -398,23 +398,25 @@ function BoardHeader({
   }
 
   return (
-    <header className="flex items-center justify-between gap-4 px-6 py-5">
-      <div className="flex min-w-0 flex-1 items-center gap-3">
-        <InlineTitle
-          value={name}
-          onChange={setName}
-          onCommit={() => {
-            if (name.trim() && name !== boardName) startTransition(() => void renameBoard(boardId, name));
-          }}
-          ariaLabel="Board name"
-        />
+    <header className="flex flex-wrap items-center justify-between gap-4 px-6 py-5">
+      <div className="flex min-w-0 flex-1 flex-wrap items-center gap-3">
+        <div className="min-w-0 flex-1">
+          <InlineTitle
+            value={name}
+            onChange={setName}
+            onCommit={() => {
+              if (name.trim() && name !== boardName) startTransition(() => void renameBoard(boardId, name));
+            }}
+            ariaLabel="Board name"
+          />
+        </div>
         <div className="flex shrink-0 flex-col">
           <div className="flex items-center gap-1.5">
             <label htmlFor="card-key-prefix" className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
               Card prefix
             </label>
             {!cardKeyPrefix && !prefix && (
-              <span className="text-[10px] text-muted-foreground">— cards get labels like WP-1 once set</span>
+              <span className="hidden text-[10px] text-muted-foreground lg:inline">— cards get labels like WP-1 once set</span>
             )}
           </div>
           <input
@@ -433,7 +435,7 @@ function BoardHeader({
             }`}
           />
         </div>
-        {prefixError && <span className="text-xs text-destructive">{prefixError}</span>}
+        {prefixError && <span className="shrink-0 text-xs text-destructive">{prefixError}</span>}
       </div>
       <ConfirmDelete
         title="Delete this board?"
@@ -444,7 +446,7 @@ function BoardHeader({
           <Button
             variant="outline"
             size="sm"
-            className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+            className="shrink-0 text-destructive hover:bg-destructive/10 hover:text-destructive"
           >
             Delete board
           </Button>

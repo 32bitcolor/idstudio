@@ -85,7 +85,7 @@ export default async function AppLayout({
               <QuickCreate />
             </div>
           </header>
-          <div className="flex-1">{children}</div>
+          <div className="min-w-0 flex-1">{children}</div>
         </PageTitleProvider>
       </SidebarInset>
     </SidebarProvider>
