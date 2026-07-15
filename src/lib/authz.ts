@@ -159,6 +159,7 @@ export async function getIntakeRequestForUser(requestId: string) {
   if (!ctx) return null;
   return prisma.intakeRequest.findFirst({
     where: { id: requestId, workspace: ownedByUser(ctx.userId) },
+    include: { workspace: { select: { name: true } } },
   });
 }
 

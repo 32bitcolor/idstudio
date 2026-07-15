@@ -9,6 +9,13 @@ import { getIntakeRequestForUser } from "@/lib/authz";
 import { createProjectForWorkspace } from "@/lib/projects";
 import { checkIntakeThrottle } from "@/lib/intake-throttle";
 import { ticketLabel } from "@/lib/intake";
+import { enqueueEmail } from "@/lib/queues";
+import {
+  intakeSubmittedConfirmation,
+  newIntakeRequestForAdmin,
+  intakeApprovedNotification,
+  intakeRejectedNotification,
+} from "@/lib/email-templates";
 
 const Requester = z.object({
   name: z.string().trim().min(1, "Your name is required").max(140),
@@ -48,7 +55,10 @@ export async function submitIntakeRequest(
   const allowed = await checkIntakeThrottle(workspaceId);
   if (!allowed) return { error: "Too many requests from this network — please try again later." };
 
-  const workspace = await prisma.workspace.findUnique({ where: { id: workspaceId }, select: { intakeEnabled: true } });
+  const workspace = await prisma.workspace.findUnique({
+    where: { id: workspaceId },
+    select: { name: true, intakeEnabled: true },
+  });
   if (!workspace?.intakeEnabled) return { error: "This intake form is not currently accepting requests." };
 
   const requester = Requester.safeParse({ name: formData.get("name"), email: formData.get("email") });
@@ -96,8 +106,31 @@ export async function submitIntakeRequest(
     return { error: "Couldn't submit your request — please try again." };
   }
 
+  const ticket = ticketLabel(request.number);
+  const admins = await prisma.membership.findMany({
+    where: { workspaceId, role: Role.ADMIN },
+    select: { user: { select: { email: true } } },
+  });
+  await Promise.all([
+    enqueueEmail({
+      to: requester.data.email,
+      ...intakeSubmittedConfirmation({ ticket, title: input.data.title, workspaceName: workspace.name }),
+    }),
+    ...admins.map((m) =>
+      enqueueEmail({
+        to: m.user.email,
+        ...newIntakeRequestForAdmin({
+          ticket,
+          title: input.data.title,
+          requesterName: requester.data.name,
+          workspaceName: workspace.name,
+        }),
+      }),
+    ),
+  ]);
+
   revalidateIntake();
-  return { ok: true as const, ticket: ticketLabel(request.number) };
+  return { ok: true as const, ticket };
 }
 
 // ── Triage (authenticated) ──────────────────────────────────────────────────
@@ -158,6 +191,15 @@ export async function approveIntakeRequest(
     data: { status: "converted", convertedProjectId: project.id },
   });
 
+  await enqueueEmail({
+    to: request.requesterEmail,
+    ...intakeApprovedNotification({
+      ticket: ticketLabel(request.number),
+      title: request.title,
+      workspaceName: request.workspace.name,
+    }),
+  });
+
   revalidateIntake();
   revalidatePath("/projects");
   return { project };
@@ -169,10 +211,22 @@ export async function rejectIntakeRequest(
 ): Promise<{ error: string } | undefined> {
   const request = await getIntakeRequestForUser(requestId);
   if (!request) return { error: "Request not found." };
+  const rejectionReason = reason.trim() ? reason.trim().slice(0, 500) : null;
   await prisma.intakeRequest.update({
     where: { id: requestId },
-    data: { status: "rejected", rejectionReason: reason.trim() ? reason.trim().slice(0, 500) : null },
+    data: { status: "rejected", rejectionReason },
   });
+
+  await enqueueEmail({
+    to: request.requesterEmail,
+    ...intakeRejectedNotification({
+      ticket: ticketLabel(request.number),
+      title: request.title,
+      workspaceName: request.workspace.name,
+      reason: rejectionReason,
+    }),
+  });
+
   revalidateIntake();
 }
 

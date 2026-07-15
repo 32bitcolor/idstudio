@@ -1,5 +1,6 @@
 import "dotenv/config";
 import { Worker, Queue, type ConnectionOptions } from "bullmq";
+import { sendMail } from "../src/lib/mailer";
 
 // Background job runner. Phase 5 registers real LearnUpon sync jobs here; for
 // now it stays alive and confirms the app ⇄ Redis ⇄ worker topology works.
@@ -26,11 +27,26 @@ const worker = new Worker(
 worker.on("ready", () => console.log("[worker] ready — listening on queue 'lms-sync'"));
 worker.on("failed", (job, err) => console.error(`[worker] job ${job?.id} failed:`, err));
 
+// Intake notifications (new request -> admins, approved/rejected -> requester) —
+// see src/lib/queues.ts for the producer side that enqueues these.
+const emailWorker = new Worker(
+  "email",
+  async (job) => {
+    await sendMail(job.data);
+    return { ok: true };
+  },
+  { connection },
+);
+
+emailWorker.on("ready", () => console.log("[worker] ready — listening on queue 'email'"));
+emailWorker.on("failed", (job, err) => console.error(`[worker] email job ${job?.id} failed:`, err));
+
 console.log("[worker] starting…");
 
 async function shutdown() {
   console.log("[worker] shutting down…");
   await worker.close();
+  await emailWorker.close();
   await lmsQueue.close();
   process.exit(0);
 }
