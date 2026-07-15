@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { ClipboardCheck, Columns3, Flag, Send, Shapes } from "lucide-react";
+import { ClipboardCheck, Columns3, Flag, ListChecks, Send, Shapes } from "lucide-react";
 
 import { prisma } from "@/lib/db";
 import { requireUser, getActiveMembership } from "@/lib/dal";
@@ -33,7 +33,7 @@ export default async function MyWorkPage() {
     whiteboardVisibilityWhere(),
   ]);
 
-  const [toReview, requested, cards, milestones, myWhiteboards] = await Promise.all([
+  const [toReview, requested, cards, subtasks, milestones, myWhiteboards] = await Promise.all([
     prisma.reviewCycle.findMany({
       where: {
         reviewerId: me.id,
@@ -66,6 +66,14 @@ export default async function MyWorkPage() {
       orderBy: [{ dueDate: "asc" }, { createdAt: "desc" }],
       select: { id: true, title: true, dueDate: true, column: { select: { name: true, board: { select: { id: true, name: true } } } } },
     }),
+    prisma.checklistItem.findMany({
+      where: { assigneeId: me.id, done: false, card: { column: { board: { workspaceId: wsId, ...boardVis } } } },
+      orderBy: [{ dueDate: "asc" }, { id: "desc" }],
+      select: {
+        id: true, text: true, dueDate: true,
+        card: { select: { id: true, title: true, column: { select: { name: true, board: { select: { id: true, name: true } } } } } },
+      },
+    }),
     prisma.milestone.findMany({
       where: { completedAt: null, dueDate: { not: null }, project: { workspaceId: wsId, ...projectVis } },
       orderBy: { dueDate: "asc" },
@@ -93,7 +101,7 @@ export default async function MyWorkPage() {
     link: artifactLink(r.deliverable),
   }));
 
-  const totalItems = inbox.length + requested.length + cards.length + milestones.length + myWhiteboards.length;
+  const totalItems = inbox.length + requested.length + cards.length + subtasks.length + milestones.length + myWhiteboards.length;
 
   if (totalItems === 0) {
     return (
@@ -101,7 +109,7 @@ export default async function MyWorkPage() {
         className="mt-4"
         icon={ClipboardCheck}
         title="You're all caught up"
-        description="No open reviews, assigned cards, upcoming milestones, or whiteboards right now."
+        description="No open reviews, assigned cards or subtasks, upcoming milestones, or whiteboards right now."
       />
     );
   }
@@ -166,6 +174,36 @@ export default async function MyWorkPage() {
                     <div className="truncate font-medium">{c.title}</div>
                     <div className="truncate text-sm text-muted-foreground">
                       {c.column.board.name} · {c.column.name}
+                    </div>
+                  </div>
+                  {due && <span className={`text-xs ${dueToneClass[due.tone]}`}>{due.label}</span>}
+                </Link>
+              );
+            })}
+          </Card>
+        )}
+      </section>
+
+      {/* My subtasks — assigned checklist items */}
+      <section>
+        <SectionHeader>My subtasks · {subtasks.length}</SectionHeader>
+        {subtasks.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No open subtasks are assigned to you.</p>
+        ) : (
+          <Card className="divide-y divide-border p-0">
+            {subtasks.map((s) => {
+              const due = dueMeta(s.dueDate);
+              return (
+                <Link
+                  key={s.id}
+                  href={`/boards/${s.card.column.board.id}?card=${s.card.id}`}
+                  className="flex flex-wrap items-center gap-3 px-5 py-3 hover:bg-muted/50"
+                >
+                  <ListChecks className="size-4 shrink-0 text-muted-foreground" />
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate font-medium">{s.text}</div>
+                    <div className="truncate text-sm text-muted-foreground">
+                      {s.card.column.board.name} · {s.card.title}
                     </div>
                   </div>
                   {due && <span className={`text-xs ${dueToneClass[due.tone]}`}>{due.label}</span>}

@@ -7,7 +7,7 @@ export function NotificationsBadge({ count }: { count: number }) {
     <Link
       href="/my-work"
       className="relative flex size-9 shrink-0 items-center justify-center rounded-lg border border-border bg-surface text-muted-foreground transition-colors hover:border-border-strong hover:text-foreground"
-      title={count > 0 ? `${count} review${count === 1 ? "" : "s"} awaiting your decision` : "My Work"}
+      title={count > 0 ? `${count} item${count === 1 ? "" : "s"} need${count === 1 ? "s" : ""} your attention` : "My Work"}
     >
       <Bell className="size-4" />
       {count > 0 && (

@@ -81,3 +81,22 @@ ${reason ? `<p>${esc(reason)}</p>` : ""}`,
     text: `Reference: ${ticket}\n"${title}" won't be moving forward with the ${workspaceName} team at this time.${reason ? `\n\n${reason}` : ""}`,
   };
 }
+
+export function subtaskAssigned(params: {
+  assigneeName: string;
+  subtaskText: string;
+  cardTitle: string;
+  boardName: string;
+}): Email {
+  const { assigneeName, subtaskText, cardTitle, boardName } = params;
+  return {
+    subject: `You were assigned a subtask on "${cardTitle}"`,
+    html: layout(
+      "New subtask assigned to you",
+      `<p>Hi ${esc(assigneeName)},</p>
+<p><strong>${esc(subtaskText)}</strong></p>
+<p>On card "${esc(cardTitle)}" in ${esc(boardName)}.</p>`,
+    ),
+    text: `Hi ${assigneeName},\n\n${subtaskText}\n\nOn card "${cardTitle}" in ${boardName}.`,
+  };
+}

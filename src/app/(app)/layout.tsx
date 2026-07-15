@@ -1,6 +1,6 @@
 import { requireUser, getActiveMembership } from "@/lib/dal";
 import { prisma } from "@/lib/db";
-import { projectVisibilityWhere } from "@/lib/authz";
+import { projectVisibilityWhere, boardVisibilityWhere } from "@/lib/authz";
 import { AppSidebar } from "@/components/app-shell/app-sidebar";
 import { Breadcrumbs, PageTitleProvider } from "@/components/app-shell/breadcrumbs";
 import { CommandPalette } from "@/components/app-shell/command-palette";
@@ -28,7 +28,7 @@ export default async function AppLayout({
 
   const isAdmin = membership?.role === "ADMIN";
 
-  const [awaitingReviewCount, needsTriageCount, updateStatus] = await Promise.all([
+  const [awaitingReviewCount, needsTriageCount, myOpenSubtasksCount, updateStatus] = await Promise.all([
     membership
       ? prisma.reviewCycle.count({
           where: {
@@ -41,6 +41,15 @@ export default async function AppLayout({
     membership
       ? prisma.intakeRequest.count({
           where: { workspaceId: membership.workspaceId, status: { in: ["submitted", "triaging"] } },
+        })
+      : Promise.resolve(0),
+    membership
+      ? prisma.checklistItem.count({
+          where: {
+            assigneeId: user.id,
+            done: false,
+            card: { column: { board: { workspaceId: membership.workspaceId, ...(await boardVisibilityWhere()) } } },
+          },
         })
       : Promise.resolve(0),
     isAdmin ? readUpdateStatus() : Promise.resolve(null),
@@ -67,7 +76,7 @@ export default async function AppLayout({
               {updateStatus && <UpdatePill count={updateStatus.behind} />}
               <CommandPalette />
               <IntakeBadge count={needsTriageCount} />
-              <NotificationsBadge count={awaitingReviewCount} />
+              <NotificationsBadge count={awaitingReviewCount + myOpenSubtasksCount} />
               <QuickCreate />
             </div>
           </header>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition, useMemo } from "react";
+import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import {
   DndContext,
   DragOverlay,
@@ -71,8 +72,18 @@ export function BoardView({
 }) {
   const [columns, setColumns] = useState<Column[]>(initialColumns);
   const [activeCard, setActiveCard] = useState<Card | null>(null);
-  const [openCardId, setOpenCardId] = useState<string | null>(null);
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
+  // Seeds from ?card=<id> so links from elsewhere (e.g. My Work's subtasks
+  // section) land straight on the right card's drawer, not just the board.
+  const [openCardId, setOpenCardId] = useState<string | null>(() => searchParams.get("card"));
   const [, startTransition] = useTransition();
+
+  function closeDrawer() {
+    setOpenCardId(null);
+    if (searchParams.get("card")) router.replace(pathname, { scroll: false });
+  }
 
   // ── Filters: a client-side view over the already-loaded cards ──
   const [fLabels, setFLabels] = useState<Set<string>>(new Set());
@@ -319,7 +330,7 @@ export function BoardView({
       {openCardId && (
         <CardDrawer
           cardId={openCardId}
-          onClose={() => setOpenCardId(null)}
+          onClose={closeDrawer}
           onPatch={patchCard}
           onDeleted={handleDeleteCard}
         />

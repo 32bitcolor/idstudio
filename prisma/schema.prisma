@@ -34,6 +34,7 @@ model User {
   whiteboards             Whiteboard[]
   submittedIntakeRequests IntakeRequest[]   @relation("IntakeRequester")
   assignedIntakeRequests  IntakeRequest[]   @relation("IntakeAssignee")
+  assignedSubtasks        ChecklistItem[]
 }
 
 model Workspace {
@@ -382,14 +383,18 @@ model AssessmentItemObjective {
 }
 
 model ChecklistItem {
-  id       String  @id @default(cuid())
-  cardId   String
-  text     String
-  done     Boolean @default(false)
-  position String
-  card     Card    @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  id         String    @id @default(cuid())
+  cardId     String
+  text       String
+  done       Boolean   @default(false)
+  position   String
+  assigneeId String?
+  dueDate    DateTime?
+  card       Card      @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  assignee   User?     @relation(fields: [assigneeId], references: [id], onDelete: SetNull)
 
   @@index([cardId, position])
+  @@index([assigneeId])
 }
 
 model Comment {
