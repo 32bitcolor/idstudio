@@ -1,5 +1,6 @@
 "use client";
 
+import { useTransition } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Check, ChevronsUpDown, LifeBuoy, LogOut, Settings, Users } from "lucide-react";
@@ -51,6 +52,7 @@ export function AppSidebar({
   activeWorkspaceId?: string | null;
 }) {
   const pathname = usePathname();
+  const [, startTransition] = useTransition();
   const initial = (userLabel || userEmail || "?").charAt(0).toUpperCase();
 
   return (
@@ -184,26 +186,25 @@ export function AppSidebar({
                     <DropdownMenuSeparator />
                     <DropdownMenuLabel className="text-xs text-muted-foreground">Workspaces</DropdownMenuLabel>
                     {workspaces.map((w) => (
-                      <form key={w.id} action={switchWorkspace.bind(null, w.id)}>
-                        <DropdownMenuItem asChild>
-                          <button type="submit" className="w-full cursor-pointer">
-                            <Check className={`size-4 ${w.id === activeWorkspaceId ? "opacity-100" : "opacity-0"}`} />
-                            <span className="truncate">{w.name}</span>
-                          </button>
-                        </DropdownMenuItem>
-                      </form>
+                      <DropdownMenuItem
+                        key={w.id}
+                        className="cursor-pointer"
+                        onSelect={() => startTransition(async () => { await switchWorkspace(w.id); })}
+                      >
+                        <Check className={`size-4 ${w.id === activeWorkspaceId ? "opacity-100" : "opacity-0"}`} />
+                        <span className="truncate">{w.name}</span>
+                      </DropdownMenuItem>
                     ))}
                   </>
                 )}
                 <DropdownMenuSeparator />
-                <form action={logout}>
-                  <DropdownMenuItem asChild>
-                    <button type="submit" className="w-full cursor-pointer">
-                      <LogOut className="size-4" />
-                      Sign out
-                    </button>
-                  </DropdownMenuItem>
-                </form>
+                <DropdownMenuItem
+                  className="cursor-pointer"
+                  onSelect={() => startTransition(async () => { await logout(); })}
+                >
+                  <LogOut className="size-4" />
+                  Sign out
+                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </SidebarMenuItem>
