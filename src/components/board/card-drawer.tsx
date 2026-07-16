@@ -215,11 +215,17 @@ export function CardDrawer({
     patchSubtasksFace(next);
   }
 
-  function removeItem(item: SubtaskT) {
+  async function removeItem(item: SubtaskT) {
+    const prev = subtasks;
     const next = subtasks.filter((i) => i.id !== item.id);
     setSubtasks(next);
-    deleteSubtask(item.id);
     patchSubtasksFace(next);
+    // Revert if the server rejects, so the row doesn't vanish then reappear on reload.
+    const res = await deleteSubtask(item.id);
+    if (res?.error) {
+      setSubtasks(prev);
+      patchSubtasksFace(prev);
+    }
   }
 
   async function postComment(body: string) {
@@ -231,11 +237,16 @@ export function CardDrawer({
     }
   }
 
-  function removeComment(c: CommentT) {
+  async function removeComment(c: CommentT) {
+    const prev = comments;
     const next = comments.filter((x) => x.id !== c.id);
     setComments(next);
-    deleteComment(c.id);
     onPatch(cardId, { comments: next.length });
+    const res = await deleteComment(c.id);
+    if (res?.error) {
+      setComments(prev);
+      onPatch(cardId, { comments: prev.length });
+    }
   }
 
   async function handleFile(file: File) {
@@ -280,10 +291,13 @@ export function CardDrawer({
     if ("url" in res) window.open(res.url, "_blank");
   }
 
-  function removeAttachment(a: AttachmentT) {
+  async function removeAttachment(a: AttachmentT) {
+    // Deleting an uploaded file is unrecoverable, so remove only once the server
+    // confirms; the return value flows to ConfirmDelete to surface any error.
+    const res = await deleteAttachment(a.id);
+    if (res?.error) return res;
     const next = attachments.filter((x) => x.id !== a.id);
     setAttachments(next);
-    deleteAttachment(a.id);
     onPatch(cardId, { attachments: next.length });
   }
 
@@ -441,13 +455,20 @@ export function CardDrawer({
                     >
                       Download
                     </button>
-                    <button
-                      onClick={() => removeAttachment(a)}
-                      className="shrink-0 text-foreground/30 opacity-0 hover:text-destructive group-hover:opacity-100"
-                      title="Remove"
-                    >
-                      <X className="size-3.5" />
-                    </button>
+                    <ConfirmDelete
+                      onConfirm={() => removeAttachment(a)}
+                      title="Delete this attachment?"
+                      description="The uploaded file is permanently deleted and can't be recovered."
+                      confirmLabel="Delete file"
+                      trigger={
+                        <button
+                          className="shrink-0 text-foreground/30 opacity-0 hover:text-destructive group-hover:opacity-100"
+                          title="Remove"
+                        >
+                          <X className="size-3.5" />
+                        </button>
+                      }
+                    />
                   </div>
                 ))}
               </div>

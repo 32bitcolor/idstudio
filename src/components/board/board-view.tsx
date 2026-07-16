@@ -264,9 +264,12 @@ export function BoardView({
     }
   }
 
-  function handleDeleteCard(cardId: string) {
+  async function handleDeleteCard(cardId: string) {
+    // Await so a rejected delete surfaces in the confirm dialog instead of
+    // optimistically vanishing and silently reverting on reload.
+    const res = await deleteCard(cardId);
+    if (res?.error) return res;
     setColumns((prev) => prev.map((c) => ({ ...c, cards: c.cards.filter((x) => x.id !== cardId) })));
-    startTransition(() => void deleteCard(cardId));
   }
 
   function patchCard(cardId: string, patch: CardFacePatch) {
@@ -475,7 +478,7 @@ function ColumnView({
   canMoveRight: boolean;
   dragDisabled: boolean;
   onAddCard: (columnId: string, title: string) => void;
-  onDeleteCard: (cardId: string) => void;
+  onDeleteCard: (cardId: string) => unknown;
   onOpenCard: (cardId: string) => void;
   onRename: (columnId: string, name: string) => void;
   onDelete: (columnId: string) => void;
@@ -559,7 +562,7 @@ function SortableCard({
   card: Card;
   cardKeyPrefix: string | null;
   disabled: boolean;
-  onDelete: (id: string) => void;
+  onDelete: (id: string) => unknown;
   onOpen: (id: string) => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
@@ -608,7 +611,7 @@ function CardShell({
 }: {
   card: Card;
   cardKeyPrefix: string | null;
-  onDelete?: () => void;
+  onDelete?: () => unknown;
   onOpen?: () => void;
   dragging?: boolean;
 }) {
@@ -637,17 +640,22 @@ function CardShell({
           {card.title}
         </span>
         {onDelete && (
-          <button
-            onPointerDown={(e) => e.stopPropagation()}
-            onClick={(e) => {
-              e.stopPropagation();
-              onDelete();
-            }}
-            className="shrink-0 rounded p-0.5 text-foreground/30 opacity-0 hover:bg-destructive/10 hover:text-destructive group-hover:opacity-100"
-            title="Delete card"
-          >
-            <X className="size-3.5" />
-          </button>
+          <ConfirmDelete
+            onConfirm={onDelete}
+            title="Delete this card?"
+            description="This permanently deletes the card and its subtasks, comments, and attachments."
+            confirmLabel="Delete card"
+            trigger={
+              <button
+                onPointerDown={(e) => e.stopPropagation()}
+                onClick={(e) => e.stopPropagation()}
+                className="shrink-0 rounded p-0.5 text-foreground/30 opacity-0 hover:bg-destructive/10 hover:text-destructive group-hover:opacity-100"
+                title="Delete card"
+              >
+                <X className="size-3.5" />
+              </button>
+            }
+          />
         )}
       </div>
       {(due ||
