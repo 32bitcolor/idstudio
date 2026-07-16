@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition, useMemo } from "react";
+import Link from "next/link";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import {
   DndContext,
@@ -67,11 +68,13 @@ export function BoardView({
   boardId,
   boardName,
   cardKeyPrefix,
+  project,
   initialColumns,
 }: {
   boardId: string;
   boardName: string;
   cardKeyPrefix: string | null;
+  project: { id: string; name: string } | null;
   initialColumns: Column[];
 }) {
   const [columns, setColumns] = useState<Column[]>(initialColumns);
@@ -308,7 +311,7 @@ export function BoardView({
 
   return (
     <div className="flex h-full min-h-screen min-w-0 flex-col">
-      <BoardHeader boardId={boardId} boardName={boardName} cardKeyPrefix={cardKeyPrefix} />
+      <BoardHeader boardId={boardId} boardName={boardName} cardKeyPrefix={cardKeyPrefix} project={project} />
 
       <FilterBar
         labels={availableLabels}
@@ -374,10 +377,12 @@ function BoardHeader({
   boardId,
   boardName,
   cardKeyPrefix,
+  project,
 }: {
   boardId: string;
   boardName: string;
   cardKeyPrefix: string | null;
+  project: { id: string; name: string } | null;
 }) {
   const [name, setName] = useState(boardName);
   const [prefix, setPrefix] = useState(cardKeyPrefix ?? "");
@@ -404,6 +409,14 @@ function BoardHeader({
     <header className="flex flex-wrap items-center justify-between gap-4 px-6 py-5">
       <div className="flex min-w-0 flex-1 flex-wrap items-center gap-3">
         <div className="min-w-0 flex-1">
+          {project && (
+            <Link
+              href={`/projects/${project.id}`}
+              className="mb-0.5 inline-block max-w-full truncate text-xs text-muted-foreground hover:text-foreground hover:underline"
+            >
+              ‹ {project.name}
+            </Link>
+          )}
           <InlineTitle
             value={name}
             onChange={setName}

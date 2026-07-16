@@ -35,6 +35,7 @@ import {
   type ObjectiveInit,
   type AssessmentInit,
 } from "@/components/project/alignment-section";
+import { BoardsSection } from "@/components/project/boards-section";
 import { DeliverablesSection } from "@/components/project/deliverables-section";
 import { MilestonesSection } from "@/components/project/milestones-section";
 import { TimeTracking } from "@/components/project/time-tracking";
@@ -106,6 +107,7 @@ type TimeEntryInit = {
 
 export function ProjectView({
   project,
+  initialBoards,
   initialPhases,
   initialObjectives,
   initialAssessments,
@@ -116,6 +118,7 @@ export function ProjectView({
   members,
 }: {
   project: ProjectMeta;
+  initialBoards: { id: string; name: string; columnCount: number }[];
   initialPhases: Phase[];
   initialObjectives: ObjectiveInit[];
   initialAssessments: AssessmentInit[];
@@ -301,6 +304,8 @@ export function ProjectView({
         </div>
         <PhaseComposer onAdd={addPhase} />
       </section>
+
+      <BoardsSection projectId={project.id} initial={initialBoards} />
 
       <AlignmentSection
         projectId={project.id}

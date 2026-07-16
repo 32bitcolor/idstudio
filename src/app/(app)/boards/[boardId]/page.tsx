@@ -11,6 +11,11 @@ export default async function BoardPage({ params }: { params: Promise<{ boardId:
   const board = await getBoardForUser(boardId);
   if (!board) notFound();
 
+  const meta = await prisma.board.findUnique({
+    where: { id: boardId },
+    select: { project: { select: { id: true, name: true } } },
+  });
+
   const raw = await prisma.column.findMany({
     where: { boardId },
     orderBy: { position: "asc" },
@@ -60,6 +65,7 @@ export default async function BoardPage({ params }: { params: Promise<{ boardId:
       boardId={boardId}
       boardName={board.name}
       cardKeyPrefix={board.cardKeyPrefix}
+      project={meta?.project ?? null}
       initialColumns={columns}
     />
   );

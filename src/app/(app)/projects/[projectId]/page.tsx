@@ -19,6 +19,10 @@ export default async function ProjectPage({ params }: { params: Promise<{ projec
       description: true,
       methodology: true,
       status: true,
+      boards: {
+        orderBy: { createdAt: "asc" },
+        select: { id: true, name: true, _count: { select: { columns: true } } },
+      },
       phases: {
         orderBy: { position: "asc" },
         select: { id: true, name: true, status: true, position: true, startDate: true, endDate: true },
@@ -176,6 +180,7 @@ export default async function ProjectPage({ params }: { params: Promise<{ projec
         methodology: project.methodology,
         status: project.status,
       }}
+      initialBoards={project.boards.map((b) => ({ id: b.id, name: b.name, columnCount: b._count.columns }))}
       initialPhases={phases}
       initialObjectives={objectives}
       initialAssessments={assessments}

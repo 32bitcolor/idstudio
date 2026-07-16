@@ -21,7 +21,12 @@ export default async function BoardsPage() {
   const boards = await prisma.board.findMany({
     where: { workspaceId: membership.workspaceId, ...(await boardVisibilityWhere()) },
     orderBy: { createdAt: "desc" },
-    select: { id: true, name: true, _count: { select: { columns: true } } },
+    select: {
+      id: true,
+      name: true,
+      project: { select: { id: true, name: true } },
+      _count: { select: { columns: true } },
+    },
   });
 
   return (
@@ -59,8 +64,15 @@ export default async function BoardsPage() {
               <Link href={`/boards/${b.id}`} className="group block">
                 <Card className="gap-1 py-4 transition-colors group-hover:border-border-strong">
                   <div className="truncate px-5 font-medium">{b.name}</div>
-                  <div className="px-5 text-sm text-muted-foreground">
-                    {b._count.columns} {b._count.columns === 1 ? "column" : "columns"}
+                  <div className="flex items-center gap-2 px-5 text-sm text-muted-foreground">
+                    <span>
+                      {b._count.columns} {b._count.columns === 1 ? "column" : "columns"}
+                    </span>
+                    {b.project && (
+                      <span className="truncate rounded bg-muted px-1.5 py-0.5 text-xs" title={`Project: ${b.project.name}`}>
+                        {b.project.name}
+                      </span>
+                    )}
                   </div>
                 </Card>
               </Link>

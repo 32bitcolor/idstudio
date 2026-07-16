@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { getActiveMembership } from "@/lib/dal";
-import { getBoardForUser, getColumnForUser, getCardForUser } from "@/lib/authz";
+import { getBoardForUser, getColumnForUser, getCardForUser, getProjectForUser } from "@/lib/authz";
 import { positionBetween, positionsAfter, positionForIndex } from "@/lib/ordering";
 import { pickStatusIdForName } from "@/lib/status";
 
@@ -70,6 +70,38 @@ export async function createBoard(formData: FormData): Promise<void> {
   });
 
   redirect(boardPath(board.id));
+}
+
+/** Create a board that belongs to a project (called from the project page).
+ *  Returns the new board rather than redirecting, so the caller can link to it. */
+export async function createProjectBoard(projectId: string, name: string) {
+  const project = await getProjectForUser(projectId);
+  if (!project) return { error: "Project not found." };
+  const parsed = Name.safeParse(name);
+  if (!parsed.success) return { error: "Board name is required." };
+
+  const positions = positionsAfter(null, DEFAULT_COLUMNS.length);
+  const statuses = await prisma.workspaceStatus.findMany({
+    where: { workspaceId: project.workspaceId },
+    select: { id: true, name: true },
+  });
+  const board = await prisma.board.create({
+    data: {
+      workspaceId: project.workspaceId,
+      projectId,
+      name: parsed.data,
+      columns: {
+        create: DEFAULT_COLUMNS.map((n, i) => ({
+          name: n,
+          position: positions[i],
+          statusId: pickStatusIdForName(statuses, n),
+        })),
+      },
+    },
+    select: { id: true, name: true },
+  });
+  revalidatePath(`/projects/${projectId}`);
+  return { board };
 }
 
 /** Set or clear a board's card-key prefix (blank clears it — existing card
