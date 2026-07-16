@@ -58,6 +58,7 @@ type Card = {
   keySeq: number | null;
   labels: Label[];
   assignees: Member[];
+  smes: Member[];
   checklist: { total: number; done: number };
   comments: number;
   attachments: number;
@@ -259,6 +260,7 @@ export function BoardView({
         keySeq: res.card.keySeq,
         labels: [],
         assignees: [],
+        smes: [],
         checklist: { total: 0, done: 0 },
         comments: 0,
         attachments: 0,
@@ -678,7 +680,8 @@ function CardShell({
         card.checklist.total > 0 ||
         card.comments > 0 ||
         card.attachments > 0 ||
-        card.assignees.length > 0) && (
+        card.assignees.length > 0 ||
+        card.smes.length > 0) && (
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-1">
             {due && (
@@ -703,19 +706,34 @@ function CardShell({
               </StatusBadge>
             )}
           </div>
-          {card.assignees.length > 0 && (
-            <div className="flex -space-x-1">
-              {card.assignees.slice(0, 3).map((a) => (
-                <span
-                  key={a.id}
-                  className="flex h-5 w-5 items-center justify-center rounded-full border border-background bg-accent text-[10px] font-medium text-accent-foreground"
-                  title={a.name ?? a.email}
-                >
-                  {initials(a)}
-                </span>
-              ))}
-            </div>
-          )}
+          <div className="flex items-center gap-1.5">
+            {card.smes.length > 0 && (
+              <div className="flex -space-x-1">
+                {card.smes.slice(0, 3).map((s) => (
+                  <span
+                    key={s.id}
+                    className="flex h-5 w-5 items-center justify-center rounded-full border border-background bg-amber-500 text-[10px] font-medium text-white"
+                    title={`SME: ${s.name ?? s.email}`}
+                  >
+                    {initials(s)}
+                  </span>
+                ))}
+              </div>
+            )}
+            {card.assignees.length > 0 && (
+              <div className="flex -space-x-1">
+                {card.assignees.slice(0, 3).map((a) => (
+                  <span
+                    key={a.id}
+                    className="flex h-5 w-5 items-center justify-center rounded-full border border-background bg-accent text-[10px] font-medium text-accent-foreground"
+                    title={a.name ?? a.email}
+                  >
+                    {initials(a)}
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>

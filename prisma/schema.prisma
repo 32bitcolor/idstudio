@@ -27,6 +27,7 @@ model User {
   updatedAt               DateTime          @updatedAt
   memberships             Membership[]
   assignedCards           CardAssignee[]
+  smeCards                CardSme[]
   comments                Comment[]
   reviewCycles            ReviewCycle[]     @relation("ReviewReviewer")
   requestedReviews        ReviewCycle[]     @relation("ReviewRequester")
@@ -167,6 +168,7 @@ model Card {
   sprint       Sprint?        @relation(fields: [sprintId], references: [id], onDelete: SetNull)
   labels       CardLabel[]
   assignees    CardAssignee[]
+  smes         CardSme[]
   comments     Comment[]
   attachments  Attachment[]
   deliverables Deliverable[]
@@ -475,6 +477,18 @@ model CardLabel {
 }
 
 model CardAssignee {
+  cardId String
+  userId String
+  card   Card   @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([cardId, userId])
+  @@index([userId])
+}
+
+// Subject-matter experts advising on a card — a workspace member designated as
+// the SME, distinct from the assignee(s) doing the work.
+model CardSme {
   cardId String
   userId String
   card   Card   @relation(fields: [cardId], references: [id], onDelete: Cascade)

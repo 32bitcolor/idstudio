@@ -11,6 +11,7 @@ import {
   createLabel,
   toggleCardLabel,
   toggleCardAssignee,
+  toggleCardSme,
   addSubtask,
   toggleSubtask,
   deleteSubtask,
@@ -54,6 +55,7 @@ export type CardFacePatch = {
   dueDate?: string | null;
   labels?: LabelT[];
   assignees?: { id: string; name: string | null; email: string }[];
+  smes?: { id: string; name: string | null; email: string }[];
   checklist?: { total: number; done: number };
   comments?: number;
   attachments?: number;
@@ -90,6 +92,7 @@ export function CardDrawer({
   const [dueDate, setDueDate] = useState<string | null>(null); // ISO
   const [labelIds, setLabelIds] = useState<Set<string>>(new Set());
   const [assigneeIds, setAssigneeIds] = useState<Set<string>>(new Set());
+  const [smeIds, setSmeIds] = useState<Set<string>>(new Set());
   const [sprintId, setSprintId] = useState<string | null>(null);
   const [sprints, setSprints] = useState<{ id: string; name: string }[]>([]);
   const [sprintsEnabled, setSprintsEnabled] = useState(false);
@@ -121,6 +124,7 @@ export function CardDrawer({
       setDueDate(d.card.dueDate);
       setLabelIds(new Set(d.card.labelIds));
       setAssigneeIds(new Set(d.card.assigneeIds));
+      setSmeIds(new Set(d.card.smeIds));
       setSprintId(d.card.sprintId);
       setSprints(d.sprints);
       setSprintsEnabled(d.sprintsEnabled);
@@ -201,6 +205,16 @@ export function CardDrawer({
     setAssigneeIds(next);
     toggleCardAssignee(cardId, m.id, on);
     onPatch(cardId, { assignees: members.filter((x) => next.has(x.id)) });
+  }
+
+  function toggleSme(m: MemberT) {
+    const on = !smeIds.has(m.id);
+    const next = new Set(smeIds);
+    if (on) next.add(m.id);
+    else next.delete(m.id);
+    setSmeIds(next);
+    toggleCardSme(cardId, m.id, on);
+    onPatch(cardId, { smes: members.filter((x) => next.has(x.id)) });
   }
 
   function patchSubtasksFace(items: SubtaskT[]) {
@@ -321,6 +335,7 @@ export function CardDrawer({
     <Dialog open onOpenChange={(v) => !v && onClose()}>
       <DialogContent
         className="flex max-h-[85vh] w-full max-w-[calc(100%-2rem)] flex-col gap-0 overflow-hidden bg-surface p-0 shadow-xl sm:max-w-2xl"
+        onOpenAutoFocus={(e) => e.preventDefault()}
       >
         <DialogHeader className="flex-row items-start justify-between gap-2 space-y-0 border-b border-border px-4 py-3 pr-12">
           <DialogTitle asChild>
@@ -420,6 +435,10 @@ export function CardDrawer({
 
             <Section title="Assignees">
               <AssigneePicker members={members} assigneeIds={assigneeIds} onToggle={toggleAssignee} />
+            </Section>
+
+            <Section title="SMEs">
+              <AssigneePicker members={members} assigneeIds={smeIds} onToggle={toggleSme} />
             </Section>
 
             {!isSubtask && sprintsEnabled && (

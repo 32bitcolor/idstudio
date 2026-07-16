@@ -53,6 +53,7 @@ export async function getCardDetail(cardId: string) {
         parentCard: { select: { id: true, title: true } },
         labels: { select: { labelId: true } },
         assignees: { select: { userId: true } },
+        smes: { select: { userId: true } },
         subtasks: {
           orderBy: { position: "asc" },
           select: {
@@ -116,6 +117,7 @@ export async function getCardDetail(cardId: string) {
       sprintId: card.sprintId,
       labelIds: card.labels.map((l) => l.labelId),
       assigneeIds: card.assignees.map((a) => a.userId),
+      smeIds: card.smes.map((s) => s.userId),
     },
     isSubtask: card.parentCardId !== null,
     parent: card.parentCard,
@@ -278,6 +280,36 @@ export async function toggleCardAssignee(cardId: string, userId: string, on: boo
         }),
       });
     }
+  }
+
+  revalidatePath(boardPath(card.boardId));
+}
+
+/** Add or remove a subject-matter expert on a card/subtask (workspace members only). */
+export async function toggleCardSme(cardId: string, userId: string, on: boolean) {
+  const card = await getCardForUser(cardId);
+  if (!card) return { error: "Card not found." };
+
+  const board = await prisma.board.findUnique({
+    where: { id: card.boardId },
+    select: { workspaceId: true },
+  });
+  if (!board) return { error: "Board not found." };
+
+  const member = await prisma.membership.findFirst({
+    where: { userId, workspaceId: board.workspaceId },
+    select: { id: true },
+  });
+  if (!member) return { error: "Not a workspace member." };
+
+  if (on) {
+    await prisma.cardSme.upsert({
+      where: { cardId_userId: { cardId, userId } },
+      create: { cardId, userId },
+      update: {},
+    });
+  } else {
+    await prisma.cardSme.deleteMany({ where: { cardId, userId } });
   }
 
   revalidatePath(boardPath(card.boardId));
