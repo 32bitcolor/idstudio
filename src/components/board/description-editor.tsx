@@ -1,7 +1,11 @@
 "use client";
 
+import { useMemo } from "react";
 import { useEditor, EditorContent, type Editor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
+
+import { createMention } from "./mention";
+import type { MentionMember } from "./mention-list";
 
 function safeParse(s: string): object | string {
   try {
@@ -15,13 +19,19 @@ export function DescriptionEditor({
   initial,
   onSave,
   editorClass = "min-h-[120px] text-sm",
+  mentionMembers,
 }: {
   initial: string | null;
   onSave: (json: string | null) => void;
   editorClass?: string;
+  mentionMembers?: MentionMember[];
 }) {
+  const extensions = useMemo(
+    () => (mentionMembers ? [StarterKit, createMention(mentionMembers)] : [StarterKit]),
+    [mentionMembers],
+  );
   const editor = useEditor({
-    extensions: [StarterKit],
+    extensions,
     content: initial ? safeParse(initial) : "",
     immediatelyRender: false, // required for Next.js SSR (no hydration mismatch)
     editorProps: {

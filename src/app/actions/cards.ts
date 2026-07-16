@@ -7,7 +7,9 @@ import { getCurrentUser } from "@/lib/dal";
 import { getBoardForUser, getCardForUser, whiteboardVisibilityWhere } from "@/lib/authz";
 import { positionBetween } from "@/lib/ordering";
 import { enqueueEmail } from "@/lib/queues";
-import { subtaskAssigned, cardAssigned, smeAssigned, commentPosted } from "@/lib/email-templates";
+import { subtaskAssigned, cardAssigned, smeAssigned, commentPosted, mentioned, withLink } from "@/lib/email-templates";
+import { appUrl } from "@/lib/app-url";
+import { extractMentionIds, extractText } from "@/lib/mentions";
 import { nextCardKeySeq } from "@/app/actions/boards";
 
 const Hex = z.string().regex(/^#[0-9a-fA-F]{6}$/, "Invalid color");
@@ -32,7 +34,12 @@ export async function getCardDetail(cardId: string) {
 
   const board = await prisma.board.findUnique({
     where: { id: boardId },
-    select: { workspaceId: true, cardKeyPrefix: true, project: { select: { sprintsEnabled: true } } },
+    select: {
+      workspaceId: true,
+      cardKeyPrefix: true,
+      project: { select: { sprintsEnabled: true } },
+      groupAccess: { select: { groupId: true } },
+    },
   });
   if (!board) return null;
   // Sprint assignment is offered for standalone-board cards and cards whose
@@ -99,6 +106,24 @@ export async function getCardDetail(cardId: string) {
   ]);
   if (!card) return null;
 
+  // Members who can actually see this board — the pool for @-mentions. Open
+  // boards → everyone; group-restricted boards → admins + members of those groups.
+  const groupIds = board.groupAccess.map((g) => g.groupId);
+  const mentionable =
+    groupIds.length === 0
+      ? members
+      : await prisma.user.findMany({
+          where: {
+            memberships: { some: { workspaceId: board.workspaceId } },
+            OR: [
+              { memberships: { some: { workspaceId: board.workspaceId, role: "ADMIN" } } },
+              { groupMemberships: { some: { groupId: { in: groupIds } } } },
+            ],
+          },
+          orderBy: { email: "asc" },
+          select: { id: true, name: true, email: true },
+        });
+
   const whiteboards = await prisma.whiteboard.findMany({
     where: { cardId, ...(await whiteboardVisibilityWhere()) },
     orderBy: { updatedAt: "desc" },
@@ -123,6 +148,7 @@ export async function getCardDetail(cardId: string) {
     parent: card.parentCard,
     boardLabels,
     members,
+    mentionable,
     sprints,
     sprintsEnabled,
     whiteboards,
@@ -157,11 +183,45 @@ export async function getCardDetail(cardId: string) {
 export async function updateCardDescription(cardId: string, description: string | null) {
   const card = await getCardForUser(cardId);
   if (!card) return { error: "Card not found." };
+
+  const prev = await prisma.card.findUnique({ where: { id: cardId }, select: { description: true, title: true } });
   await prisma.card.update({
     where: { id: cardId },
     data: { description: description && description.trim() ? description : null },
   });
   revalidatePath(boardPath(card.boardId));
+
+  // Notify only newly-added @-mentions — not on every autosave.
+  const oldIds = new Set(extractMentionIds(prev?.description ?? null));
+  const newIds = extractMentionIds(description).filter((id) => !oldIds.has(id));
+  if (newIds.length === 0) return;
+
+  const me = await getCurrentUser();
+  const board = await prisma.board.findUnique({ where: { id: card.boardId }, select: { name: true, workspaceId: true } });
+  if (!board) return;
+  const mentions = await prisma.user.findMany({
+    where: { id: { in: newIds, not: me?.id }, memberships: { some: { workspaceId: board.workspaceId } } },
+    select: { name: true, email: true },
+  });
+  const link = appUrl(`/boards/${card.boardId}?card=${cardId}`);
+  const excerpt = extractText(description).slice(0, 200);
+  for (const m of mentions) {
+    if (!m.email) continue;
+    await enqueueEmail({
+      to: m.email,
+      ...withLink(
+        mentioned({
+          recipientName: m.name ?? m.email,
+          mentionerName: me?.name ?? me?.email ?? "Someone",
+          context: "the description",
+          cardTitle: prev?.title ?? "",
+          boardName: board.name,
+          excerpt,
+        }),
+        link,
+      ),
+    });
+  }
 }
 
 export async function setCardDueDate(cardId: string, iso: string | null) {
@@ -268,6 +328,7 @@ export async function toggleCardAssignee(cardId: string, userId: string, on: boo
         prisma.card.findUnique({ where: { id: cardId }, select: { title: true } }),
       ]);
       if (assignee?.email && cardRow) {
+        const link = appUrl(`/boards/${card.boardId}?card=${cardId}`);
         if (card.parentCardId) {
           const parentCard = await prisma.card.findUnique({
             where: { id: card.parentCardId },
@@ -275,21 +336,27 @@ export async function toggleCardAssignee(cardId: string, userId: string, on: boo
           });
           await enqueueEmail({
             to: assignee.email,
-            ...subtaskAssigned({
-              assigneeName: assignee.name ?? assignee.email,
-              subtaskText: cardRow.title,
-              cardTitle: parentCard?.title ?? "",
-              boardName: board.name,
-            }),
+            ...withLink(
+              subtaskAssigned({
+                assigneeName: assignee.name ?? assignee.email,
+                subtaskText: cardRow.title,
+                cardTitle: parentCard?.title ?? "",
+                boardName: board.name,
+              }),
+              link,
+            ),
           });
         } else {
           await enqueueEmail({
             to: assignee.email,
-            ...cardAssigned({
-              assigneeName: assignee.name ?? assignee.email,
-              cardTitle: cardRow.title,
-              boardName: board.name,
-            }),
+            ...withLink(
+              cardAssigned({
+                assigneeName: assignee.name ?? assignee.email,
+                cardTitle: cardRow.title,
+                boardName: board.name,
+              }),
+              link,
+            ),
           });
         }
       }
@@ -344,7 +411,10 @@ export async function toggleCardSme(cardId: string, userId: string, on: boolean)
       if (sme?.email && cardRow) {
         await enqueueEmail({
           to: sme.email,
-          ...smeAssigned({ smeName: sme.name ?? sme.email, cardTitle: cardRow.title, boardName: board.name }),
+          ...withLink(
+            smeAssigned({ smeName: sme.name ?? sme.email, cardTitle: cardRow.title, boardName: board.name }),
+            appUrl(`/boards/${card.boardId}?card=${cardId}`),
+          ),
         });
       }
     }
@@ -404,7 +474,9 @@ export async function addComment(cardId: string, body: string) {
   if (!user) return { error: "Unauthorized." };
   const card = await getCardForUser(cardId);
   if (!card) return { error: "Card not found." };
-  const parsed = z.string().trim().min(1).max(5000).safeParse(body);
+  // Comments are now a TipTap JSON document, so allow more than the old
+  // plain-text cap (the JSON wrapper + mention nodes add overhead).
+  const parsed = z.string().trim().min(1).max(20000).safeParse(body);
   if (!parsed.success) return { error: "Comment is empty." };
 
   const comment = await prisma.comment.create({
@@ -418,33 +490,51 @@ export async function addComment(cardId: string, body: string) {
   });
   revalidatePath(boardPath(card.boardId));
 
-  // Notify the card's assignees + SMEs (never the commenter).
-  const recipients = await prisma.user.findMany({
+  // Notify: @-mentions get a mention email; the card's assignees + SMEs (minus
+  // the commenter and anyone already mentioned) get a comment email.
+  const [cardRow, boardRow] = await Promise.all([
+    prisma.card.findUnique({ where: { id: cardId }, select: { title: true } }),
+    prisma.board.findUnique({ where: { id: card.boardId }, select: { name: true, workspaceId: true } }),
+  ]);
+  const link = appUrl(`/boards/${card.boardId}?card=${cardId}`);
+  const commenterName = user.name ?? user.email;
+  const cardTitle = cardRow?.title ?? "";
+  const boardName = boardRow?.name ?? "";
+  const excerpt = extractText(parsed.data).slice(0, 200);
+  const notified = new Set<string>([user.id]);
+
+  const mentionIds = extractMentionIds(parsed.data);
+  if (mentionIds.length && boardRow) {
+    const mentions = await prisma.user.findMany({
+      where: { id: { in: mentionIds }, memberships: { some: { workspaceId: boardRow.workspaceId } } },
+      select: { id: true, name: true, email: true },
+    });
+    for (const m of mentions) {
+      if (notified.has(m.id) || !m.email) continue;
+      notified.add(m.id);
+      await enqueueEmail({
+        to: m.email,
+        ...withLink(
+          mentioned({ recipientName: m.name ?? m.email, mentionerName: commenterName, context: "a comment", cardTitle, boardName, excerpt }),
+          link,
+        ),
+      });
+    }
+  }
+
+  const others = await prisma.user.findMany({
     where: {
-      id: { not: user.id },
+      id: { notIn: [...notified] },
       OR: [{ assignedCards: { some: { cardId } } }, { smeCards: { some: { cardId } } }],
     },
     select: { name: true, email: true },
   });
-  if (recipients.length > 0) {
-    const [cardRow, boardRow] = await Promise.all([
-      prisma.card.findUnique({ where: { id: cardId }, select: { title: true } }),
-      prisma.board.findUnique({ where: { id: card.boardId }, select: { name: true } }),
-    ]);
-    const excerpt = parsed.data.length > 200 ? `${parsed.data.slice(0, 200)}…` : parsed.data;
-    for (const r of recipients) {
-      if (!r.email) continue;
-      await enqueueEmail({
-        to: r.email,
-        ...commentPosted({
-          recipientName: r.name ?? r.email,
-          commenterName: user.name ?? user.email,
-          cardTitle: cardRow?.title ?? "",
-          boardName: boardRow?.name ?? "",
-          excerpt,
-        }),
-      });
-    }
+  for (const r of others) {
+    if (!r.email) continue;
+    await enqueueEmail({
+      to: r.email,
+      ...withLink(commentPosted({ recipientName: r.name ?? r.email, commenterName, cardTitle, boardName, excerpt }), link),
+    });
   }
 
   return { comment: { ...comment, createdAt: comment.createdAt.toISOString() } };

@@ -7,15 +7,33 @@ function esc(s: string): string {
   return s.replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" })[c] as string);
 }
 
+const FOOTER = `<p style="margin-top:24px;color:#888;font-size:12px">IDStudio</p>`;
+
 function layout(heading: string, bodyHtml: string): string {
   return `<div style="font-family:sans-serif;max-width:480px;margin:0 auto;color:#1a1a1a">
   <h2 style="margin:0 0 12px">${heading}</h2>
   ${bodyHtml}
-  <p style="margin-top:24px;color:#888;font-size:12px">IDStudio</p>
+  ${FOOTER}
 </div>`;
 }
 
+function button(url: string): string {
+  return `<p style="margin-top:20px"><a href="${url}" style="display:inline-block;background:#111;color:#fff;text-decoration:none;padding:9px 16px;border-radius:6px;font-size:14px">View in IDStudio →</a></p>`;
+}
+
 type Email = { subject: string; html: string; text: string };
+
+/** Append a "View in IDStudio" button (and the raw URL in the text part) to any
+ *  templated email. No-op when url is undefined (e.g. APP_URL unset, or emails to
+ *  external requesters who can't sign in). */
+export function withLink(email: Email, url: string | undefined): Email {
+  if (!url) return email;
+  return {
+    subject: email.subject,
+    html: email.html.replace(FOOTER, `${button(url)}\n  ${FOOTER}`),
+    text: `${email.text}\n\n${url}`,
+  };
+}
 
 export function intakeSubmittedConfirmation(params: { ticket: string; title: string; workspaceName: string }): Email {
   const { ticket, title, workspaceName } = params;
@@ -230,6 +248,27 @@ export function cardDueReminder(params: { assigneeName: string; cardTitle: strin
 <p>On board ${esc(boardName)}.</p>`,
     ),
     text: `Hi ${assigneeName},\n\n${cardTitle} is due ${when}.\n\nOn board ${boardName}.`,
+  };
+}
+
+export function mentioned(params: {
+  recipientName: string;
+  mentionerName: string;
+  context: string; // "a comment" | "the description"
+  cardTitle: string;
+  boardName: string;
+  excerpt?: string;
+}): Email {
+  const { recipientName, mentionerName, context, cardTitle, boardName, excerpt } = params;
+  return {
+    subject: `${mentionerName} mentioned you on "${cardTitle}"`,
+    html: layout(
+      "You were mentioned",
+      `<p>Hi ${esc(recipientName)},</p>
+<p>${esc(mentionerName)} mentioned you in ${esc(context)} on <strong>${esc(cardTitle)}</strong> (${esc(boardName)}).</p>
+${excerpt ? `<p style="border-left:3px solid #ddd;padding-left:12px;color:#444">${esc(excerpt)}</p>` : ""}`,
+    ),
+    text: `Hi ${recipientName},\n\n${mentionerName} mentioned you in ${context} on "${cardTitle}" (${boardName}).${excerpt ? `\n\n${excerpt}` : ""}`,
   };
 }
 

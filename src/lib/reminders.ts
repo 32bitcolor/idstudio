@@ -1,5 +1,6 @@
 import type { PrismaClient } from "../generated/prisma/client";
-import { cardDueReminder, milestoneDueReminder } from "./email-templates";
+import { cardDueReminder, milestoneDueReminder, withLink } from "./email-templates";
+import { appUrl } from "./app-url";
 
 type EmailMsg = { to: string; subject: string; html: string; text: string };
 type Enqueue = (msg: EmailMsg) => Promise<void>;
@@ -20,22 +21,28 @@ export async function runDueReminders(prisma: PrismaClient, enqueue: Enqueue): P
   const cards = await prisma.card.findMany({
     where: { dueDate: { gte: tomorrow, lt: dayAfter }, done: false, columnId: { not: null } },
     select: {
+      id: true,
       title: true,
       assignees: { select: { user: { select: { name: true, email: true } } } },
-      column: { select: { board: { select: { name: true } } } },
+      column: { select: { board: { select: { id: true, name: true } } } },
     },
   });
   for (const c of cards) {
+    const boardId = c.column?.board.id;
+    const link = boardId ? appUrl(`/boards/${boardId}?card=${c.id}`) : undefined;
     for (const a of c.assignees) {
       if (!a.user.email) continue;
       await enqueue({
         to: a.user.email,
-        ...cardDueReminder({
-          assigneeName: a.user.name ?? a.user.email,
-          cardTitle: c.title,
-          boardName: c.column?.board.name ?? "",
-          when: "tomorrow",
-        }),
+        ...withLink(
+          cardDueReminder({
+            assigneeName: a.user.name ?? a.user.email,
+            cardTitle: c.title,
+            boardName: c.column?.board.name ?? "",
+            when: "tomorrow",
+          }),
+          link,
+        ),
       });
       sent++;
     }
@@ -44,23 +51,27 @@ export async function runDueReminders(prisma: PrismaClient, enqueue: Enqueue): P
   // Milestones due tomorrow, not completed → notify the workspace's admins.
   const milestones = await prisma.milestone.findMany({
     where: { dueDate: { gte: tomorrow, lt: dayAfter }, completedAt: null },
-    select: { name: true, project: { select: { name: true, workspaceId: true } } },
+    select: { name: true, project: { select: { id: true, name: true, workspaceId: true } } },
   });
   for (const m of milestones) {
     const admins = await prisma.user.findMany({
       where: { memberships: { some: { workspaceId: m.project.workspaceId, role: "ADMIN" } } },
       select: { name: true, email: true },
     });
+    const link = appUrl(`/projects/${m.project.id}`);
     for (const admin of admins) {
       if (!admin.email) continue;
       await enqueue({
         to: admin.email,
-        ...milestoneDueReminder({
-          recipientName: admin.name ?? admin.email,
-          milestoneName: m.name,
-          projectName: m.project.name,
-          when: "tomorrow",
-        }),
+        ...withLink(
+          milestoneDueReminder({
+            recipientName: admin.name ?? admin.email,
+            milestoneName: m.name,
+            projectName: m.project.name,
+            when: "tomorrow",
+          }),
+          link,
+        ),
       });
       sent++;
     }

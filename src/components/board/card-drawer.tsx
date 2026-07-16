@@ -23,6 +23,7 @@ import {
   deleteAttachment,
 } from "@/app/actions/attachments";
 import { DescriptionEditor } from "@/components/board/description-editor";
+import { CommentComposer, CommentBody } from "@/components/board/comment-editor";
 import { assignCardToSprint } from "@/app/actions/sprints";
 import { ConfirmDelete } from "@/components/shared/confirm-delete";
 import { StatusBadge } from "@/components/shared/status-badge";
@@ -95,6 +96,7 @@ export function CardDrawer({
   const [sprintsEnabled, setSprintsEnabled] = useState(false);
   const [boardLabels, setBoardLabels] = useState<LabelT[]>([]);
   const [members, setMembers] = useState<MemberT[]>([]);
+  const [mentionable, setMentionable] = useState<MemberT[]>([]);
   const [newLabelName, setNewLabelName] = useState("");
   const [newLabelColor, setNewLabelColor] = useState(PALETTE[4]);
   const [subtasks, setSubtasks] = useState<SubtaskT[]>([]);
@@ -127,6 +129,7 @@ export function CardDrawer({
       setSprintsEnabled(d.sprintsEnabled);
       setBoardLabels(d.boardLabels);
       setMembers(d.members);
+      setMentionable(d.mentionable);
       setSubtasks(d.subtasks);
       setIsSubtask(d.isSubtask);
       setParent(d.parent);
@@ -367,7 +370,7 @@ export function CardDrawer({
             )}
 
             <Section title="Description">
-              <DescriptionEditor key={cardId} initial={description} onSave={saveDescription} />
+              <DescriptionEditor key={cardId} initial={description} onSave={saveDescription} mentionMembers={mentionable} />
             </Section>
 
             {!isSubtask && (
@@ -572,11 +575,15 @@ export function CardDrawer({
                         )}
                       </div>
                     </div>
-                    <p className="mt-0.5 whitespace-pre-wrap text-sm">{c.body}</p>
+                    <div className="mt-0.5">
+                      <CommentBody body={c.body} />
+                    </div>
                   </div>
                 ))}
               </div>
-              <InlineComposer placeholder="Write a comment…" buttonLabel="Comment" multiline onSubmit={postComment} />
+              <div className="mt-1">
+                <CommentComposer mentionMembers={mentionable} onSubmit={postComment} />
+              </div>
             </Section>
 
             <div className="border-t border-border pt-4">

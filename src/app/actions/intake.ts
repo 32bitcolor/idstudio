@@ -15,7 +15,9 @@ import {
   newIntakeRequestForAdmin,
   intakeApprovedNotification,
   intakeRejectedNotification,
+  withLink,
 } from "@/lib/email-templates";
+import { appUrl } from "@/lib/app-url";
 
 const Requester = z.object({
   name: z.string().trim().min(1, "Your name is required").max(140),
@@ -119,12 +121,15 @@ export async function submitIntakeRequest(
     ...admins.map((m) =>
       enqueueEmail({
         to: m.user.email,
-        ...newIntakeRequestForAdmin({
-          ticket,
-          title: input.data.title,
-          requesterName: requester.data.name,
-          workspaceName: workspace.name,
-        }),
+        ...withLink(
+          newIntakeRequestForAdmin({
+            ticket,
+            title: input.data.title,
+            requesterName: requester.data.name,
+            workspaceName: workspace.name,
+          }),
+          appUrl("/intake"),
+        ),
       }),
     ),
   ]);

@@ -8,7 +8,8 @@ import { getCurrentUser } from "@/lib/dal";
 import { getDeliverableForUser, getReviewForUser } from "@/lib/authz";
 import { REVIEW_STATUSES } from "@/lib/methodology";
 import { enqueueEmail } from "@/lib/queues";
-import { reviewRequested, reviewDecided } from "@/lib/email-templates";
+import { reviewRequested, reviewDecided, withLink } from "@/lib/email-templates";
+import { appUrl } from "@/lib/app-url";
 
 function fmtDate(d: Date | null): string | null {
   return d ? d.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" }) : null;
@@ -84,13 +85,16 @@ export async function addReviewCycle(deliverableId: string, reviewerId: string, 
     if (meta) {
       await enqueueEmail({
         to: review.reviewer.email,
-        ...reviewRequested({
-          reviewerName: review.reviewer.name ?? review.reviewer.email,
-          deliverableName: meta.name,
-          projectName: meta.project.name,
-          requesterName: me.name ?? me.email,
-          dueDate: fmtDate(review.dueDate),
-        }),
+        ...withLink(
+          reviewRequested({
+            reviewerName: review.reviewer.name ?? review.reviewer.email,
+            deliverableName: meta.name,
+            projectName: meta.project.name,
+            requesterName: me.name ?? me.email,
+            dueDate: fmtDate(review.dueDate),
+          }),
+          appUrl("/my-work"),
+        ),
       });
     }
   }
@@ -121,14 +125,17 @@ export async function setReviewStatus(reviewId: string, status: string) {
     if (detail?.requestedBy?.email && detail.requestedBy.id !== me?.id) {
       await enqueueEmail({
         to: detail.requestedBy.email,
-        ...reviewDecided({
-          requesterName: detail.requestedBy.name ?? detail.requestedBy.email,
-          deliverableName: detail.deliverable.name,
-          projectName: detail.deliverable.project.name,
-          reviewerName: detail.reviewer.name ?? detail.reviewer.email,
-          decision: parsed.data,
-          feedback: detail.feedback,
-        }),
+        ...withLink(
+          reviewDecided({
+            requesterName: detail.requestedBy.name ?? detail.requestedBy.email,
+            deliverableName: detail.deliverable.name,
+            projectName: detail.deliverable.project.name,
+            reviewerName: detail.reviewer.name ?? detail.reviewer.email,
+            decision: parsed.data,
+            feedback: detail.feedback,
+          }),
+          appUrl(`/projects/${r.deliverable.projectId}`),
+        ),
       });
     }
   }
