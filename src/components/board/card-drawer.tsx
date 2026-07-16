@@ -382,6 +382,25 @@ export function CardDrawer({
               <DescriptionEditor key={cardId} initial={description} onSave={saveDescription} />
             </Section>
 
+            {!isSubtask && (
+              <Section title={`Subtasks${subtasks.length ? ` · ${doneCount}/${subtasks.length}` : ""}`}>
+                <div className="flex flex-col gap-0.5">
+                  {subtasks.map((item) => (
+                    <SubtaskRow
+                      key={item.id}
+                      item={item}
+                      cardKeyPrefix={cardKeyPrefix}
+                      members={members}
+                      onToggleDone={() => toggleItem(item)}
+                      onOpen={() => onNavigate?.(item.id)}
+                      onRemove={() => removeItem(item)}
+                    />
+                  ))}
+                </div>
+                <InlineComposer placeholder="Add a subtask…" buttonLabel="Add" onSubmit={addItem} />
+              </Section>
+            )}
+
             <Section title="Due date">
               <div className="flex items-center gap-2">
                 <Input
@@ -461,25 +480,6 @@ export function CardDrawer({
                     <option key={s.id} value={s.id}>{s.name}</option>
                   ))}
                 </Select>
-              </Section>
-            )}
-
-            {!isSubtask && (
-              <Section title={`Subtasks${subtasks.length ? ` · ${doneCount}/${subtasks.length}` : ""}`}>
-                <div className="flex flex-col gap-0.5">
-                  {subtasks.map((item) => (
-                    <SubtaskRow
-                      key={item.id}
-                      item={item}
-                      cardKeyPrefix={cardKeyPrefix}
-                      members={members}
-                      onToggleDone={() => toggleItem(item)}
-                      onOpen={() => onNavigate?.(item.id)}
-                      onRemove={() => removeItem(item)}
-                    />
-                  ))}
-                </div>
-                <InlineComposer placeholder="Add a subtask…" buttonLabel="Add" onSubmit={addItem} />
               </Section>
             )}
 
