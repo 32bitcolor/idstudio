@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { getActiveMembership } from "@/lib/dal";
-import { getCardForUser, getProjectForUser } from "@/lib/authz";
+import { getCardForUser, getProjectForUser, boardVisibilityWhere } from "@/lib/authz";
 import { SPRINT_STATUSES } from "@/lib/sprint";
 
 const Name = z.string().trim().min(1, "Required").max(120);
@@ -76,6 +76,44 @@ export async function deleteSprint(sprintId: string) {
   await prisma.sprint.delete({ where: { id: sprintId } });
   revalidatePath("/sprints");
   return { ok: true };
+}
+
+/** Top-level cards not yet in any sprint that the caller can see — for the
+ *  sprint board's "Add cards" picker. Returns the same shape a sprint card uses. */
+export async function listAssignableCards(sprintId: string) {
+  const m = await getActiveMembership();
+  if (!m || !(await sprintInWorkspace(sprintId))) return { cards: [] };
+  const rows = await prisma.card.findMany({
+    where: {
+      sprintId: null,
+      columnId: { not: null },
+      column: { board: { workspaceId: m.workspaceId, ...(await boardVisibilityWhere()) } },
+    },
+    orderBy: { updatedAt: "desc" },
+    take: 200,
+    select: {
+      id: true,
+      title: true,
+      keySeq: true,
+      statusId: true,
+      dueDate: true,
+      assignees: { select: { user: { select: { id: true, name: true, email: true } } } },
+      column: { select: { board: { select: { id: true, cardKeyPrefix: true, project: { select: { id: true, name: true } } } } } },
+    },
+  });
+  return {
+    cards: rows.map((c) => ({
+      id: c.id,
+      title: c.title,
+      keySeq: c.keySeq,
+      statusId: c.statusId,
+      dueDate: c.dueDate ? c.dueDate.toISOString() : null,
+      boardId: c.column!.board.id,
+      cardKeyPrefix: c.column!.board.cardKeyPrefix,
+      project: c.column!.board.project,
+      assignees: c.assignees.map((a) => a.user),
+    })),
+  };
 }
 
 /** Assign a card to a sprint (or clear with sprintId = null). */

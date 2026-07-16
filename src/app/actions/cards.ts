@@ -32,9 +32,12 @@ export async function getCardDetail(cardId: string) {
 
   const board = await prisma.board.findUnique({
     where: { id: boardId },
-    select: { workspaceId: true, cardKeyPrefix: true },
+    select: { workspaceId: true, cardKeyPrefix: true, project: { select: { sprintsEnabled: true } } },
   });
   if (!board) return null;
+  // Sprint assignment is offered for standalone-board cards and cards whose
+  // project has opted into sprint planning.
+  const sprintsEnabled = !board.project || board.project.sprintsEnabled;
 
   const [card, boardLabels, members, membership, sprints] = await Promise.all([
     prisma.card.findUnique({
@@ -119,6 +122,7 @@ export async function getCardDetail(cardId: string) {
     boardLabels,
     members,
     sprints,
+    sprintsEnabled,
     whiteboards,
     currentUserId: me.id,
     isAdmin: membership?.role === "ADMIN",

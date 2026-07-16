@@ -1,17 +1,30 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
+import {
+  DndContext,
+  DragOverlay,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  useDraggable,
+  useDroppable,
+  pointerWithin,
+  type DragEndEvent,
+  type DragStartEvent,
+} from "@dnd-kit/core";
 
 import { setCardStatus } from "@/app/actions/boards";
 import { useSetPageTitle } from "@/components/app-shell/breadcrumbs";
 import { CardDrawer, type CardFacePatch } from "@/components/board/card-drawer";
+import { AddCardsDialog } from "@/components/sprint/add-cards-dialog";
 import { Select } from "@/components/ui/select";
 import { dueMeta, dueToneClass } from "@/lib/due";
 
 type Person = { id: string; name: string | null; email: string };
-type SprintCard = {
+export type SprintCard = {
   id: string;
   title: string;
   keySeq: number | null;
@@ -41,10 +54,11 @@ export function SprintBoard({
   const [projectFilter, setProjectFilter] = useState("");
   const [assigneeFilter, setAssigneeFilter] = useState("");
   const [openCardId, setOpenCardId] = useState<string | null>(null);
+  const [activeCard, setActiveCard] = useState<SprintCard | null>(null);
   useSetPageTitle(sprint.name);
 
-  // Open a card's details in-place (the floating modal) instead of navigating to
-  // its board, so you stay on the sprint board.
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
+
   function handleCardPatch(cardId: string, patch: CardFacePatch) {
     setCards((cs) =>
       cs.map((c) =>
@@ -61,7 +75,6 @@ export function SprintBoard({
   }
 
   function handleCardDeleted(cardId: string) {
-    // The drawer already performed the delete; just drop it from the board.
     setCards((cs) => cs.filter((c) => c.id !== cardId));
     setOpenCardId(null);
   }
@@ -94,12 +107,11 @@ export function SprintBoard({
     });
   }, [cards, projectFilter, assigneeFilter]);
 
-  // Status columns, plus a "No status" column only if some card needs it.
-  const statusIds = new Set(statuses.map((s) => s.id));
+  const statusIds = useMemo(() => new Set(statuses.map((s) => s.id)), [statuses]);
   const needsNoStatus = visible.some((c) => !c.statusId || !statusIds.has(c.statusId));
   const columns = [
-    ...statuses.map((s) => ({ id: s.id, name: s.name })),
-    ...(needsNoStatus ? [{ id: NO_STATUS, name: "No status" }] : []),
+    ...statuses.map((s) => ({ id: s.id, name: s.name, droppable: true })),
+    ...(needsNoStatus ? [{ id: NO_STATUS, name: "No status", droppable: false }] : []),
   ];
 
   function cardsFor(statusId: string) {
@@ -109,11 +121,26 @@ export function SprintBoard({
 
   async function changeStatus(card: SprintCard, statusId: string) {
     const prev = card.statusId;
+    if (prev === statusId) return;
     setCards((cs) => cs.map((c) => (c.id === card.id ? { ...c, statusId } : c)));
     const res = await setCardStatus(card.id, statusId);
     if (res && "error" in res && res.error) {
       setCards((cs) => cs.map((c) => (c.id === card.id ? { ...c, statusId: prev } : c)));
     }
+  }
+
+  function onDragStart(e: DragStartEvent) {
+    setActiveCard(cards.find((c) => c.id === String(e.active.id)) ?? null);
+  }
+
+  function onDragEnd(e: DragEndEvent) {
+    setActiveCard(null);
+    const { active, over } = e;
+    if (!over) return;
+    const overId = String(over.id);
+    if (!statusIds.has(overId)) return; // dropped outside a status column (e.g. "No status") — ignore
+    const card = cards.find((c) => c.id === String(active.id));
+    if (card) changeStatus(card, overId);
   }
 
   return (
@@ -141,6 +168,9 @@ export function SprintBoard({
             {people.hasUnassigned && <option value={UNASSIGNED}>Unassigned</option>}
           </Select>
           <span className="text-xs text-muted-foreground">{visible.length} of {cards.length} cards</span>
+          <div className="ml-auto">
+            <AddCardsDialog sprintId={sprint.id} onAdded={(card) => setCards((cs) => [card, ...cs])} />
+          </div>
         </div>
       </header>
 
@@ -150,76 +180,40 @@ export function SprintBoard({
           <span className="font-medium text-foreground">Sprint</span> field to this sprint — it&rsquo;ll appear here.
         </p>
       )}
+
       {columns.length > 0 && (
-        <div className="flex flex-1 gap-3 overflow-x-auto px-6 pb-6">
-          {columns.map((col) => {
-            const colCards = cardsFor(col.id);
-            return (
-              <div key={col.id} className="flex w-72 shrink-0 flex-col rounded-xl bg-muted/40 p-2">
-                <div className="flex items-center justify-between px-1.5 py-1 text-sm font-medium">
-                  <span>{col.name}</span>
-                  <span className="text-xs text-muted-foreground">{colCards.length}</span>
-                </div>
-                <div className="flex flex-col gap-2">
-                  {colCards.map((c) => {
-                    const due = c.dueDate ? dueMeta(c.dueDate) : null;
-                    return (
-                      <div key={c.id} className="rounded-lg border border-border bg-surface px-3 py-2 text-sm shadow-sm">
-                        <button
-                          type="button"
-                          onClick={() => setOpenCardId(c.id)}
-                          className="block w-full text-left hover:underline"
-                        >
-                          {c.cardKeyPrefix && c.keySeq != null && (
-                            <span className="mr-1.5 font-mono text-xs font-medium text-muted-foreground">
-                              {c.cardKeyPrefix}-{c.keySeq}
-                            </span>
-                          )}
-                          {c.title}
-                        </button>
-                        <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-                          {c.project && (
-                            <span className="truncate rounded bg-muted px-1.5 py-0.5 text-[11px] text-muted-foreground" title={`Project: ${c.project.name}`}>
-                              {c.project.name}
-                            </span>
-                          )}
-                          {due && <span className={`text-[11px] ${dueToneClass[due.tone]}`}>{due.label}</span>}
-                          {c.assignees.length > 0 && (
-                            <span className="ml-auto flex -space-x-1.5">
-                              {c.assignees.slice(0, 3).map((a) => (
-                                <span
-                                  key={a.id}
-                                  className="flex size-5 items-center justify-center rounded-full bg-muted text-[10px] font-medium ring-1 ring-surface"
-                                  title={a.name ?? a.email}
-                                >
-                                  {(a.name ?? a.email).charAt(0).toUpperCase()}
-                                </span>
-                              ))}
-                            </span>
-                          )}
-                        </div>
-                        <Select
-                          value={statusIds.has(c.statusId ?? "") ? c.statusId! : ""}
-                          onChange={(e) => e.target.value && changeStatus(c, e.target.value)}
-                          className="mt-2 h-7 w-full py-0.5 text-xs"
-                          aria-label="Card status"
-                        >
-                          {!statusIds.has(c.statusId ?? "") && <option value="">No status</option>}
-                          {statuses.map((s) => (
-                            <option key={s.id} value={s.id}>{s.name}</option>
-                          ))}
-                        </Select>
-                      </div>
-                    );
-                  })}
-                  {colCards.length === 0 && (
-                    <p className="px-1.5 py-2 text-xs text-muted-foreground">—</p>
-                  )}
-                </div>
+        <DndContext sensors={sensors} collisionDetection={pointerWithin} onDragStart={onDragStart} onDragEnd={onDragEnd}>
+          <div className="flex flex-1 gap-3 overflow-x-auto px-6 pb-6">
+            {columns.map((col) => (
+              <StatusColumn key={col.id} id={col.id} name={col.name} droppable={col.droppable} count={cardsFor(col.id).length}>
+                {cardsFor(col.id).map((c) => (
+                  <SprintCardCell
+                    key={c.id}
+                    card={c}
+                    statuses={statuses}
+                    hasStatus={statusIds.has(c.statusId ?? "")}
+                    onOpen={() => setOpenCardId(c.id)}
+                    onChangeStatus={(statusId) => changeStatus(c, statusId)}
+                  />
+                ))}
+                {cardsFor(col.id).length === 0 && <p className="px-1.5 py-2 text-xs text-muted-foreground">—</p>}
+              </StatusColumn>
+            ))}
+          </div>
+
+          <DragOverlay>
+            {activeCard ? (
+              <div className="w-64 rounded-lg border border-border bg-surface px-3 py-2 text-sm shadow-lg">
+                {activeCard.cardKeyPrefix && activeCard.keySeq != null && (
+                  <span className="mr-1.5 font-mono text-xs font-medium text-muted-foreground">
+                    {activeCard.cardKeyPrefix}-{activeCard.keySeq}
+                  </span>
+                )}
+                {activeCard.title}
               </div>
-            );
-          })}
-        </div>
+            ) : null}
+          </DragOverlay>
+        </DndContext>
       )}
 
       {openCardId && (
@@ -231,6 +225,102 @@ export function SprintBoard({
           onNavigate={(id) => setOpenCardId(id)}
         />
       )}
+    </div>
+  );
+}
+
+function StatusColumn({
+  id,
+  name,
+  droppable,
+  count,
+  children,
+}: {
+  id: string;
+  name: string;
+  droppable: boolean;
+  count: number;
+  children: ReactNode;
+}) {
+  const { setNodeRef, isOver } = useDroppable({ id, disabled: !droppable });
+  return (
+    <div
+      ref={droppable ? setNodeRef : undefined}
+      className={`flex w-72 shrink-0 flex-col rounded-xl p-2 transition-colors ${isOver ? "bg-accent/10 ring-1 ring-accent/40" : "bg-muted/40"}`}
+    >
+      <div className="flex items-center justify-between px-1.5 py-1 text-sm font-medium">
+        <span>{name}</span>
+        <span className="text-xs text-muted-foreground">{count}</span>
+      </div>
+      <div className="flex min-h-2 flex-col gap-2">{children}</div>
+    </div>
+  );
+}
+
+function SprintCardCell({
+  card,
+  statuses,
+  hasStatus,
+  onOpen,
+  onChangeStatus,
+}: {
+  card: SprintCard;
+  statuses: StatusT[];
+  hasStatus: boolean;
+  onOpen: () => void;
+  onChangeStatus: (statusId: string) => void;
+}) {
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id: card.id });
+  const due = card.dueDate ? dueMeta(card.dueDate) : null;
+  return (
+    <div
+      ref={setNodeRef}
+      {...listeners}
+      {...attributes}
+      className={`rounded-lg border border-border bg-surface px-3 py-2 text-sm shadow-sm ${isDragging ? "opacity-40" : "cursor-grab active:cursor-grabbing"}`}
+    >
+      <button type="button" onClick={onOpen} className="block w-full text-left hover:underline">
+        {card.cardKeyPrefix && card.keySeq != null && (
+          <span className="mr-1.5 font-mono text-xs font-medium text-muted-foreground">
+            {card.cardKeyPrefix}-{card.keySeq}
+          </span>
+        )}
+        {card.title}
+      </button>
+      <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+        {card.project && (
+          <span className="truncate rounded bg-muted px-1.5 py-0.5 text-[11px] text-muted-foreground" title={`Project: ${card.project.name}`}>
+            {card.project.name}
+          </span>
+        )}
+        {due && <span className={`text-[11px] ${dueToneClass[due.tone]}`}>{due.label}</span>}
+        {card.assignees.length > 0 && (
+          <span className="ml-auto flex -space-x-1.5">
+            {card.assignees.slice(0, 3).map((a) => (
+              <span
+                key={a.id}
+                className="flex size-5 items-center justify-center rounded-full bg-muted text-[10px] font-medium ring-1 ring-surface"
+                title={a.name ?? a.email}
+              >
+                {(a.name ?? a.email).charAt(0).toUpperCase()}
+              </span>
+            ))}
+          </span>
+        )}
+      </div>
+      {/* stop pointer events reaching the drag sensor so the dropdown opens cleanly */}
+      <Select
+        value={hasStatus ? card.statusId! : ""}
+        onPointerDown={(e) => e.stopPropagation()}
+        onChange={(e) => e.target.value && onChangeStatus(e.target.value)}
+        className="mt-2 h-7 w-full py-0.5 text-xs"
+        aria-label="Card status"
+      >
+        {!hasStatus && <option value="">No status</option>}
+        {statuses.map((s) => (
+          <option key={s.id} value={s.id}>{s.name}</option>
+        ))}
+      </Select>
     </div>
   );
 }

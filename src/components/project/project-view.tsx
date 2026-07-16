@@ -13,6 +13,7 @@ import {
   movePhase,
   deletePhase,
 } from "@/app/actions/projects";
+import { setProjectSprintsEnabled } from "@/app/actions/sprints";
 import {
   PHASE_STATUS_LABEL,
   PROJECT_STATUSES,
@@ -54,6 +55,7 @@ type ProjectMeta = {
   description: string | null;
   methodology: string;
   status: string;
+  sprintsEnabled: boolean;
 };
 
 const NEXT_STATUS: Record<string, PhaseStatus> = {
@@ -133,6 +135,7 @@ export function ProjectView({
   const [name, setName] = useState(project.name);
   const [description, setDescription] = useState(project.description ?? "");
   const [status, setStatus] = useState(project.status);
+  const [sprintsEnabled, setSprintsEnabled] = useState(project.sprintsEnabled);
   const [phases, setPhases] = useState<Phase[]>(initialPhases);
   const [, startTransition] = useTransition();
   useSetPageTitle(name);
@@ -222,6 +225,19 @@ export function ProjectView({
             {done}/{phases.length} phases done
           </span>
         )}
+        <label className="flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            checked={sprintsEnabled}
+            onChange={(e) => {
+              const next = e.target.checked;
+              setSprintsEnabled(next);
+              startTransition(() => void setProjectSprintsEnabled(project.id, next));
+            }}
+            className="size-4 rounded border-border-strong accent-accent"
+          />
+          <span className="text-muted-foreground">Sprint planning</span>
+        </label>
       </div>
 
       <Textarea

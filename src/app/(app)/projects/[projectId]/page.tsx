@@ -19,6 +19,7 @@ export default async function ProjectPage({ params }: { params: Promise<{ projec
       description: true,
       methodology: true,
       status: true,
+      sprintsEnabled: true,
       boards: {
         orderBy: { createdAt: "asc" },
         select: { id: true, name: true, _count: { select: { columns: true } } },
@@ -186,6 +187,7 @@ export default async function ProjectPage({ params }: { params: Promise<{ projec
         description: project.description,
         methodology: project.methodology,
         status: project.status,
+        sprintsEnabled: project.sprintsEnabled,
       }}
       initialBoards={project.boards.map((b) => ({ id: b.id, name: b.name, columnCount: b._count.columns }))}
       availableBoards={unassignedBoards.map((b) => ({ id: b.id, name: b.name, columnCount: b._count.columns }))}

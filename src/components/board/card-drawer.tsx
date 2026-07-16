@@ -92,6 +92,7 @@ export function CardDrawer({
   const [assigneeIds, setAssigneeIds] = useState<Set<string>>(new Set());
   const [sprintId, setSprintId] = useState<string | null>(null);
   const [sprints, setSprints] = useState<{ id: string; name: string }[]>([]);
+  const [sprintsEnabled, setSprintsEnabled] = useState(false);
   const [boardLabels, setBoardLabels] = useState<LabelT[]>([]);
   const [members, setMembers] = useState<MemberT[]>([]);
   const [newLabelName, setNewLabelName] = useState("");
@@ -122,6 +123,7 @@ export function CardDrawer({
       setAssigneeIds(new Set(d.card.assigneeIds));
       setSprintId(d.card.sprintId);
       setSprints(d.sprints);
+      setSprintsEnabled(d.sprintsEnabled);
       setBoardLabels(d.boardLabels);
       setMembers(d.members);
       setSubtasks(d.subtasks);
@@ -420,7 +422,7 @@ export function CardDrawer({
               <AssigneePicker members={members} assigneeIds={assigneeIds} onToggle={toggleAssignee} />
             </Section>
 
-            {!isSubtask && (
+            {!isSubtask && sprintsEnabled && (
               <Section title="Sprint">
                 <Select
                   value={sprintId ?? ""}

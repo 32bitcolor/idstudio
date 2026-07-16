@@ -345,7 +345,10 @@ export function BoardView({
               cardKeyPrefix={cardKeyPrefix}
               canMoveLeft={i > 0}
               canMoveRight={i < filteredColumns.length - 1}
-              dragDisabled={filtersActive}
+              // Drag stays enabled while filtered — the drag handlers operate on
+              // the full card state, so a drop lands at the visible neighbor's
+              // real position among the hidden cards.
+              dragDisabled={false}
               onAddCard={handleAddCard}
               onDeleteCard={handleDeleteCard}
               onOpenCard={openCard}
