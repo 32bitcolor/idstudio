@@ -6,6 +6,7 @@ import { ArrowLeft } from "lucide-react";
 
 import { setCardStatus } from "@/app/actions/boards";
 import { useSetPageTitle } from "@/components/app-shell/breadcrumbs";
+import { CardDrawer, type CardFacePatch } from "@/components/board/card-drawer";
 import { Select } from "@/components/ui/select";
 import { dueMeta, dueToneClass } from "@/lib/due";
 
@@ -39,7 +40,31 @@ export function SprintBoard({
   const [cards, setCards] = useState<SprintCard[]>(initialCards);
   const [projectFilter, setProjectFilter] = useState("");
   const [assigneeFilter, setAssigneeFilter] = useState("");
+  const [openCardId, setOpenCardId] = useState<string | null>(null);
   useSetPageTitle(sprint.name);
+
+  // Open a card's details in-place (the floating modal) instead of navigating to
+  // its board, so you stay on the sprint board.
+  function handleCardPatch(cardId: string, patch: CardFacePatch) {
+    setCards((cs) =>
+      cs.map((c) =>
+        c.id === cardId
+          ? {
+              ...c,
+              ...(patch.title !== undefined ? { title: patch.title } : {}),
+              ...(patch.dueDate !== undefined ? { dueDate: patch.dueDate } : {}),
+              ...(patch.assignees !== undefined ? { assignees: patch.assignees } : {}),
+            }
+          : c,
+      ),
+    );
+  }
+
+  function handleCardDeleted(cardId: string) {
+    // The drawer already performed the delete; just drop it from the board.
+    setCards((cs) => cs.filter((c) => c.id !== cardId));
+    setOpenCardId(null);
+  }
 
   const projects = useMemo(() => {
     const map = new Map<string, string>();
@@ -140,14 +165,18 @@ export function SprintBoard({
                     const due = c.dueDate ? dueMeta(c.dueDate) : null;
                     return (
                       <div key={c.id} className="rounded-lg border border-border bg-surface px-3 py-2 text-sm shadow-sm">
-                        <Link href={`/boards/${c.boardId}?card=${c.id}`} className="block hover:underline">
+                        <button
+                          type="button"
+                          onClick={() => setOpenCardId(c.id)}
+                          className="block w-full text-left hover:underline"
+                        >
                           {c.cardKeyPrefix && c.keySeq != null && (
                             <span className="mr-1.5 font-mono text-xs font-medium text-muted-foreground">
                               {c.cardKeyPrefix}-{c.keySeq}
                             </span>
                           )}
                           {c.title}
-                        </Link>
+                        </button>
                         <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
                           {c.project && (
                             <span className="truncate rounded bg-muted px-1.5 py-0.5 text-[11px] text-muted-foreground" title={`Project: ${c.project.name}`}>
@@ -191,6 +220,16 @@ export function SprintBoard({
             );
           })}
         </div>
+      )}
+
+      {openCardId && (
+        <CardDrawer
+          cardId={openCardId}
+          onClose={() => setOpenCardId(null)}
+          onPatch={handleCardPatch}
+          onDeleted={handleCardDeleted}
+          onNavigate={(id) => setOpenCardId(id)}
+        />
       )}
     </div>
   );

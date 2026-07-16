@@ -32,7 +32,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { dueMeta, dueToneClass } from "@/lib/due";
 
 export type LabelT = { id: string; name: string; color: string };
@@ -316,13 +316,12 @@ export function CardDrawer({
   const doneCount = subtasks.filter((i) => i.done).length;
 
   return (
-    <Sheet open onOpenChange={(v) => !v && onClose()}>
-      <SheetContent
-        side="right"
-        className="w-full gap-0 overflow-y-auto border-l border-border bg-surface p-0 shadow-xl sm:max-w-md"
+    <Dialog open onOpenChange={(v) => !v && onClose()}>
+      <DialogContent
+        className="flex max-h-[85vh] w-full max-w-[calc(100%-2rem)] flex-col gap-0 overflow-hidden bg-surface p-0 shadow-xl sm:max-w-2xl"
       >
-        <SheetHeader className="flex-row items-start justify-between gap-2 space-y-0 border-b border-border px-4 py-3">
-          <SheetTitle asChild>
+        <DialogHeader className="flex-row items-start justify-between gap-2 space-y-0 border-b border-border px-4 py-3 pr-12">
+          <DialogTitle asChild>
             <div className="flex-1">
               {cardKeyPrefix && keySeq != null && (
                 <button
@@ -343,10 +342,11 @@ export function CardDrawer({
                 className="min-h-[2rem] w-full resize-none rounded bg-transparent px-1 text-base font-semibold outline-none hover:bg-hover focus:bg-hover"
               />
             </div>
-          </SheetTitle>
-          <SheetDescription className="sr-only">Card details</SheetDescription>
-        </SheetHeader>
+          </DialogTitle>
+          <DialogDescription className="sr-only">Card details</DialogDescription>
+        </DialogHeader>
 
+        <div className="flex-1 overflow-y-auto">
         {loading ? (
           <p className="p-4 text-sm text-foreground/50">Loading…</p>
         ) : (
@@ -579,8 +579,9 @@ export function CardDrawer({
             </div>
           </div>
         )}
-      </SheetContent>
-    </Sheet>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 
