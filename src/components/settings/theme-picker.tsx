@@ -1,9 +1,8 @@
 "use client";
 
 import { useSyncExternalStore } from "react";
-import { Check } from "lucide-react";
 
-import { cn } from "@/lib/utils";
+import { Select } from "@/components/ui/select";
 
 // Kept in sync with the [data-theme] blocks in src/app/globals.css. Only the two
 // swatch colors live here — everything else is driven by the CSS custom properties.
@@ -66,34 +65,15 @@ export function ThemePicker() {
   }
 
   return (
-    <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
-      {THEMES.map((t) => {
-        const active = theme === t.id;
-        return (
-          <button
-            key={t.id}
-            type="button"
-            onClick={() => apply(t.id)}
-            aria-pressed={active}
-            title={t.label}
-            className={cn(
-              "flex items-center gap-2.5 rounded-lg border px-3 py-2.5 text-left text-sm transition-colors",
-              active ? "border-accent bg-accent/8" : "border-border hover:border-border-strong hover:bg-hover"
-            )}
-          >
-            <span
-              className="relative flex size-6 shrink-0 items-center justify-center overflow-hidden rounded-full border border-border-strong"
-              style={{ background: t.bg ?? "linear-gradient(135deg, #fff 50%, #0a0a0a 50%)" }}
-            >
-              {t.accent && (
-                <span className="absolute inset-0 m-auto size-2.5 rounded-full" style={{ background: t.accent }} />
-              )}
-            </span>
-            <span className="min-w-0 flex-1 font-medium leading-tight">{t.label}</span>
-            {active && <Check className="size-4 shrink-0 text-accent" />}
-          </button>
-        );
-      })}
-    </div>
+    <Select
+      value={theme}
+      onChange={(e) => apply(e.target.value)}
+      aria-label="Theme"
+      className="w-full sm:w-72"
+    >
+      {THEMES.map((t) => (
+        <option key={t.id} value={t.id}>{t.label}</option>
+      ))}
+    </Select>
   );
 }

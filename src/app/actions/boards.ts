@@ -72,6 +72,21 @@ export async function createBoard(formData: FormData): Promise<void> {
   redirect(boardPath(board.id));
 }
 
+/** Attach an existing board to a project, or detach it (projectId = null). */
+export async function setBoardProject(boardId: string, projectId: string | null) {
+  const board = await getBoardForUser(boardId);
+  if (!board) return { error: "Board not found." };
+  if (projectId) {
+    const project = await getProjectForUser(projectId);
+    if (!project) return { error: "Project not found." };
+    if (project.workspaceId !== board.workspaceId) return { error: "That project is in another workspace." };
+  }
+  await prisma.board.update({ where: { id: boardId }, data: { projectId } });
+  revalidatePath(boardPath(boardId));
+  if (projectId) revalidatePath(`/projects/${projectId}`);
+  return { ok: true };
+}
+
 /** Create a board that belongs to a project (called from the project page).
  *  Returns the new board rather than redirecting, so the caller can link to it. */
 export async function createProjectBoard(projectId: string, name: string) {
@@ -127,7 +142,16 @@ export async function setBoardCardKeyPrefix(boardId: string, prefix: string) {
     if (taken) return { error: `"${parsed.data}" is already used by another board in this workspace.` };
   }
 
-  await prisma.board.update({ where: { id: boardId }, data: { cardKeyPrefix: parsed.data } });
+  try {
+    await prisma.board.update({ where: { id: boardId }, data: { cardKeyPrefix: parsed.data } });
+  } catch (e) {
+    // Belt-and-suspenders: turn a unique-constraint race into a friendly error
+    // instead of a thrown 500 that the client surfaces as a generic failure.
+    if ((e as { code?: string })?.code === "P2002") {
+      return { error: `"${parsed.data}" is already used by another board in this workspace.` };
+    }
+    throw e;
+  }
   await backfillCardKeys(boardId);
   revalidatePath(boardPath(boardId));
   return { cardKeyPrefix: parsed.data };

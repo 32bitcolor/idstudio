@@ -108,6 +108,7 @@ type TimeEntryInit = {
 export function ProjectView({
   project,
   initialBoards,
+  availableBoards,
   initialPhases,
   initialObjectives,
   initialAssessments,
@@ -119,6 +120,7 @@ export function ProjectView({
 }: {
   project: ProjectMeta;
   initialBoards: { id: string; name: string; columnCount: number }[];
+  availableBoards: { id: string; name: string; columnCount: number }[];
   initialPhases: Phase[];
   initialObjectives: ObjectiveInit[];
   initialAssessments: AssessmentInit[];
@@ -305,7 +307,7 @@ export function ProjectView({
         <PhaseComposer onAdd={addPhase} />
       </section>
 
-      <BoardsSection projectId={project.id} initial={initialBoards} />
+      <BoardsSection projectId={project.id} initial={initialBoards} available={availableBoards} />
 
       <AlignmentSection
         projectId={project.id}

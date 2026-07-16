@@ -4,25 +4,43 @@ import { useState } from "react";
 import Link from "next/link";
 import { Columns3, Plus } from "lucide-react";
 
-import { createProjectBoard } from "@/app/actions/boards";
+import { createProjectBoard, setBoardProject } from "@/app/actions/boards";
 import { SectionHeader } from "@/components/shared/page";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
 
 type BoardRef = { id: string; name: string; columnCount: number };
 
 export function BoardsSection({
   projectId,
   initial,
+  available,
 }: {
   projectId: string;
   initial: BoardRef[];
+  available: BoardRef[];
 }) {
   const [boards, setBoards] = useState<BoardRef[]>(initial);
+  const [unassigned, setUnassigned] = useState<BoardRef[]>(available);
   const [name, setName] = useState("");
   const [open, setOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+
+  async function addExisting(boardId: string) {
+    const board = unassigned.find((b) => b.id === boardId);
+    if (!board) return;
+    setUnassigned((prev) => prev.filter((b) => b.id !== boardId));
+    setBoards((prev) => [...prev, board]);
+    const res = await setBoardProject(boardId, projectId);
+    if (res && "error" in res && res.error) {
+      // revert
+      setBoards((prev) => prev.filter((b) => b.id !== boardId));
+      setUnassigned((prev) => [...prev, board]);
+      setError(res.error);
+    }
+  }
 
   async function submit() {
     const trimmed = name.trim();
@@ -87,12 +105,27 @@ export function BoardsSection({
           </Button>
         </div>
       ) : (
-        <button
-          onClick={() => setOpen(true)}
-          className="mt-2 rounded-lg px-2 py-1.5 text-left text-sm text-foreground/50 hover:bg-hover"
-        >
-          <Plus className="mr-1 inline size-3.5" /> Add a board
-        </button>
+        <div className="mt-2 flex flex-wrap items-center gap-2">
+          <button
+            onClick={() => setOpen(true)}
+            className="rounded-lg px-2 py-1.5 text-left text-sm text-foreground/50 hover:bg-hover"
+          >
+            <Plus className="mr-1 inline size-3.5" /> Add a board
+          </button>
+          {unassigned.length > 0 && (
+            <Select
+              value=""
+              onChange={(e) => e.target.value && addExisting(e.target.value)}
+              className="h-8 w-auto py-1 text-xs"
+              aria-label="Add an existing board to this project"
+            >
+              <option value="">Add existing board…</option>
+              {unassigned.map((b) => (
+                <option key={b.id} value={b.id}>{b.name}</option>
+              ))}
+            </Select>
+          )}
+        </div>
       )}
       {error && <p role="alert" className="mt-1 text-sm text-destructive">{error}</p>}
     </section>

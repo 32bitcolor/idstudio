@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
-import { getProjectForUser } from "@/lib/authz";
+import { getProjectForUser, boardVisibilityWhere } from "@/lib/authz";
 import { ProjectView } from "@/components/project/project-view";
 
 export const metadata = { title: "Project · IDStudio" };
@@ -171,6 +171,13 @@ export default async function ProjectPage({ params }: { params: Promise<{ projec
     deliverable: t.deliverable,
   }));
 
+  // Standalone (project-less) boards the user can see — offered as "add existing".
+  const unassignedBoards = await prisma.board.findMany({
+    where: { workspaceId: access.workspaceId, projectId: null, ...(await boardVisibilityWhere()) },
+    orderBy: { name: "asc" },
+    select: { id: true, name: true, _count: { select: { columns: true } } },
+  });
+
   return (
     <ProjectView
       project={{
@@ -181,6 +188,7 @@ export default async function ProjectPage({ params }: { params: Promise<{ projec
         status: project.status,
       }}
       initialBoards={project.boards.map((b) => ({ id: b.id, name: b.name, columnCount: b._count.columns }))}
+      availableBoards={unassignedBoards.map((b) => ({ id: b.id, name: b.name, columnCount: b._count.columns }))}
       initialPhases={phases}
       initialObjectives={objectives}
       initialAssessments={assessments}
