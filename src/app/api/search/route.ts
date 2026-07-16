@@ -22,7 +22,7 @@ export async function GET(req: Request) {
   const wsId = membership.workspaceId;
   const contains = { contains: q, mode: "insensitive" as const };
 
-  const [boards, projects, storyboards, courses, whiteboards] = await Promise.all([
+  const [boards, projects, storyboards, courses, whiteboards, cards] = await Promise.all([
     prisma.board.findMany({
       where: { workspaceId: wsId, name: contains, ...(await boardVisibilityWhere()) },
       select: { id: true, name: true },
@@ -48,6 +48,29 @@ export async function GET(req: Request) {
       select: { id: true, title: true },
       take: TAKE,
     }),
+    // Cards and subtasks alike — a subtask is just a Card with parentCardId
+    // set, reached through its parent's column instead of its own (it has
+    // none). Both open the same board with the card's drawer deep-linked.
+    prisma.card.findMany({
+      where: {
+        title: contains,
+        OR: [
+          { columnId: { not: null }, column: { board: { workspaceId: wsId, ...(await boardVisibilityWhere()) } } },
+          {
+            parentCardId: { not: null },
+            parentCard: { column: { board: { workspaceId: wsId, ...(await boardVisibilityWhere()) } } },
+          },
+        ],
+      },
+      select: {
+        id: true,
+        title: true,
+        parentCardId: true,
+        column: { select: { boardId: true } },
+        parentCard: { select: { column: { select: { boardId: true } } } },
+      },
+      take: TAKE,
+    }),
   ]);
 
   const results = [
@@ -56,6 +79,11 @@ export async function GET(req: Request) {
     ...storyboards.map((s) => ({ type: "storyboard" as const, id: s.id, label: s.title, href: `/storyboards/${s.id}` })),
     ...courses.map((c) => ({ type: "course" as const, id: c.id, label: c.title, href: `/courses/${c.id}` })),
     ...whiteboards.map((w) => ({ type: "whiteboard" as const, id: w.id, label: w.title, href: `/whiteboards/${w.id}` })),
+    ...cards.map((c) => {
+      const boardId = c.column?.boardId ?? c.parentCard!.column!.boardId;
+      const type: "card" | "subtask" = c.parentCardId ? "subtask" : "card";
+      return { type, id: c.id, label: c.title, href: `/boards/${boardId}?card=${c.id}` };
+    }),
   ];
 
   return Response.json({ results });

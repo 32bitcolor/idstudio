@@ -11,6 +11,8 @@ import {
   Shapes,
   LifeBuoy,
   Settings,
+  RectangleHorizontal,
+  ListChecks,
   type LucideIcon,
 } from "lucide-react";
 
@@ -19,7 +21,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 
-type ResultType = "board" | "project" | "storyboard" | "course" | "whiteboard";
+type ResultType = "board" | "project" | "storyboard" | "course" | "whiteboard" | "card" | "subtask";
 type SearchResult = { type: ResultType; id: string; label: string; href: string };
 type Row = { key: string; label: string; href: string; icon: LucideIcon; sub?: string };
 
@@ -29,6 +31,8 @@ const TYPE_ICON: Record<ResultType, LucideIcon> = {
   storyboard: Film,
   course: MonitorPlay,
   whiteboard: Shapes,
+  card: RectangleHorizontal,
+  subtask: ListChecks,
 };
 const TYPE_LABEL: Record<ResultType, string> = {
   board: "Board",
@@ -36,6 +40,8 @@ const TYPE_LABEL: Record<ResultType, string> = {
   storyboard: "Storyboard",
   course: "Course",
   whiteboard: "Whiteboard",
+  card: "Card",
+  subtask: "Subtask",
 };
 
 const GO_TO: Row[] = [
@@ -171,7 +177,7 @@ export function CommandPalette() {
         >
           <DialogTitle className="sr-only">Search IDStudio</DialogTitle>
           <DialogDescription className="sr-only">
-            Jump to a module, or search boards, projects, storyboards, courses, and whiteboards.
+            Jump to a module, or search boards, cards, subtasks, projects, storyboards, courses, and whiteboards.
           </DialogDescription>
 
           <div className="flex items-center gap-2.5 border-b border-border px-4 py-3">
