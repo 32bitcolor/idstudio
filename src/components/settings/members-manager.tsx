@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
+import { ROLE_DOT } from "@/lib/roles";
 import { SectionHeader } from "@/components/shared/page";
 import { ConfirmDelete } from "@/components/shared/confirm-delete";
 
@@ -58,7 +59,7 @@ function CreateUser() {
         </div>
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="role">Role</Label>
-          <Select id="role" name="role" defaultValue="MEMBER" className="h-8">
+          <Select id="role" name="role" defaultValue="MEMBER" className="h-8 py-1">
             <option value="MEMBER">Member</option>
             <option value="MANAGER">Manager</option>
             <option value="ADMIN">Admin</option>
@@ -81,12 +82,15 @@ function MemberRow({ member }: { member: Member }) {
   const [msg, setMsg] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
   const [showReset, setShowReset] = useState(false);
   const [pw, setPw] = useState("");
+  const [role, setRole] = useState(member.role);
 
-  function changeRole(role: string) {
+  function changeRole(next: string) {
     setMsg(null);
+    const prev = role;
+    setRole(next); // optimistic — keeps the color dot + select in sync immediately
     startTransition(async () => {
-      const res = await setUserRole(member.id, role);
-      if (res?.error) setMsg({ kind: "err", text: res.error });
+      const res = await setUserRole(member.id, next);
+      if (res?.error) { setRole(prev); setMsg({ kind: "err", text: res.error }); }
     });
   }
 
@@ -119,17 +123,23 @@ function MemberRow({ member }: { member: Member }) {
         {msg && <div className={msg.kind === "ok" ? "mt-1 text-xs text-success" : "mt-1 text-xs text-destructive"}>{msg.text}</div>}
       </div>
 
-      <Select
-        value={member.role}
-        onChange={(e) => changeRole(e.target.value)}
-        disabled={pending}
-        className="h-8 w-auto"
-        aria-label="Role"
-      >
-        <option value="MEMBER">Member</option>
-        <option value="MANAGER">Manager</option>
-        <option value="ADMIN">Admin</option>
-      </Select>
+      <div className="flex items-center gap-2">
+        <span
+          className={`size-2.5 shrink-0 rounded-full ${ROLE_DOT[role] ?? "bg-muted-foreground"}`}
+          aria-hidden
+        />
+        <Select
+          value={role}
+          onChange={(e) => changeRole(e.target.value)}
+          disabled={pending}
+          className="h-8 w-auto py-1"
+          aria-label="Role"
+        >
+          <option value="MEMBER">Member</option>
+          <option value="MANAGER">Manager</option>
+          <option value="ADMIN">Admin</option>
+        </Select>
+      </div>
 
       <Button variant="outline" size="sm" onClick={() => setShowReset((s) => !s)} disabled={pending}>
         <KeyRound className="size-4" /> Reset password

@@ -119,11 +119,13 @@ export function SprintBoard({
         </div>
       </header>
 
-      {cards.length === 0 ? (
-        <p className="px-6 text-sm text-muted-foreground">
-          No cards in this sprint yet. Assign cards to it from a board card&rsquo;s Sprint field.
+      {cards.length === 0 && (
+        <p className="mx-6 mb-3 rounded-lg border border-dashed border-border px-3 py-2 text-sm text-muted-foreground">
+          No cards assigned yet. Open any board, click a card, and set its{" "}
+          <span className="font-medium text-foreground">Sprint</span> field to this sprint — it&rsquo;ll appear here.
         </p>
-      ) : (
+      )}
+      {columns.length > 0 && (
         <div className="flex flex-1 gap-3 overflow-x-auto px-6 pb-6">
           {columns.map((col) => {
             const colCards = cardsFor(col.id);
