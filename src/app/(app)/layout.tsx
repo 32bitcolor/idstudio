@@ -78,7 +78,7 @@ export default async function AppLayout({
             <Separator orientation="vertical" className="mr-2 h-4" />
             <Breadcrumbs />
             <div className="ml-auto flex items-center gap-2">
-              {updateStatus && <UpdatePill count={updateStatus.behind} />}
+              {updateStatus && <UpdatePill initialCount={updateStatus.behind} />}
               <CommandPalette />
               <IntakeBadge count={needsTriageCount} />
               <NotificationsBadge count={awaitingReviewCount + myOpenSubtasksCount} />
