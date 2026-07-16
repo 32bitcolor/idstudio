@@ -23,5 +23,5 @@ function getTransport() {
 export async function sendMail(msg: { to: string; subject: string; html: string; text: string }): Promise<void> {
   const t = getTransport();
   if (!t) return; // not configured — silent no-op, not an error
-  await t.sendMail({ from: process.env.SMTP_FROM ?? "IDStudio <no-reply@haggabasin.com>", ...msg });
+  await t.sendMail({ from: process.env.SMTP_FROM ?? "IDStudio <no-reply@idstudio.haggabasin.com>", ...msg });
 }

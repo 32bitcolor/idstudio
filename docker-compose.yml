@@ -86,7 +86,7 @@ services:
       SMTP_SECURE: ${SMTP_SECURE:-false}
       SMTP_USER: ${SMTP_USER:-}
       SMTP_PASSWORD: ${SMTP_PASSWORD:-}
-      SMTP_FROM: "${SMTP_FROM:-IDStudio <no-reply@haggabasin.com>}"
+      SMTP_FROM: "${SMTP_FROM:-IDStudio <no-reply@idstudio.haggabasin.com>}"
       # Shared with the host self-update agent (see deploy/update-agent.sh). The app
       # only reads status + drops request files here; the host agent does the work.
       UPDATE_CONTROL_DIR: /app/update-control
@@ -109,13 +109,14 @@ services:
       DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
       REDIS_URL: redis://redis:6379
       NODE_ENV: production
-      # SMTP is only ever touched here — the app service just enqueues via Redis.
+      # The worker sends queued email notifications (the app enqueues via Redis and
+      # also reads SMTP for the admin "Send test email").
       SMTP_HOST: ${SMTP_HOST:-}
       SMTP_PORT: ${SMTP_PORT:-587}
       SMTP_SECURE: ${SMTP_SECURE:-false}
       SMTP_USER: ${SMTP_USER:-}
       SMTP_PASSWORD: ${SMTP_PASSWORD:-}
-      SMTP_FROM: "${SMTP_FROM:-IDStudio <no-reply@haggabasin.com>}"
+      SMTP_FROM: "${SMTP_FROM:-IDStudio <no-reply@idstudio.haggabasin.com>}"
     depends_on:
       redis:
         condition: service_healthy
