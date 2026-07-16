@@ -51,6 +51,7 @@ model Workspace {
   whiteboards    Whiteboard[]
   groups         Group[]
   intakeRequests IntakeRequest[]
+  statuses       WorkspaceStatus[]
 }
 
 // Role is per-workspace (on Membership), never global on User.
@@ -72,30 +73,54 @@ model Membership {
 // Ordering uses fractional-index strings (`position`): inserting between two
 // items computes a key between their keys — a single-row update, no renumbering.
 
+// Canonical, per-workspace status vocabulary. A board's columns each map to one
+// of these; cross-project views (e.g. the team sprint board) group cards by
+// them. Seeded with defaults on workspace creation; admin-editable.
+model WorkspaceStatus {
+  id          String    @id @default(cuid())
+  workspaceId String
+  name        String // "Backlog" · "To do" · "In progress" · "In review" · "Done"
+  category    String    @default("active") // todo / active / done — for done-detection & WIP
+  position    String // fractional-index ordering (lib/ordering.ts)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  columns     Column[]
+  cards       Card[]
+
+  @@unique([workspaceId, name])
+  @@index([workspaceId, position])
+}
+
 model Board {
   id            String       @id @default(cuid())
   workspaceId   String
+  projectId     String? // null = standalone "quick board"; set = one of a project's boards
   name          String
   cardKeyPrefix String? // e.g. "WP" — when set, every card created under this board (including subtasks) gets a sequential "WP-123" key
   cardKeySeq    Int          @default(0) // last card key number issued; incremented atomically on card creation
   createdAt     DateTime     @default(now())
   updatedAt     DateTime     @updatedAt
   workspace     Workspace    @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  project       Project?     @relation(fields: [projectId], references: [id], onDelete: SetNull)
   columns       Column[]
   labels        Label[]
   groupAccess   BoardGroup[]
 
   @@unique([workspaceId, cardKeyPrefix])
   @@index([workspaceId])
+  @@index([projectId])
 }
 
 model Column {
-  id        String   @id @default(cuid())
+  id        String           @id @default(cuid())
   boardId   String
+  statusId  String? // the canonical status this column represents (drives card.statusId on move)
   name      String
   position  String
-  createdAt DateTime @default(now())
-  board     Board    @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  createdAt DateTime         @default(now())
+  board     Board            @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  status    WorkspaceStatus? @relation(fields: [statusId], references: [id], onDelete: SetNull)
   cards     Card[]
 
   @@index([boardId, position])
@@ -110,12 +135,14 @@ model Card {
   dueDate      DateTime?
   done         Boolean        @default(false) // only meaningful for subtask-cards
   keySeq       Int? // this card's number in its board's key sequence — null if the board has no cardKeyPrefix; display as "{board.cardKeyPrefix}-{keySeq}"
+  statusId     String? // canonical status — source of truth for cross-board views; kept in sync with the card's column on move
   position     String
   createdAt    DateTime       @default(now())
   updatedAt    DateTime       @updatedAt
   column       Column?        @relation(fields: [columnId], references: [id], onDelete: Cascade)
   parentCard   Card?          @relation("CardSubtasks", fields: [parentCardId], references: [id], onDelete: Cascade)
   subtasks     Card[]         @relation("CardSubtasks")
+  status       WorkspaceStatus? @relation(fields: [statusId], references: [id], onDelete: SetNull)
   labels       CardLabel[]
   assignees    CardAssignee[]
   comments     Comment[]
@@ -125,6 +152,7 @@ model Card {
 
   @@index([columnId, position])
   @@index([parentCardId, position])
+  @@index([statusId])
 }
 
 model Attachment {
@@ -168,6 +196,7 @@ model Project {
   objectives      LearningObjective[]
   assessmentItems AssessmentItem[]
   intakeRequest   IntakeRequest?
+  boards          Board[]
 
   @@index([workspaceId])
 }

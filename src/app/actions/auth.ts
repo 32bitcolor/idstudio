@@ -7,6 +7,7 @@ import { hashPassword, verifyPassword } from "@/lib/password";
 import { createSession, deleteSession } from "@/lib/session";
 import { SignupSchema, LoginSchema } from "@/lib/validation";
 import { slugify } from "@/lib/slug";
+import { workspaceStatusSeedData } from "@/lib/status";
 import { Role } from "@/generated/prisma/client";
 import type { AuthState } from "@/lib/form-state";
 
@@ -57,8 +58,14 @@ export async function signup(_prev: AuthState, formData: FormData): Promise<Auth
         },
       },
     },
-    select: { id: true },
+    select: { id: true, memberships: { select: { workspaceId: true }, take: 1 } },
   });
+
+  // Seed the new workspace's canonical status vocabulary.
+  const workspaceId = user.memberships[0]?.workspaceId;
+  if (workspaceId) {
+    await prisma.workspaceStatus.createMany({ data: workspaceStatusSeedData(workspaceId) });
+  }
 
   await createSession(user.id);
   redirect("/dashboard");

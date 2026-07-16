@@ -7,6 +7,7 @@ import { prisma } from "@/lib/db";
 import { getActiveMembership } from "@/lib/dal";
 import { getBoardForUser, getColumnForUser, getCardForUser } from "@/lib/authz";
 import { positionBetween, positionsAfter, positionForIndex } from "@/lib/ordering";
+import { pickStatusIdForName } from "@/lib/status";
 
 const Name = z.string().trim().min(1, "Required").max(120);
 const Title = z.string().trim().min(1, "Required").max(280);
@@ -48,12 +49,22 @@ export async function createBoard(formData: FormData): Promise<void> {
   }
 
   const positions = positionsAfter(null, DEFAULT_COLUMNS.length);
+  const statuses = await prisma.workspaceStatus.findMany({
+    where: { workspaceId: membership.workspaceId },
+    select: { id: true, name: true },
+  });
   const board = await prisma.board.create({
     data: {
       workspaceId: membership.workspaceId,
       name: parsed.data,
       cardKeyPrefix,
-      columns: { create: DEFAULT_COLUMNS.map((name, i) => ({ name, position: positions[i] })) },
+      columns: {
+        create: DEFAULT_COLUMNS.map((name, i) => ({
+          name,
+          position: positions[i],
+          statusId: pickStatusIdForName(statuses, name),
+        })),
+      },
     },
     select: { id: true },
   });
@@ -222,13 +233,24 @@ export async function createColumn(boardId: string, name: string) {
   const parsed = Name.safeParse(name);
   if (!parsed.success) return { error: "Column name is required." };
 
-  const last = await prisma.column.findFirst({
-    where: { boardId },
-    orderBy: { position: "desc" },
-    select: { position: true },
-  });
+  const [last, statuses] = await Promise.all([
+    prisma.column.findFirst({
+      where: { boardId },
+      orderBy: { position: "desc" },
+      select: { position: true },
+    }),
+    prisma.workspaceStatus.findMany({
+      where: { workspaceId: board.workspaceId },
+      select: { id: true, name: true },
+    }),
+  ]);
   const column = await prisma.column.create({
-    data: { boardId, name: parsed.data, position: positionBetween(last?.position ?? null, null) },
+    data: {
+      boardId,
+      name: parsed.data,
+      statusId: pickStatusIdForName(statuses, parsed.data),
+      position: positionBetween(last?.position ?? null, null),
+    },
     select: { id: true, name: true, position: true },
   });
   revalidatePath(boardPath(boardId));
@@ -280,7 +302,13 @@ export async function createCard(columnId: string, title: string) {
   });
   const keySeq = await nextCardKeySeq(column.boardId);
   const card = await prisma.card.create({
-    data: { columnId, title: parsed.data, keySeq, position: positionBetween(last?.position ?? null, null) },
+    data: {
+      columnId,
+      title: parsed.data,
+      keySeq,
+      statusId: column.statusId, // inherit the column's canonical status
+      position: positionBetween(last?.position ?? null, null),
+    },
     select: { id: true, columnId: true, title: true, description: true, position: true, keySeq: true },
   });
   revalidatePath(boardPath(column.boardId));
@@ -317,6 +345,10 @@ export async function moveCard(cardId: string, toColumnId: string, targetIndex: 
     select: { position: true },
   });
   const position = positionForIndex(siblings.map((c) => c.position), targetIndex);
-  await prisma.card.update({ where: { id: cardId }, data: { columnId: toColumnId, position } });
+  // Keep the card's canonical status in sync with the column it lands in.
+  await prisma.card.update({
+    where: { id: cardId },
+    data: { columnId: toColumnId, position, statusId: target.statusId },
+  });
   revalidatePath(boardPath(card.boardId));
 }

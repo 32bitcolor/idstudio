@@ -136,7 +136,7 @@ export async function getColumnForUser(columnId: string) {
   if (!ctx) return null;
   return prisma.column.findFirst({
     where: { id: columnId, board: { workspace: ownedByUser(ctx.userId), ...boardAccessOR(ctx) } },
-    select: { id: true, boardId: true },
+    select: { id: true, boardId: true, statusId: true },
   });
 }
 

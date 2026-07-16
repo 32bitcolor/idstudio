@@ -2,6 +2,7 @@ import "server-only";
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { prisma } from "@/lib/db";
 import { getObjectBytes, putObjectBytes, buildObjectKey } from "@/lib/storage";
+import { workspaceStatusSeedData } from "@/lib/status";
 
 // Full logical backup of a single workspace: the entire content graph plus its
 // members (by email) and attachment media. Restore recreates it as a NEW
@@ -36,8 +37,12 @@ function cardInWorkspace(w: string): any {
 // Ordered by foreign-key dependency so parents exist before children on restore.
 const SPECS: Spec[] = [
   { key: "group", model: "group", where: (w) => ({ workspaceId: w }), fks: { workspaceId: WS } },
-  { key: "board", model: "board", where: (w) => ({ workspaceId: w }), fks: { workspaceId: WS } },
-  { key: "column", model: "column", where: (w) => ({ board: { workspaceId: w } }), fks: { boardId: "board" } },
+  { key: "workspaceStatus", model: "workspaceStatus", where: (w) => ({ workspaceId: w }), fks: { workspaceId: WS } },
+  // Project before Board so Board.projectId can remap on import; both before
+  // Column/Card so their statusId → workspaceStatus remaps too.
+  { key: "project", model: "project", where: (w) => ({ workspaceId: w }), fks: { workspaceId: WS } },
+  { key: "board", model: "board", where: (w) => ({ workspaceId: w }), fks: { workspaceId: WS, projectId: "project" } },
+  { key: "column", model: "column", where: (w) => ({ board: { workspaceId: w } }), fks: { boardId: "board", statusId: "workspaceStatus" } },
   // A subtask is a Card with columnId null and parentCardId set — the OR clause
   // pulls both top-level cards (via their column) and subtask-cards (via their
   // parent's column) into the same export bucket. On import, self-referential
@@ -47,11 +52,10 @@ const SPECS: Spec[] = [
     key: "card",
     model: "card",
     where: cardInWorkspace,
-    fks: { columnId: "column", parentCardId: "card" },
+    fks: { columnId: "column", parentCardId: "card", statusId: "workspaceStatus" },
     sort: (rows) => [...rows].sort((a, b) => (a.parentCardId ? 1 : 0) - (b.parentCardId ? 1 : 0)),
   },
   { key: "label", model: "label", where: (w) => ({ board: { workspaceId: w } }), fks: { boardId: "board" } },
-  { key: "project", model: "project", where: (w) => ({ workspaceId: w }), fks: { workspaceId: WS } },
   { key: "phase", model: "phase", where: (w) => ({ project: { workspaceId: w } }), fks: { projectId: "project" } },
   { key: "deliverable", model: "deliverable", where: (w) => ({ project: { workspaceId: w } }), fks: { projectId: "project", phaseId: "phase", cardId: "card" } },
   { key: "milestone", model: "milestone", where: (w) => ({ project: { workspaceId: w } }), fks: { projectId: "project" } },
@@ -201,6 +205,12 @@ export async function importWorkspace(
       const created = await (prisma as any)[spec.model].create({ data: d });
       if (spec.key) maps[spec.key][row.id] = created.id;
     }
+  }
+
+  // Backups taken before the canonical-status migration carry no
+  // workspaceStatus rows; seed defaults so the restored workspace is usable.
+  if (!(exp.data.workspaceStatus?.length)) {
+    await prisma.workspaceStatus.createMany({ data: workspaceStatusSeedData(ws.id) });
   }
 
   // 4. attachments + media (needs remapped cardId + a fresh storage key)

@@ -38,7 +38,7 @@ async function main() {
     parallelism: 1,
   });
 
-  await prisma.user.create({
+  const user = await prisma.user.create({
     data: {
       email: ADMIN_EMAIL,
       name: "Admin",
@@ -50,7 +50,24 @@ async function main() {
         },
       },
     },
+    select: { memberships: { select: { workspaceId: true }, take: 1 } },
   });
+
+  const workspaceId = user.memberships[0]?.workspaceId;
+  if (workspaceId) {
+    // Canonical status vocabulary — mirrors DEFAULT_WORKSPACE_STATUSES in
+    // src/lib/status.ts (inlined here; the tsx seed avoids the @/ alias). The
+    // positions are the fractional-index keys positionsAfter(null, 5) produces.
+    await prisma.workspaceStatus.createMany({
+      data: [
+        { workspaceId, name: "Backlog", category: "todo", position: "a0" },
+        { workspaceId, name: "To do", category: "todo", position: "a1" },
+        { workspaceId, name: "In progress", category: "active", position: "a2" },
+        { workspaceId, name: "In review", category: "active", position: "a3" },
+        { workspaceId, name: "Done", category: "done", position: "a4" },
+      ],
+    });
+  }
 
   console.log(`[seed] created admin "${ADMIN_EMAIL}" + workspace "${WORKSPACE_NAME}".`);
   console.log(`[seed] sign in with ${ADMIN_EMAIL} / ${ADMIN_PASSWORD} (change this!).`);
