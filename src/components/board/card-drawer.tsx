@@ -401,87 +401,93 @@ export function CardDrawer({
               </Section>
             )}
 
-            <Section title="Due date">
-              <div className="flex items-center gap-2">
-                <Input
-                  type="date"
-                  value={dueDate ? dueDate.slice(0, 10) : ""}
-                  onChange={(e) => changeDueDate(e.target.value)}
-                  className="h-8 w-auto"
-                />
-                {dueDate && (
-                  <Button variant="link" className="h-auto p-0 text-xs" onClick={() => changeDueDate("")}>
-                    Clear
-                  </Button>
-                )}
-              </div>
-            </Section>
-
-            <Section title="Labels">
-              <div className="flex flex-wrap gap-1.5">
-                {boardLabels.map((l) => {
-                  const on = labelIds.has(l.id);
-                  return (
-                    <button
-                      key={l.id}
-                      onClick={() => toggleLabel(l)}
-                      className={`rounded px-2 py-0.5 text-xs font-medium ${on ? "text-white" : "opacity-50"}`}
-                      style={{ backgroundColor: l.color }}
-                    >
-                      {l.name}
-                    </button>
-                  );
-                })}
-              </div>
-              <div className="mt-2 flex items-center gap-1.5">
-                <Input
-                  value={newLabelName}
-                  onChange={(e) => setNewLabelName(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && addLabel()}
-                  placeholder="New label…"
-                  className="h-8 w-32 text-xs"
-                />
-                <div className="flex gap-1">
-                  {PALETTE.map((c) => (
-                    <button
-                      key={c}
-                      onClick={() => setNewLabelColor(c)}
-                      className={`h-5 w-5 rounded-full ${newLabelColor === c ? "ring-2 ring-foreground ring-offset-1" : ""}`}
-                      style={{ backgroundColor: c }}
-                      title={c}
+            <Section title="Details">
+              <div className="grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-2">
+                <Field label="Due date">
+                  <div className="flex items-center gap-2">
+                    <Input
+                      type="date"
+                      value={dueDate ? dueDate.slice(0, 10) : ""}
+                      onChange={(e) => changeDueDate(e.target.value)}
+                      className="h-8 w-auto"
                     />
-                  ))}
+                    {dueDate && (
+                      <Button variant="link" className="h-auto p-0 text-xs" onClick={() => changeDueDate("")}>
+                        Clear
+                      </Button>
+                    )}
+                  </div>
+                </Field>
+
+                {!isSubtask && sprintsEnabled && (
+                  <Field label="Sprint">
+                    <Select
+                      value={sprintId ?? ""}
+                      onChange={(e) => {
+                        const next = e.target.value || null;
+                        setSprintId(next);
+                        assignCardToSprint(cardId, next);
+                      }}
+                      className="h-8 w-full py-1 text-xs"
+                    >
+                      <option value="">No sprint</option>
+                      {sprints.map((s) => (
+                        <option key={s.id} value={s.id}>{s.name}</option>
+                      ))}
+                    </Select>
+                  </Field>
+                )}
+
+                <Field label="Assignees">
+                  <AssigneePicker members={members} assigneeIds={assigneeIds} onToggle={toggleAssignee} />
+                </Field>
+
+                <Field label="SMEs">
+                  <AssigneePicker members={members} assigneeIds={smeIds} onToggle={toggleSme} />
+                </Field>
+
+                <div className="sm:col-span-2">
+                  <Field label="Labels">
+                    <div className="flex flex-wrap gap-1.5">
+                      {boardLabels.map((l) => {
+                        const on = labelIds.has(l.id);
+                        return (
+                          <button
+                            key={l.id}
+                            onClick={() => toggleLabel(l)}
+                            className={`rounded px-2 py-0.5 text-xs font-medium ${on ? "text-white" : "opacity-50"}`}
+                            style={{ backgroundColor: l.color }}
+                          >
+                            {l.name}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <div className="mt-2 flex items-center gap-1.5">
+                      <Input
+                        value={newLabelName}
+                        onChange={(e) => setNewLabelName(e.target.value)}
+                        onKeyDown={(e) => e.key === "Enter" && addLabel()}
+                        placeholder="New label…"
+                        className="h-8 w-32 text-xs"
+                      />
+                      <div className="flex gap-1">
+                        {PALETTE.map((c) => (
+                          <button
+                            key={c}
+                            onClick={() => setNewLabelColor(c)}
+                            className={`h-5 w-5 rounded-full ${newLabelColor === c ? "ring-2 ring-foreground ring-offset-1" : ""}`}
+                            style={{ backgroundColor: c }}
+                            title={c}
+                          />
+                        ))}
+                      </div>
+                      <Button size="xs" onClick={addLabel}>Add</Button>
+                    </div>
+                  </Field>
                 </div>
-                <Button size="xs" onClick={addLabel}>Add</Button>
               </div>
             </Section>
-
-            <Section title="Assignees">
-              <AssigneePicker members={members} assigneeIds={assigneeIds} onToggle={toggleAssignee} />
-            </Section>
-
-            <Section title="SMEs">
-              <AssigneePicker members={members} assigneeIds={smeIds} onToggle={toggleSme} />
-            </Section>
-
-            {!isSubtask && sprintsEnabled && (
-              <Section title="Sprint">
-                <Select
-                  value={sprintId ?? ""}
-                  onChange={(e) => {
-                    const next = e.target.value || null;
-                    setSprintId(next);
-                    assignCardToSprint(cardId, next);
-                  }}
-                  className="h-8 w-auto py-1 text-xs"
-                >
-                  <option value="">No sprint</option>
-                  {sprints.map((s) => (
-                    <option key={s.id} value={s.id}>{s.name}</option>
-                  ))}
-                </Select>
-              </Section>
-            )}
 
             <Section title="Attachments">
               <div className="flex flex-col gap-1.5">
@@ -612,6 +618,16 @@ function Section({ title, children }: { title: string; children: React.ReactNode
       <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{title}</h3>
       {children}
     </section>
+  );
+}
+
+/** A compact labeled field for the details grid (lighter than a full Section). */
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <div className="mb-1 text-xs font-medium text-muted-foreground">{label}</div>
+      {children}
+    </div>
   );
 }
 
