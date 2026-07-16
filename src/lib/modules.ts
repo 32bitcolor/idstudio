@@ -6,6 +6,7 @@ import {
   FolderKanban,
   Film,
   Shapes,
+  Timer,
   type LucideIcon,
 } from "lucide-react";
 
@@ -59,6 +60,13 @@ export const MODULES: ModuleDef[] = [
     href: "/projects",
     icon: FolderKanban,
     tagline: "ADDIE/SAM projects, phases & deliverables",
+  },
+  {
+    key: "sprints",
+    name: "Sprints",
+    href: "/sprints",
+    icon: Timer,
+    tagline: "Plan sprints and run the team sprint board",
   },
   {
     key: "storyboards",

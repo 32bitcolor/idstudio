@@ -25,10 +25,12 @@ import {
   deleteAttachment,
 } from "@/app/actions/attachments";
 import { DescriptionEditor } from "@/components/board/description-editor";
+import { assignCardToSprint } from "@/app/actions/sprints";
 import { ConfirmDelete } from "@/components/shared/confirm-delete";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { dueMeta, dueToneClass } from "@/lib/due";
@@ -88,6 +90,8 @@ export function CardDrawer({
   const [dueDate, setDueDate] = useState<string | null>(null); // ISO
   const [labelIds, setLabelIds] = useState<Set<string>>(new Set());
   const [assigneeIds, setAssigneeIds] = useState<Set<string>>(new Set());
+  const [sprintId, setSprintId] = useState<string | null>(null);
+  const [sprints, setSprints] = useState<{ id: string; name: string }[]>([]);
   const [boardLabels, setBoardLabels] = useState<LabelT[]>([]);
   const [members, setMembers] = useState<MemberT[]>([]);
   const [newLabelName, setNewLabelName] = useState("");
@@ -116,6 +120,8 @@ export function CardDrawer({
       setDueDate(d.card.dueDate);
       setLabelIds(new Set(d.card.labelIds));
       setAssigneeIds(new Set(d.card.assigneeIds));
+      setSprintId(d.card.sprintId);
+      setSprints(d.sprints);
       setBoardLabels(d.boardLabels);
       setMembers(d.members);
       setSubtasks(d.subtasks);
@@ -413,6 +419,25 @@ export function CardDrawer({
             <Section title="Assignees">
               <AssigneePicker members={members} assigneeIds={assigneeIds} onToggle={toggleAssignee} />
             </Section>
+
+            {!isSubtask && (
+              <Section title="Sprint">
+                <Select
+                  value={sprintId ?? ""}
+                  onChange={(e) => {
+                    const next = e.target.value || null;
+                    setSprintId(next);
+                    assignCardToSprint(cardId, next);
+                  }}
+                  className="h-8 w-auto py-1 text-xs"
+                >
+                  <option value="">No sprint</option>
+                  {sprints.map((s) => (
+                    <option key={s.id} value={s.id}>{s.name}</option>
+                  ))}
+                </Select>
+              </Section>
+            )}
 
             {!isSubtask && (
               <Section title={`Subtasks${subtasks.length ? ` · ${doneCount}/${subtasks.length}` : ""}`}>

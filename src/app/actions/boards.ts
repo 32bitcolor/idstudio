@@ -363,6 +363,40 @@ export async function deleteCard(cardId: string) {
   revalidatePath(boardPath(card.boardId));
 }
 
+/** Set a card's canonical status (used by the cross-project sprint board). If the
+ *  card's home board has a column mapped to that status, move the card there too so
+ *  both views stay coherent. */
+export async function setCardStatus(cardId: string, statusId: string) {
+  const card = await getCardForUser(cardId);
+  if (!card) return { error: "Card not found." };
+  const board = await prisma.board.findUnique({ where: { id: card.boardId }, select: { workspaceId: true } });
+  if (!board) return { error: "Board not found." };
+  const status = await prisma.workspaceStatus.findFirst({
+    where: { id: statusId, workspaceId: board.workspaceId },
+    select: { id: true },
+  });
+  if (!status) return { error: "Status not found." };
+
+  const data: { statusId: string; columnId?: string; position?: string } = { statusId };
+  const col = await prisma.column.findFirst({
+    where: { boardId: card.boardId, statusId },
+    orderBy: { position: "asc" },
+    select: { id: true },
+  });
+  if (col && card.columnId) {
+    const last = await prisma.card.findFirst({
+      where: { columnId: col.id },
+      orderBy: { position: "desc" },
+      select: { position: true },
+    });
+    data.columnId = col.id;
+    data.position = positionBetween(last?.position ?? null, null);
+  }
+  await prisma.card.update({ where: { id: cardId }, data });
+  revalidatePath(boardPath(card.boardId));
+  return { ok: true };
+}
+
 /** Move a card to `toColumnId` at `targetIndex` (index among the OTHER cards there). */
 export async function moveCard(cardId: string, toColumnId: string, targetIndex: number) {
   const card = await getCardForUser(cardId);

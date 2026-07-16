@@ -52,6 +52,26 @@ model Workspace {
   groups         Group[]
   intakeRequests IntakeRequest[]
   statuses       WorkspaceStatus[]
+  sprints        Sprint[]
+}
+
+// Workspace/team-level, time-boxed grouping of work — independent of a project's
+// ADDIE/SAM phases. One sprint can span projects; the team sprint board is a view
+// over its cards. Projects opt in via Project.sprintsEnabled.
+model Sprint {
+  id          String    @id @default(cuid())
+  workspaceId String
+  name        String
+  goal        String?
+  status      String    @default("planned") // planned / active / completed
+  startDate   DateTime?
+  endDate     DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  cards       Card[]
+
+  @@index([workspaceId, status])
 }
 
 // Role is per-workspace (on Membership), never global on User.
@@ -136,6 +156,7 @@ model Card {
   done         Boolean        @default(false) // only meaningful for subtask-cards
   keySeq       Int? // this card's number in its board's key sequence — null if the board has no cardKeyPrefix; display as "{board.cardKeyPrefix}-{keySeq}"
   statusId     String? // canonical status — source of truth for cross-board views; kept in sync with the card's column on move
+  sprintId     String? // optional sprint assignment (independent of project); powers the team sprint board
   position     String
   createdAt    DateTime       @default(now())
   updatedAt    DateTime       @updatedAt
@@ -143,6 +164,7 @@ model Card {
   parentCard   Card?          @relation("CardSubtasks", fields: [parentCardId], references: [id], onDelete: Cascade)
   subtasks     Card[]         @relation("CardSubtasks")
   status       WorkspaceStatus? @relation(fields: [statusId], references: [id], onDelete: SetNull)
+  sprint       Sprint?        @relation(fields: [sprintId], references: [id], onDelete: SetNull)
   labels       CardLabel[]
   assignees    CardAssignee[]
   comments     Comment[]
@@ -153,6 +175,7 @@ model Card {
   @@index([columnId, position])
   @@index([parentCardId, position])
   @@index([statusId])
+  @@index([sprintId])
 }
 
 model Attachment {
@@ -185,6 +208,7 @@ model Project {
   description     String?
   methodology     Methodology         @default(ADDIE)
   status          String              @default("active") // active / on_hold / completed
+  sprintsEnabled  Boolean             @default(false) // opt-in: surface sprint planning for this project
   createdAt       DateTime            @default(now())
   updatedAt       DateTime            @updatedAt
   workspace       Workspace           @relation(fields: [workspaceId], references: [id], onDelete: Cascade)

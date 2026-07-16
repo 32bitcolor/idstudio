@@ -36,7 +36,7 @@ export async function getCardDetail(cardId: string) {
   });
   if (!board) return null;
 
-  const [card, boardLabels, members, membership] = await Promise.all([
+  const [card, boardLabels, members, membership, sprints] = await Promise.all([
     prisma.card.findUnique({
       where: { id: cardId },
       select: {
@@ -45,6 +45,7 @@ export async function getCardDetail(cardId: string) {
         description: true,
         dueDate: true,
         keySeq: true,
+        sprintId: true,
         parentCardId: true,
         parentCard: { select: { id: true, title: true } },
         labels: { select: { labelId: true } },
@@ -86,6 +87,11 @@ export async function getCardDetail(cardId: string) {
       where: { userId: me.id, workspaceId: board.workspaceId },
       select: { role: true },
     }),
+    prisma.sprint.findMany({
+      where: { workspaceId: board.workspaceId },
+      orderBy: { createdAt: "desc" },
+      select: { id: true, name: true },
+    }),
   ]);
   if (!card) return null;
 
@@ -104,6 +110,7 @@ export async function getCardDetail(cardId: string) {
       description: card.description,
       dueDate: card.dueDate ? card.dueDate.toISOString() : null,
       keySeq: card.keySeq,
+      sprintId: card.sprintId,
       labelIds: card.labels.map((l) => l.labelId),
       assigneeIds: card.assignees.map((a) => a.userId),
     },
@@ -111,6 +118,7 @@ export async function getCardDetail(cardId: string) {
     parent: card.parentCard,
     boardLabels,
     members,
+    sprints,
     whiteboards,
     currentUserId: me.id,
     isAdmin: membership?.role === "ADMIN",
