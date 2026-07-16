@@ -4,7 +4,6 @@ import {
   boardVisibilityWhere,
   projectVisibilityWhere,
   storyboardVisibilityWhere,
-  courseVisibilityWhere,
   whiteboardVisibilityWhere,
 } from "@/lib/authz";
 
@@ -22,7 +21,7 @@ export async function GET(req: Request) {
   const wsId = membership.workspaceId;
   const contains = { contains: q, mode: "insensitive" as const };
 
-  const [boards, projects, storyboards, courses, whiteboards, cards] = await Promise.all([
+  const [boards, projects, storyboards, whiteboards, cards] = await Promise.all([
     prisma.board.findMany({
       where: { workspaceId: wsId, name: contains, ...(await boardVisibilityWhere()) },
       select: { id: true, name: true },
@@ -35,11 +34,6 @@ export async function GET(req: Request) {
     }),
     prisma.storyboard.findMany({
       where: { workspaceId: wsId, title: contains, ...(await storyboardVisibilityWhere()) },
-      select: { id: true, title: true },
-      take: TAKE,
-    }),
-    prisma.course.findMany({
-      where: { workspaceId: wsId, title: contains, ...(await courseVisibilityWhere()) },
       select: { id: true, title: true },
       take: TAKE,
     }),
@@ -77,7 +71,6 @@ export async function GET(req: Request) {
     ...boards.map((b) => ({ type: "board" as const, id: b.id, label: b.name, href: `/boards/${b.id}` })),
     ...projects.map((p) => ({ type: "project" as const, id: p.id, label: p.name, href: `/projects/${p.id}` })),
     ...storyboards.map((s) => ({ type: "storyboard" as const, id: s.id, label: s.title, href: `/storyboards/${s.id}` })),
-    ...courses.map((c) => ({ type: "course" as const, id: c.id, label: c.title, href: `/courses/${c.id}` })),
     ...whiteboards.map((w) => ({ type: "whiteboard" as const, id: w.id, label: w.title, href: `/whiteboards/${w.id}` })),
     ...cards.map((c) => {
       const boardId = c.column?.boardId ?? c.parentCard!.column!.boardId;

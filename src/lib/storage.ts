@@ -60,11 +60,6 @@ export function buildObjectKey(workspaceId: string, cardId: string, fileName: st
   return `workspace/${workspaceId}/card/${cardId}/${crypto.randomUUID()}-${safe}`;
 }
 
-export function buildCourseImageKey(workspaceId: string, courseId: string, fileName: string): string {
-  const safe = fileName.replace(/[^a-zA-Z0-9._-]/g, "_").slice(0, 120) || "file";
-  return `workspace/${workspaceId}/course/${courseId}/${crypto.randomUUID()}-${safe}`;
-}
-
 export async function presignUpload(key: string, contentType: string): Promise<string> {
   await ensureBucket();
   return getSignedUrl(

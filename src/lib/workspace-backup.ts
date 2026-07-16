@@ -59,9 +59,6 @@ const SPECS: Spec[] = [
   { key: "assessmentItem", model: "assessmentItem", where: (w) => ({ project: { workspaceId: w } }), fks: { projectId: "project" } },
   { key: "storyboard", model: "storyboard", where: (w) => ({ workspaceId: w }), fks: { workspaceId: WS, deliverableId: "deliverable" } },
   { key: "screen", model: "screen", where: (w) => ({ storyboard: { workspaceId: w } }), fks: { storyboardId: "storyboard" } },
-  { key: "course", model: "course", where: (w) => ({ workspaceId: w }), fks: { workspaceId: WS, deliverableId: "deliverable" } },
-  { key: "lesson", model: "lesson", where: (w) => ({ course: { workspaceId: w } }), fks: { courseId: "course" } },
-  { key: "block", model: "block", where: (w) => ({ lesson: { course: { workspaceId: w } } }), fks: { lessonId: "lesson" } },
   { key: "whiteboard", model: "whiteboard", where: (w) => ({ workspaceId: w }), fks: { workspaceId: WS, storyboardId: "storyboard", cardId: "card", createdById: USER } },
   { key: "reviewCycle", model: "reviewCycle", where: (w) => ({ deliverable: { project: { workspaceId: w } } }), fks: { deliverableId: "deliverable", reviewerId: USER, requestedById: USER } },
   { key: "timeEntry", model: "timeEntry", where: (w) => ({ project: { workspaceId: w } }), fks: { projectId: "project", deliverableId: "deliverable", userId: USER } },
@@ -73,7 +70,6 @@ const SPECS: Spec[] = [
   { key: null, model: "projectGroup", where: (w) => ({ project: { workspaceId: w } }), fks: { projectId: "project", groupId: "group" } },
   { key: null, model: "storyboardGroup", where: (w) => ({ storyboard: { workspaceId: w } }), fks: { storyboardId: "storyboard", groupId: "group" } },
   { key: null, model: "whiteboardGroup", where: (w) => ({ whiteboard: { workspaceId: w } }), fks: { whiteboardId: "whiteboard", groupId: "group" } },
-  { key: null, model: "courseGroup", where: (w) => ({ course: { workspaceId: w } }), fks: { courseId: "course", groupId: "group" } },
   { key: null, model: "screenObjective", where: (w) => ({ objective: { project: { workspaceId: w } } }), fks: { screenId: "screen", objectiveId: "learningObjective" } },
   { key: null, model: "assessmentItemObjective", where: (w) => ({ objective: { project: { workspaceId: w } } }), fks: { itemId: "assessmentItem", objectiveId: "learningObjective" } },
   { key: null, model: "groupMembership", where: (w) => ({ group: { workspaceId: w } }), fks: { groupId: "group", userId: USER } },
@@ -143,19 +139,6 @@ export async function exportWorkspace(workspaceId: string): Promise<{
 
 const NO_LOGIN_HASH = "!restored:no-login"; // invalid argon2 → login always fails until reset
 
-function remapBlockObjectives(content: string, objMap: Record<string, string>): string {
-  try {
-    const parsed = JSON.parse(content);
-    if (Array.isArray(parsed.objectiveIds)) {
-      parsed.objectiveIds = parsed.objectiveIds.map((id: string) => objMap[id]).filter(Boolean);
-      return JSON.stringify(parsed);
-    }
-  } catch {
-    /* leave as-is */
-  }
-  return content;
-}
-
 export async function importWorkspace(
   exp: WorkspaceExport,
   media: Record<string, Uint8Array>,
@@ -215,9 +198,6 @@ export async function importWorkspace(
       delete d.id;
       delete d.updatedAt; // let @updatedAt default
       for (const col of Object.keys(spec.fks)) d[col] = remap(spec.fks[col], row[col] ?? null);
-      if (spec.model === "block" && row.blockType === "knowledge_check") {
-        d.content = remapBlockObjectives(row.content, maps.learningObjective ?? {});
-      }
       const created = await (prisma as any)[spec.model].create({ data: d });
       if (spec.key) maps[spec.key][row.id] = created.id;
     }

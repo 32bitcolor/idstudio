@@ -49,7 +49,6 @@ model Workspace {
   projects       Project[]
   storyboards    Storyboard[]
   whiteboards    Whiteboard[]
-  courses        Course[]
   groups         Group[]
   intakeRequests IntakeRequest[]
 }
@@ -193,7 +192,7 @@ model Deliverable {
   phaseId      String?
   cardId       String?
   name         String
-  type         String        @default("other") // storyboard / course / assessment / job_aid / video / document / other
+  type         String        @default("other") // storyboard / assessment / job_aid / video / document / other
   status       String        @default("not_started") // not_started / in_progress / in_review / complete
   position     String
   createdAt    DateTime      @default(now())
@@ -203,7 +202,6 @@ model Deliverable {
   reviewCycles ReviewCycle[]
   timeEntries  TimeEntry[]
   storyboard   Storyboard?
-  course       Course?
 
   @@index([projectId, position])
 }
@@ -452,7 +450,6 @@ model Group {
   storyboards StoryboardGroup[]
   projects    ProjectGroup[]
   whiteboards WhiteboardGroup[]
-  courses     CourseGroup[]
 
   @@unique([workspaceId, name])
   @@index([workspaceId])
@@ -537,82 +534,4 @@ model WhiteboardGroup {
 
   @@id([whiteboardId, groupId])
   @@index([groupId])
-}
-
-// ── Course authoring (block-based, Rise-style) ───────────────────────────────
-// A Course is a stack of Lessons, each a stack of Blocks. A Block stores its
-// type + a JSON `content` blob (flexible per type). Learner-view rendering is
-// self-contained so it can later be packaged to SCORM / xAPI for an LMS.
-
-model Course {
-  id            String        @id @default(cuid())
-  workspaceId   String
-  deliverableId String?       @unique
-  title         String
-  description   String?
-  status        String        @default("draft") // draft / published
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
-  workspace     Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  deliverable   Deliverable?  @relation(fields: [deliverableId], references: [id], onDelete: SetNull)
-  lessons       Lesson[]
-  sections      Section[]
-  groupAccess   CourseGroup[]
-
-  @@index([workspaceId])
-}
-
-// A lightweight, optional grouping layer above lessons (Rise calls these
-// "sections"). Lessons with no sectionId render as a flat list — the default,
-// unchanged look for every course that hasn't opted into grouping.
-model Section {
-  id        String   @id @default(cuid())
-  courseId  String
-  title     String
-  position  String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  course    Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  lessons   Lesson[]
-
-  @@index([courseId, position])
-}
-
-model CourseGroup {
-  courseId String
-  groupId  String
-  course   Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  group    Group  @relation(fields: [groupId], references: [id], onDelete: Cascade)
-
-  @@id([courseId, groupId])
-  @@index([groupId])
-}
-
-model Lesson {
-  id        String   @id @default(cuid())
-  courseId  String
-  sectionId String?
-  title     String
-  position  String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  course    Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  section   Section? @relation(fields: [sectionId], references: [id], onDelete: SetNull)
-  blocks    Block[]
-
-  @@index([courseId, position])
-  @@index([sectionId])
-}
-
-model Block {
-  id        String   @id @default(cuid())
-  lessonId  String
-  blockType String // heading / text / statement / image / divider / accordion / knowledge_check
-  content   String   @default("{}") // JSON blob, shape depends on blockType
-  position  String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  lesson    Lesson   @relation(fields: [lessonId], references: [id], onDelete: Cascade)
-
-  @@index([lessonId, position])
 }

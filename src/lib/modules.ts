@@ -6,7 +6,6 @@ import {
   FolderKanban,
   Film,
   Shapes,
-  MonitorPlay,
   type LucideIcon,
 } from "lucide-react";
 
@@ -67,13 +66,6 @@ export const MODULES: ModuleDef[] = [
     href: "/storyboards",
     icon: Film,
     tagline: "Screen-by-screen course design",
-  },
-  {
-    key: "courses",
-    name: "Courses",
-    href: "/courses",
-    icon: MonitorPlay,
-    tagline: "Build block-based courses to export to your LMS",
   },
   {
     key: "whiteboards",

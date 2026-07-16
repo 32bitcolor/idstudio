@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { X, Link2, Film, MonitorPlay } from "lucide-react";
+import { X, Link2, Film } from "lucide-react";
 import { SectionHeader } from "@/components/shared/page";
 import { InlineTitle } from "@/components/shared/inline-title";
 import { ConfirmDelete } from "@/components/shared/confirm-delete";
@@ -21,7 +21,6 @@ import {
   listLinkableCards,
 } from "@/app/actions/deliverables";
 import { createStoryboardForDeliverable } from "@/app/actions/storyboards";
-import { createCourseForDeliverable } from "@/app/actions/courses";
 import {
   DELIVERABLE_TYPES,
   DELIVERABLE_TYPE_LABEL,
@@ -44,7 +43,6 @@ type Review = {
 };
 type CardLink = { id: string; title: string; boardId: string; boardName: string };
 type StoryboardLink = { id: string; title: string };
-type CourseLink = { id: string; title: string };
 type Deliverable = {
   id: string;
   name: string;
@@ -53,7 +51,6 @@ type Deliverable = {
   phaseId: string | null;
   card: CardLink | null;
   storyboard: StoryboardLink | null;
-  course: CourseLink | null;
   reviews: Review[];
 };
 type PhaseRef = { id: string; name: string };
@@ -89,7 +86,7 @@ export function DeliverablesSection({
     const res = await createDeliverable(projectId, name, type);
     if ("deliverable" in res && res.deliverable) {
       const d = res.deliverable;
-      setItems((prev) => [...prev, { id: d.id, name: d.name, type: d.type, status: d.status, phaseId: d.phaseId, card: null, storyboard: null, course: null, reviews: [] }]);
+      setItems((prev) => [...prev, { id: d.id, name: d.name, type: d.type, status: d.status, phaseId: d.phaseId, card: null, storyboard: null, reviews: [] }]);
     }
   }
 
@@ -107,18 +104,6 @@ export function DeliverablesSection({
     if ("storyboard" in res && res.storyboard) {
       patch(d.id, { storyboard: res.storyboard });
       router.push(`/storyboards/${res.storyboard.id}`);
-    }
-  }
-
-  async function openCourse(d: Deliverable) {
-    if (d.course) {
-      router.push(`/courses/${d.course.id}`);
-      return;
-    }
-    const res = await createCourseForDeliverable(d.id);
-    if ("course" in res && res.course) {
-      patch(d.id, { course: res.course });
-      router.push(`/courses/${res.course.id}`);
     }
   }
 
@@ -228,12 +213,6 @@ export function DeliverablesSection({
                   <Film className="size-3" /> {d.storyboard ? "Open storyboard" : "Create storyboard"}
                 </Button>
               )}
-
-              {d.type === "course" && (
-                <Button variant="secondary" size="xs" onClick={() => openCourse(d)} title={d.course ? "Open the linked course" : "Create a course for this deliverable"}>
-                  <MonitorPlay className="size-3" /> {d.course ? "Open course" : "Create course"}
-                </Button>
-              )}
             </div>
 
             <ReviewCycles deliverableId={d.id} members={members} initial={d.reviews} />
@@ -247,7 +226,7 @@ export function DeliverablesSection({
 
 function DeliverableComposer({ onAdd }: { onAdd: (name: string, type: string) => void }) {
   const [name, setName] = useState("");
-  const [type, setType] = useState<string>("course");
+  const [type, setType] = useState<string>("storyboard");
   const [open, setOpen] = useState(false);
 
   if (!open) {

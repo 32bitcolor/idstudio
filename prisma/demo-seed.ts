@@ -399,7 +399,7 @@ async function seedProjects(
       deliverables: [
         { name: "Welcome Module storyboard", type: "storyboard", status: "complete", phase: "Design", storyboardId: sb.welcome,
           reviews: [{ by: "sofia", round: 1, status: "approved", due: day(-28), feedback: "Warm and on-brand. Approved." }] },
-        { name: "Module 2 course build", type: "course", status: "in_progress", phase: "Develop" },
+        { name: "Module 2 course build", type: "other", status: "in_progress", phase: "Develop" },
         { name: "Onboarding facilitator guide", type: "document", status: "in_progress", phase: "Develop" },
       ],
       milestones: [
@@ -427,7 +427,7 @@ async function seedProjects(
             { by: "admin", round: 1, status: "requested", due: day(4) },          // → admin's dashboard review queue
             { by: "lena", round: 1, status: "in_review", due: day(3), feedback: "One change on the breach-reporting timeline." },
           ] },
-        { name: "Course build", type: "course", status: "not_started", phase: "Iterative Development" },
+        { name: "Course build", type: "other", status: "not_started", phase: "Iterative Development" },
       ],
       milestones: [
         { name: "Legal review complete", due: day(6) },
@@ -481,7 +481,7 @@ async function seedProjects(
         { name: "Evaluate", status: "done", start: day(-234), end: day(-220) },
       ],
       deliverables: [
-        { name: "Compliance course suite", type: "course", status: "complete", phase: "Develop",
+        { name: "Compliance course suite", type: "other", status: "complete", phase: "Develop",
           reviews: [{ by: "lena", round: 2, status: "approved", due: day(-260), feedback: "All regulatory points covered. Approved." }] },
       ],
       milestones: [{ name: "Launch", completed: day(-235) }, { name: "95% completion", completed: day(-210) }],

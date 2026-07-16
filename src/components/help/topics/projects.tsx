@@ -69,14 +69,14 @@ export default function Projects() {
 
       <H2>Deliverables</H2>
       <P>
-        Deliverables are the things you&rsquo;re actually producing — a course, a storyboard, a job
+        Deliverables are the things you&rsquo;re actually producing — a storyboard, an assessment, a job
         aid. Add one with <UI>+ Add a deliverable</UI>, then set its type, status, and phase, and
         optionally connect it to the work happening elsewhere in the app.
       </P>
 
       <H3>Type</H3>
       <P>
-        Pick what the deliverable is: <UI>Storyboard</UI>, <UI>Course</UI>, <UI>Assessment</UI>,{" "}
+        Pick what the deliverable is: <UI>Storyboard</UI>, <UI>Assessment</UI>,{" "}
         <UI>Job aid</UI>, <UI>Video</UI>, <UI>Document</UI>, or <UI>Other</UI>. When the type is{" "}
         <UI>Storyboard</UI>, a <UI>Create storyboard</UI> button appears — one click spins up a linked
         storyboard (and <UI>Open storyboard</UI> jumps to it thereafter).

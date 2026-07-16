@@ -60,7 +60,7 @@ export function BackupPanel({ workspaceName }: { workspaceName: string }) {
             <h2 className="font-medium">Back up this workspace</h2>
             <p className="mt-1 text-sm text-muted-foreground">
               Download a complete, self-contained archive of <strong>{workspaceName}</strong> — every
-              board, project, storyboard, course, and whiteboard, plus members and attachment files.
+              board, project, storyboard, and whiteboard, plus members and attachment files.
               Keep it somewhere safe off this server.
             </p>
             <div className="mt-4">

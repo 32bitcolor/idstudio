@@ -26,7 +26,6 @@ export const PROJECT_STATUS_LABEL: Record<ProjectStatus, string> = {
 
 export const DELIVERABLE_TYPES = [
   "storyboard",
-  "course",
   "assessment",
   "job_aid",
   "video",
@@ -37,7 +36,6 @@ export type DeliverableType = (typeof DELIVERABLE_TYPES)[number];
 
 export const DELIVERABLE_TYPE_LABEL: Record<DeliverableType, string> = {
   storyboard: "Storyboard",
-  course: "Course",
   assessment: "Assessment",
   job_aid: "Job aid",
   video: "Video",

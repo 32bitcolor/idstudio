@@ -92,7 +92,6 @@ type DeliverableInit = {
   phaseId: string | null;
   card: { id: string; title: string; boardId: string; boardName: string } | null;
   storyboard: { id: string; title: string } | null;
-  course: { id: string; title: string } | null;
   reviews: ReviewInit[];
 };
 type MilestoneInit = { id: string; name: string; dueDate: string | null; completedAt: string | null };

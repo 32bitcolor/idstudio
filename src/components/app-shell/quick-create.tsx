@@ -1,12 +1,11 @@
 "use client";
 
 import * as React from "react";
-import { Plus, Columns3, FolderKanban, Film, MonitorPlay, Shapes, type LucideIcon } from "lucide-react";
+import { Plus, Columns3, FolderKanban, Film, Shapes, type LucideIcon } from "lucide-react";
 
 import { createBoard } from "@/app/actions/boards";
 import { createProject } from "@/app/actions/projects";
 import { createStoryboard } from "@/app/actions/storyboards";
-import { createCourse } from "@/app/actions/courses";
 import { createWhiteboard } from "@/app/actions/whiteboards";
 import {
   DropdownMenu,
@@ -32,7 +31,6 @@ const KINDS: Kind[] = [
   { key: "board", label: "Board", icon: Columns3, field: "name", placeholder: "Board name…", action: createBoard },
   { key: "project", label: "Project", icon: FolderKanban, field: "name", placeholder: "Project name…", action: createProject },
   { key: "storyboard", label: "Storyboard", icon: Film, field: "title", placeholder: "Storyboard title…", action: createStoryboard },
-  { key: "course", label: "Course", icon: MonitorPlay, field: "title", placeholder: "Course title…", action: createCourse },
   { key: "whiteboard", label: "Whiteboard", icon: Shapes, field: "title", placeholder: "Whiteboard title…", action: createWhiteboard },
 ];
 

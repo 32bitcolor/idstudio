@@ -419,7 +419,7 @@ async function seedProjects(
       deliverables: [
         { name: "Admin Console Tour storyboard", type: "storyboard", status: "complete", phase: "Design", storyboardId: sb.consoleTour,
           reviews: [{ by: "devon", round: 1, status: "approved", due: day(-28), feedback: "Warm and on-brand. Approved." }] },
-        { name: "Module 1 course build", type: "course", status: "in_progress", phase: "Develop" },
+        { name: "Module 1 course build", type: "other", status: "in_progress", phase: "Develop" },
         { name: "Certification exam question bank", type: "assessment", status: "in_progress", phase: "Develop" },
       ],
       milestones: [
@@ -447,7 +447,7 @@ async function seedProjects(
             { by: "admin", round: 1, status: "requested", due: day(4) },
             { by: "devon", round: 1, status: "in_review", due: day(3), feedback: "One note on the event-log screen." },
           ] },
-        { name: "Course build", type: "course", status: "not_started", phase: "Iterative Development" },
+        { name: "Course build", type: "other", status: "not_started", phase: "Iterative Development" },
       ],
       milestones: [
         { name: "Product review complete", due: day(6) },
@@ -501,7 +501,7 @@ async function seedProjects(
         { name: "Evaluate", status: "done", start: day(-234), end: day(-220) },
       ],
       deliverables: [
-        { name: "Platform update course suite", type: "course", status: "complete", phase: "Develop",
+        { name: "Platform update course suite", type: "other", status: "complete", phase: "Develop",
           reviews: [{ by: "devon", round: 2, status: "approved", due: day(-260), feedback: "All new features covered accurately. Approved." }] },
       ],
       milestones: [{ name: "Launch", completed: day(-235) }, { name: "95% completion", completed: day(-210) }],

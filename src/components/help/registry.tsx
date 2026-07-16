@@ -5,7 +5,6 @@ import {
   Columns3,
   FolderKanban,
   Film,
-  MonitorPlay,
   Shapes,
   ListChecks,
   Users,
@@ -19,7 +18,6 @@ import ObjectivesAlignment from "@/components/help/topics/objectives-alignment";
 import Boards from "@/components/help/topics/boards";
 import Projects from "@/components/help/topics/projects";
 import Storyboards from "@/components/help/topics/storyboards";
-import CoursesTopic from "@/components/help/topics/courses";
 import Whiteboards from "@/components/help/topics/whiteboards";
 import MyWork from "@/components/help/topics/my-work";
 import MembersAccess from "@/components/help/topics/members-access";
@@ -85,14 +83,6 @@ export const HELP_TOPICS: HelpTopic[] = [
     icon: Film,
     group: "Modules",
     Body: Storyboards,
-  },
-  {
-    slug: "courses",
-    title: "Courses (authoring)",
-    summary: "Build responsive, block-based courses to export to your LMS.",
-    icon: MonitorPlay,
-    group: "Modules",
-    Body: CoursesTopic,
   },
   {
     slug: "whiteboards",
