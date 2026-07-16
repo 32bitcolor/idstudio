@@ -7,7 +7,7 @@ import { getCurrentUser } from "@/lib/dal";
 import { getBoardForUser, getCardForUser, whiteboardVisibilityWhere } from "@/lib/authz";
 import { positionBetween } from "@/lib/ordering";
 import { enqueueEmail } from "@/lib/queues";
-import { subtaskAssigned } from "@/lib/email-templates";
+import { subtaskAssigned, cardAssigned, smeAssigned, commentPosted } from "@/lib/email-templates";
 import { nextCardKeySeq } from "@/app/actions/boards";
 
 const Hex = z.string().regex(/^#[0-9a-fA-F]{6}$/, "Invalid color");
@@ -258,27 +258,41 @@ export async function toggleCardAssignee(cardId: string, userId: string, on: boo
     await prisma.cardAssignee.deleteMany({ where: { cardId, userId } });
   }
 
-  // Only subtasks (cards with a parent) send an assignment email — nobody asked
-  // for every top-level card assignment to email people, and that'd be noisy.
-  if (on && !wasAssigned && card.parentCardId) {
-    const [assignee, cardRow] = await Promise.all([
-      prisma.user.findUnique({ where: { id: userId }, select: { name: true, email: true } }),
-      prisma.card.findUnique({ where: { id: cardId }, select: { title: true } }),
+  // Notify the assignee on a new assignment (skip assigning yourself). Subtasks
+  // and top-level cards get their own template.
+  if (on && !wasAssigned) {
+    const me = await getCurrentUser();
+    if (userId !== me?.id) {
+      const [assignee, cardRow] = await Promise.all([
+        prisma.user.findUnique({ where: { id: userId }, select: { name: true, email: true } }),
+        prisma.card.findUnique({ where: { id: cardId }, select: { title: true } }),
       ]);
-    if (assignee && cardRow) {
-      const parentCard = await prisma.card.findUnique({
-        where: { id: card.parentCardId },
-        select: { title: true },
-      });
-      await enqueueEmail({
-        to: assignee.email,
-        ...subtaskAssigned({
-          assigneeName: assignee.name ?? assignee.email,
-          subtaskText: cardRow.title,
-          cardTitle: parentCard?.title ?? "",
-          boardName: board.name,
-        }),
-      });
+      if (assignee?.email && cardRow) {
+        if (card.parentCardId) {
+          const parentCard = await prisma.card.findUnique({
+            where: { id: card.parentCardId },
+            select: { title: true },
+          });
+          await enqueueEmail({
+            to: assignee.email,
+            ...subtaskAssigned({
+              assigneeName: assignee.name ?? assignee.email,
+              subtaskText: cardRow.title,
+              cardTitle: parentCard?.title ?? "",
+              boardName: board.name,
+            }),
+          });
+        } else {
+          await enqueueEmail({
+            to: assignee.email,
+            ...cardAssigned({
+              assigneeName: assignee.name ?? assignee.email,
+              cardTitle: cardRow.title,
+              boardName: board.name,
+            }),
+          });
+        }
+      }
     }
   }
 
@@ -292,7 +306,7 @@ export async function toggleCardSme(cardId: string, userId: string, on: boolean)
 
   const board = await prisma.board.findUnique({
     where: { id: card.boardId },
-    select: { workspaceId: true },
+    select: { workspaceId: true, name: true },
   });
   if (!board) return { error: "Board not found." };
 
@@ -301,6 +315,11 @@ export async function toggleCardSme(cardId: string, userId: string, on: boolean)
     select: { id: true },
   });
   if (!member) return { error: "Not a workspace member." };
+
+  const wasSme = await prisma.cardSme.findUnique({
+    where: { cardId_userId: { cardId, userId } },
+    select: { userId: true },
+  });
 
   if (on) {
     await prisma.cardSme.upsert({
@@ -313,6 +332,23 @@ export async function toggleCardSme(cardId: string, userId: string, on: boolean)
   }
 
   revalidatePath(boardPath(card.boardId));
+
+  // Notify a newly named SME (skip naming yourself).
+  if (on && !wasSme) {
+    const me = await getCurrentUser();
+    if (userId !== me?.id) {
+      const [sme, cardRow] = await Promise.all([
+        prisma.user.findUnique({ where: { id: userId }, select: { name: true, email: true } }),
+        prisma.card.findUnique({ where: { id: cardId }, select: { title: true } }),
+      ]);
+      if (sme?.email && cardRow) {
+        await enqueueEmail({
+          to: sme.email,
+          ...smeAssigned({ smeName: sme.name ?? sme.email, cardTitle: cardRow.title, boardName: board.name }),
+        });
+      }
+    }
+  }
 }
 
 // ── Subtasks ─────────────────────────────────────────────────────────────────
@@ -381,6 +417,36 @@ export async function addComment(cardId: string, body: string) {
     },
   });
   revalidatePath(boardPath(card.boardId));
+
+  // Notify the card's assignees + SMEs (never the commenter).
+  const recipients = await prisma.user.findMany({
+    where: {
+      id: { not: user.id },
+      OR: [{ assignedCards: { some: { cardId } } }, { smeCards: { some: { cardId } } }],
+    },
+    select: { name: true, email: true },
+  });
+  if (recipients.length > 0) {
+    const [cardRow, boardRow] = await Promise.all([
+      prisma.card.findUnique({ where: { id: cardId }, select: { title: true } }),
+      prisma.board.findUnique({ where: { id: card.boardId }, select: { name: true } }),
+    ]);
+    const excerpt = parsed.data.length > 200 ? `${parsed.data.slice(0, 200)}…` : parsed.data;
+    for (const r of recipients) {
+      if (!r.email) continue;
+      await enqueueEmail({
+        to: r.email,
+        ...commentPosted({
+          recipientName: r.name ?? r.email,
+          commenterName: user.name ?? user.email,
+          cardTitle: cardRow?.title ?? "",
+          boardName: boardRow?.name ?? "",
+          excerpt,
+        }),
+      });
+    }
+  }
+
   return { comment: { ...comment, createdAt: comment.createdAt.toISOString() } };
 }
 

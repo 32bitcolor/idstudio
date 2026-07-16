@@ -7,6 +7,12 @@ import { Prisma } from "@/generated/prisma/client";
 import { getCurrentUser } from "@/lib/dal";
 import { getDeliverableForUser, getReviewForUser } from "@/lib/authz";
 import { REVIEW_STATUSES } from "@/lib/methodology";
+import { enqueueEmail } from "@/lib/queues";
+import { reviewRequested, reviewDecided } from "@/lib/email-templates";
+
+function fmtDate(d: Date | null): string | null {
+  return d ? d.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" }) : null;
+}
 
 function projectPath(projectId: string) {
   return `/projects/${projectId}`;
@@ -68,6 +74,27 @@ export async function addReviewCycle(deliverableId: string, reviewerId: string, 
     return { error: "Couldn't start the review — please try again." };
   }
   revalidateReview(d.projectId);
+
+  // Notify the reviewer (skip a self-review).
+  if (review.reviewer.email && review.reviewerId !== me.id) {
+    const meta = await prisma.deliverable.findUnique({
+      where: { id: deliverableId },
+      select: { name: true, project: { select: { name: true } } },
+    });
+    if (meta) {
+      await enqueueEmail({
+        to: review.reviewer.email,
+        ...reviewRequested({
+          reviewerName: review.reviewer.name ?? review.reviewer.email,
+          deliverableName: meta.name,
+          projectName: meta.project.name,
+          requesterName: me.name ?? me.email,
+          dueDate: fmtDate(review.dueDate),
+        }),
+      });
+    }
+  }
+
   return { review: { ...review, dueDate: review.dueDate ? review.dueDate.toISOString() : null } };
 }
 
@@ -78,6 +105,33 @@ export async function setReviewStatus(reviewId: string, status: string) {
   if (!parsed.success) return { error: "Invalid status." };
   await prisma.reviewCycle.update({ where: { id: reviewId }, data: { status: parsed.data } });
   revalidateReview(r.deliverable.projectId);
+
+  // A decision notifies whoever requested the review.
+  if (parsed.data === "approved" || parsed.data === "changes_requested") {
+    const me = await getCurrentUser();
+    const detail = await prisma.reviewCycle.findUnique({
+      where: { id: reviewId },
+      select: {
+        feedback: true,
+        requestedBy: { select: { id: true, name: true, email: true } },
+        reviewer: { select: { name: true, email: true } },
+        deliverable: { select: { name: true, project: { select: { name: true } } } },
+      },
+    });
+    if (detail?.requestedBy?.email && detail.requestedBy.id !== me?.id) {
+      await enqueueEmail({
+        to: detail.requestedBy.email,
+        ...reviewDecided({
+          requesterName: detail.requestedBy.name ?? detail.requestedBy.email,
+          deliverableName: detail.deliverable.name,
+          projectName: detail.deliverable.project.name,
+          reviewerName: detail.reviewer.name ?? detail.reviewer.email,
+          decision: parsed.data,
+          feedback: detail.feedback,
+        }),
+      });
+    }
+  }
 }
 
 export async function setReviewFeedback(reviewId: string, feedback: string) {

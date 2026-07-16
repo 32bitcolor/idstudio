@@ -3,8 +3,10 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
-import { getActiveMembership } from "@/lib/dal";
+import { getActiveMembership, getCurrentUser } from "@/lib/dal";
 import { hashPassword } from "@/lib/password";
+import { enqueueEmail } from "@/lib/queues";
+import { memberWelcome, passwordReset } from "@/lib/email-templates";
 import { CreateUserSchema, ResetPasswordSchema } from "@/lib/validation";
 import { Role } from "@/generated/prisma/client";
 import type { FormState } from "@/lib/form-state";
@@ -54,6 +56,16 @@ export async function createUser(_prev: FormState, formData: FormData): Promise<
     },
   });
   revalidatePath("/settings/members");
+
+  const inviter = await getCurrentUser();
+  await enqueueEmail({
+    to: email,
+    ...memberWelcome({
+      name: parsed.data.name || email,
+      workspaceName: admin.workspace.name,
+      inviterName: inviter?.name ?? inviter?.email ?? "an admin",
+    }),
+  });
   return { success: `Created ${email}. Share the password with them securely.` };
 }
 
@@ -101,6 +113,21 @@ export async function resetUserPassword(userId: string, password: string): Promi
     where: { id: userId },
     data: { passwordHash: await hashPassword(parsed.data.password) },
   });
+
+  const me = await getCurrentUser();
+  if (userId !== me?.id) {
+    const target = await prisma.user.findUnique({ where: { id: userId }, select: { name: true, email: true } });
+    if (target?.email) {
+      await enqueueEmail({
+        to: target.email,
+        ...passwordReset({
+          name: target.name ?? target.email,
+          workspaceName: admin.workspace.name,
+          adminName: me?.name ?? me?.email ?? "an admin",
+        }),
+      });
+    }
+  }
   return { success: "Password reset. Share the new password securely." };
 }
 
