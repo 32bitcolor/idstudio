@@ -5,9 +5,14 @@ import {
   projectVisibilityWhere,
   storyboardVisibilityWhere,
   whiteboardVisibilityWhere,
+  resolveCardKey,
 } from "@/lib/authz";
 
 const TAKE = 5;
+
+// A card key looks like "WP-5" (board prefix + sequence). Same shape the
+// /c/<key> short link accepts, so search resolves whatever that link resolves.
+const CARD_KEY_RE = /^([A-Za-z][A-Za-z0-9]{1,7})-(\d+)$/;
 
 export async function GET(req: Request) {
   const user = await getCurrentUser();
@@ -20,8 +25,10 @@ export async function GET(req: Request) {
 
   const wsId = membership.workspaceId;
   const contains = { contains: q, mode: "insensitive" as const };
+  const keyMatch = CARD_KEY_RE.exec(q);
 
-  const [boards, projects, storyboards, whiteboards, cards] = await Promise.all([
+  const [keyHit, boards, projects, storyboards, whiteboards, cards] = await Promise.all([
+    keyMatch ? resolveCardKey(keyMatch[1], Number(keyMatch[2])) : Promise.resolve(null),
     prisma.board.findMany({
       where: { workspaceId: wsId, name: contains, ...(await boardVisibilityWhere()) },
       select: { id: true, name: true },
@@ -67,16 +74,30 @@ export async function GET(req: Request) {
     }),
   ]);
 
+  // An exact card-key match goes first; drop it from the title matches so the
+  // same card isn't listed twice.
+  const keyResult = keyHit
+    ? [{
+        type: keyHit.isSubtask ? ("subtask" as const) : ("card" as const),
+        id: keyHit.cardId,
+        label: keyHit.title,
+        href: `/boards/${keyHit.boardId}?card=${keyHit.cardId}`,
+      }]
+    : [];
+
   const results = [
+    ...keyResult,
     ...boards.map((b) => ({ type: "board" as const, id: b.id, label: b.name, href: `/boards/${b.id}` })),
     ...projects.map((p) => ({ type: "project" as const, id: p.id, label: p.name, href: `/projects/${p.id}` })),
     ...storyboards.map((s) => ({ type: "storyboard" as const, id: s.id, label: s.title, href: `/storyboards/${s.id}` })),
     ...whiteboards.map((w) => ({ type: "whiteboard" as const, id: w.id, label: w.title, href: `/whiteboards/${w.id}` })),
-    ...cards.map((c) => {
-      const boardId = c.column?.boardId ?? c.parentCard!.column!.boardId;
-      const type: "card" | "subtask" = c.parentCardId ? "subtask" : "card";
-      return { type, id: c.id, label: c.title, href: `/boards/${boardId}?card=${c.id}` };
-    }),
+    ...cards
+      .filter((c) => c.id !== keyHit?.cardId)
+      .map((c) => {
+        const boardId = c.column?.boardId ?? c.parentCard!.column!.boardId;
+        const type: "card" | "subtask" = c.parentCardId ? "subtask" : "card";
+        return { type, id: c.id, label: c.title, href: `/boards/${boardId}?card=${c.id}` };
+      }),
   ];
 
   return Response.json({ results });

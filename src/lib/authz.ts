@@ -125,10 +125,10 @@ export async function resolveCardKey(prefix: string, keySeq: number) {
         { parentCardId: { not: null }, parentCard: { column: { boardId: board.id } } },
       ],
     },
-    select: { id: true },
+    select: { id: true, title: true, parentCardId: true },
   });
   if (!card) return null;
-  return { boardId: board.id, cardId: card.id };
+  return { boardId: board.id, cardId: card.id, title: card.title, isSubtask: card.parentCardId != null };
 }
 
 export async function getColumnForUser(columnId: string) {
