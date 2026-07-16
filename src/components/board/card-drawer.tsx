@@ -378,6 +378,10 @@ export function CardDrawer({
               </button>
             )}
 
+            <Section title="Description">
+              <DescriptionEditor key={cardId} initial={description} onSave={saveDescription} />
+            </Section>
+
             <Section title="Due date">
               <div className="flex items-center gap-2">
                 <Input
@@ -478,10 +482,6 @@ export function CardDrawer({
                 <InlineComposer placeholder="Add a subtask…" buttonLabel="Add" onSubmit={addItem} />
               </Section>
             )}
-
-            <Section title="Description">
-              <DescriptionEditor key={cardId} initial={description} onSave={saveDescription} />
-            </Section>
 
             <Section title="Attachments">
               <div className="flex flex-col gap-1.5">
