@@ -64,16 +64,19 @@ export default async function BoardsPage() {
               <Link href={`/boards/${b.id}`} className="group block">
                 <Card className="gap-1 py-4 transition-colors group-hover:border-border-strong">
                   <div className="truncate px-5 font-medium">{b.name}</div>
-                  <div className="flex items-center gap-2 px-5 text-sm text-muted-foreground">
-                    <span>
-                      {b._count.columns} {b._count.columns === 1 ? "column" : "columns"}
-                    </span>
-                    {b.project && (
-                      <span className="truncate rounded bg-muted px-1.5 py-0.5 text-xs" title={`Project: ${b.project.name}`}>
+                  <div className="px-5 text-sm text-muted-foreground">
+                    {b._count.columns} {b._count.columns === 1 ? "column" : "columns"}
+                  </div>
+                  {b.project && (
+                    <div className="px-5">
+                      <span
+                        className="inline-block max-w-full truncate rounded bg-muted px-2 py-0.5 text-xs text-muted-foreground"
+                        title={`Project: ${b.project.name}`}
+                      >
                         {b.project.name}
                       </span>
-                    )}
-                  </div>
+                    </div>
+                  )}
                 </Card>
               </Link>
             </li>

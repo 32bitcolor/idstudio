@@ -10,8 +10,8 @@ import {
   setSprintStatus,
   setSprintDates,
   deleteSprint,
-  SPRINT_STATUSES,
 } from "@/app/actions/sprints";
+import { SPRINT_STATUSES, SPRINT_STATUS_LABEL } from "@/lib/sprint";
 import { InlineTitle } from "@/components/shared/inline-title";
 import { ConfirmDelete } from "@/components/shared/confirm-delete";
 import { Button } from "@/components/ui/button";
@@ -26,12 +26,6 @@ type SprintT = {
   startDate: string | null;
   endDate: string | null;
   cardCount: number;
-};
-
-const STATUS_LABEL: Record<string, string> = {
-  planned: "Planned",
-  active: "Active",
-  completed: "Completed",
 };
 
 export function SprintsManager({ initial }: { initial: SprintT[] }) {
@@ -145,7 +139,7 @@ export function SprintsManager({ initial }: { initial: SprintT[] }) {
                 className="h-8 w-auto py-1 text-xs"
               >
                 {SPRINT_STATUSES.map((st) => (
-                  <option key={st} value={st}>{STATUS_LABEL[st]}</option>
+                  <option key={st} value={st}>{SPRINT_STATUS_LABEL[st]}</option>
                 ))}
               </Select>
               <input

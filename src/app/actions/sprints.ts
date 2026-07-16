@@ -5,10 +5,10 @@ import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { getActiveMembership } from "@/lib/dal";
 import { getCardForUser, getProjectForUser } from "@/lib/authz";
+import { SPRINT_STATUSES } from "@/lib/sprint";
 
 const Name = z.string().trim().min(1, "Required").max(120);
 const Goal = z.string().trim().max(500);
-export const SPRINT_STATUSES = ["planned", "active", "completed"] as const;
 const StatusSchema = z.enum(SPRINT_STATUSES);
 
 /** Resolve a sprint only if it belongs to the caller's active workspace. */
