@@ -27,6 +27,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarRail,
+  useSidebar,
 } from "@/components/ui/sidebar";
 
 function isActive(pathname: string, href: string) {
@@ -55,6 +56,7 @@ export function AppSidebar({
 }) {
   const pathname = usePathname();
   const [, startTransition] = useTransition();
+  const { isMobile, setOpenMobile } = useSidebar();
   const initial = (userLabel || userEmail || "?").charAt(0).toUpperCase();
 
   return (
@@ -143,6 +145,73 @@ export function AppSidebar({
 
       <SidebarFooter>
         <SidebarMenu>
+          {isMobile ? (
+            // On a touch device the sidebar is a slide-over Sheet. A Radix
+            // dropdown nested inside that modal Sheet is unreliable on touch
+            // (it can open-and-instantly-dismiss), which left account settings
+            // unreachable on phones. Render the account actions as plain
+            // sidebar links instead, and close the Sheet on navigation.
+            <>
+              <SidebarMenuItem>
+                <div className="flex items-center gap-2 px-2 py-1.5">
+                  <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-muted text-sm font-medium">
+                    {initial}
+                  </div>
+                  <div className="grid flex-1 text-left leading-tight">
+                    <span className="truncate text-sm font-medium">{userLabel}</span>
+                    <span className="truncate text-xs text-muted-foreground">{userEmail}</span>
+                  </div>
+                </div>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild isActive={isActive(pathname, "/settings/account")}>
+                  <Link href="/settings/account" onClick={() => setOpenMobile(false)}>
+                    <Settings />
+                    <span>Account settings</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              {isAdmin && (
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild isActive={isActive(pathname, "/settings/members")}>
+                    <Link href="/settings/members" onClick={() => setOpenMobile(false)}>
+                      <Users />
+                      <span>Members &amp; groups</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              )}
+              {workspaces.length > 1 && (
+                <>
+                  <SidebarGroupLabel>Workspaces</SidebarGroupLabel>
+                  {workspaces.map((w) => (
+                    <SidebarMenuItem key={w.id}>
+                      <SidebarMenuButton
+                        onClick={() => {
+                          setOpenMobile(false);
+                          startTransition(async () => { await switchWorkspace(w.id); });
+                        }}
+                      >
+                        <Check className={`size-4 ${w.id === activeWorkspaceId ? "opacity-100" : "opacity-0"}`} />
+                        <span className="truncate">{w.name}</span>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  ))}
+                </>
+              )}
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  onClick={() => {
+                    setOpenMobile(false);
+                    startTransition(async () => { await logout(); });
+                  }}
+                >
+                  <LogOut />
+                  <span>Sign out</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            </>
+          ) : (
           <SidebarMenuItem>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -220,6 +289,7 @@ export function AppSidebar({
               </DropdownMenuContent>
             </DropdownMenu>
           </SidebarMenuItem>
+          )}
         </SidebarMenu>
       </SidebarFooter>
 

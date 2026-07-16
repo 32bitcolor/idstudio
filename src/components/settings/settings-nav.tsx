@@ -16,7 +16,7 @@ const TABS = [
 export function SettingsNav({ isAdmin }: { isAdmin: boolean }) {
   const pathname = usePathname();
   return (
-    <nav className="mt-6 flex gap-1 border-b border-border">
+    <nav className="mt-6 flex gap-1 overflow-x-auto border-b border-border">
       {TABS.filter((t) => !t.adminOnly || isAdmin).map((t) => {
         const active = pathname === t.href || pathname.startsWith(`${t.href}/`);
         return (
@@ -24,7 +24,7 @@ export function SettingsNav({ isAdmin }: { isAdmin: boolean }) {
             key={t.href}
             href={t.href}
             className={cn(
-              "-mb-px border-b-2 px-3 py-2 text-sm transition-colors",
+              "-mb-px shrink-0 whitespace-nowrap border-b-2 px-3 py-2 text-sm transition-colors",
               active
                 ? "border-primary font-medium text-foreground"
                 : "border-transparent text-muted-foreground hover:text-foreground"

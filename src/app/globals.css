@@ -426,3 +426,15 @@ body {
   height: 0;
   pointer-events: none;
 }
+
+/* Reveal hover-only action controls on touch devices.
+   Buttons that use `opacity-0 group-hover:opacity-100` (delete card / label /
+   checklist item / subtask / milestone / time entry) are invisible on phones
+   and tablets, which have no hover — leaving those actions unreachable. When
+   the primary pointer can't hover, keep them visible. Unlayered, so it wins
+   over the layered `opacity-0` utility without `!important`. */
+@media (hover: none) {
+  .group-hover\:opacity-100 {
+    opacity: 1;
+  }
+}
