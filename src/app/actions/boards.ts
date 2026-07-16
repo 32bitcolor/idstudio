@@ -93,7 +93,7 @@ export async function setBoardCardKeyPrefix(boardId: string, prefix: string) {
 /** Assign keys to any of a board's cards/subtasks that don't have one yet
  * (creation order), so setting a prefix on a board that already has cards
  * labels them immediately instead of only labeling cards created after. */
-async function backfillCardKeys(boardId: string) {
+async function backfillCardKeys(boardId: string): Promise<number> {
   const cards = await prisma.card.findMany({
     where: {
       keySeq: null,
@@ -105,7 +105,7 @@ async function backfillCardKeys(boardId: string) {
     orderBy: { createdAt: "asc" },
     select: { id: true },
   });
-  if (cards.length === 0) return;
+  if (cards.length === 0) return 0;
 
   await prisma.$transaction(async (tx) => {
     const current = await tx.board.findUniqueOrThrow({ where: { id: boardId }, select: { cardKeySeq: true } });
@@ -116,6 +116,69 @@ async function backfillCardKeys(boardId: string) {
     }
     await tx.board.update({ where: { id: boardId }, data: { cardKeySeq: seq } });
   });
+  return cards.length;
+}
+
+/** Derive a short, unique-within-workspace card-key prefix from a board's
+ * name (e.g. "Course Production Pipeline" -> "CPP"). Shared by the
+ * admin-triggered workspace-wide backfill below and prisma/backfill-card-keys.ts. */
+function deriveBoardPrefix(name: string, taken: Set<string>): string {
+  const words = name.split(/[^a-zA-Z0-9]+/).filter(Boolean);
+  let base: string;
+  if (words.length >= 2) {
+    base = words
+      .map((w) => w[0])
+      .join("")
+      .toUpperCase()
+      .slice(0, 6);
+  } else {
+    base = "";
+  }
+  if (base.length < 2 || !/^[A-Z]/.test(base)) {
+    const word = (words[0] ?? "BOARD").replace(/[^a-zA-Z]/g, "");
+    base = (word.slice(0, 4) || "BOARD").toUpperCase().padEnd(2, "X");
+  }
+  if (!taken.has(base)) return base;
+  let n = 2;
+  let candidate = `${base}${n}`.slice(0, 8);
+  while (taken.has(candidate)) {
+    n += 1;
+    candidate = `${base}${n}`.slice(0, 8);
+  }
+  return candidate;
+}
+
+/** Admin: assign an auto-derived, unique-per-workspace prefix to every board
+ * in the caller's workspace that doesn't have one yet, and backfill keys onto
+ * all of its existing cards/subtasks. Safe to re-run — boards/cards that
+ * already have a key are left untouched. */
+export async function backfillWorkspaceCardKeys() {
+  const membership = await getActiveMembership();
+  if (!membership || membership.role !== "ADMIN") return { error: "You must be a workspace admin." };
+
+  const boards = await prisma.board.findMany({
+    where: { workspaceId: membership.workspaceId, cardKeyPrefix: null },
+    select: { id: true, name: true },
+  });
+  if (boards.length === 0) return { results: [] as { boardName: string; prefix: string; count: number }[] };
+
+  const existing = await prisma.board.findMany({
+    where: { workspaceId: membership.workspaceId, cardKeyPrefix: { not: null } },
+    select: { cardKeyPrefix: true },
+  });
+  const taken = new Set(existing.map((e) => e.cardKeyPrefix!));
+
+  const results: { boardName: string; prefix: string; count: number }[] = [];
+  for (const board of boards) {
+    const prefix = deriveBoardPrefix(board.name, taken);
+    taken.add(prefix);
+    await prisma.board.update({ where: { id: board.id }, data: { cardKeyPrefix: prefix } });
+    const count = await backfillCardKeys(board.id);
+    results.push({ boardName: board.name, prefix, count });
+    revalidatePath(boardPath(board.id));
+  }
+  revalidatePath("/boards");
+  return { results };
 }
 
 /** Claim the next card key number for a board, or null if it has no prefix

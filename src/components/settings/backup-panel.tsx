@@ -1,14 +1,29 @@
 "use client";
 
-import { useRef, useState } from "react";
-import { Download, Upload, Archive, RotateCcw } from "lucide-react";
+import { useRef, useState, useTransition } from "react";
+import { Download, Upload, Archive, RotateCcw, Tag } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { backfillWorkspaceCardKeys } from "@/app/actions/boards";
 
 export function BackupPanel({ workspaceName }: { workspaceName: string }) {
   const [file, setFile] = useState<File | null>(null);
   const [status, setStatus] = useState<{ tone: "info" | "error" | "ok"; text: string } | null>(null);
   const [busy, setBusy] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  const [backfillPending, startBackfill] = useTransition();
+  const [backfillResult, setBackfillResult] = useState<
+    { boardName: string; prefix: string; count: number }[] | string | null
+  >(null);
+
+  function runBackfill() {
+    setBackfillResult(null);
+    startBackfill(async () => {
+      const res = await backfillWorkspaceCardKeys();
+      if ("error" in res && res.error) setBackfillResult(res.error);
+      else if ("results" in res && res.results) setBackfillResult(res.results);
+    });
+  }
 
   async function restore() {
     if (!file || busy) return;
@@ -106,6 +121,47 @@ export function BackupPanel({ workspaceName }: { workspaceName: string }) {
               >
                 {status.text}
               </p>
+            )}
+          </div>
+        </div>
+      </section>
+
+      {/* Card-key backfill */}
+      <section className="rounded-xl border border-border p-5">
+        <div className="flex items-start gap-3">
+          <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-accent/12 text-accent">
+            <Tag className="size-4.5" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <h2 className="font-medium">Backfill card keys</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Assigns an auto-derived, unique prefix (e.g. &ldquo;Course Production Pipeline&rdquo; →
+              &ldquo;CPP&rdquo;) to every board in this workspace that doesn&rsquo;t have one yet, and
+              numbers all of its existing cards and subtasks. Safe to re-run — boards and cards that
+              already have a key are left untouched.
+            </p>
+            <div className="mt-4">
+              <Button onClick={runBackfill} disabled={backfillPending} variant="outline">
+                {backfillPending ? "Backfilling…" : "Backfill card keys"}
+              </Button>
+            </div>
+            {backfillResult && (
+              <div className="mt-3 text-sm">
+                {typeof backfillResult === "string" ? (
+                  <p className="text-destructive">{backfillResult}</p>
+                ) : backfillResult.length === 0 ? (
+                  <p className="text-muted-foreground">Every board already has a card-key prefix.</p>
+                ) : (
+                  <ul className="flex flex-col gap-1 text-muted-foreground">
+                    {backfillResult.map((r) => (
+                      <li key={r.boardName}>
+                        <strong className="text-foreground">{r.prefix}</strong> — {r.boardName} ({r.count}{" "}
+                        card{r.count === 1 ? "" : "s"} labeled)
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
             )}
           </div>
         </div>
