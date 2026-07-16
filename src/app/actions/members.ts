@@ -8,6 +8,7 @@ import { hashPassword } from "@/lib/password";
 import { enqueueEmail } from "@/lib/queues";
 import { memberWelcome, passwordReset, withLink } from "@/lib/email-templates";
 import { appUrl } from "@/lib/app-url";
+import { notificationsEnabled } from "@/lib/notify";
 import { CreateUserSchema, ResetPasswordSchema } from "@/lib/validation";
 import { Role } from "@/generated/prisma/client";
 import type { FormState } from "@/lib/form-state";
@@ -58,18 +59,20 @@ export async function createUser(_prev: FormState, formData: FormData): Promise<
   });
   revalidatePath("/settings/members");
 
-  const inviter = await getCurrentUser();
-  await enqueueEmail({
-    to: email,
-    ...withLink(
-      memberWelcome({
-        name: parsed.data.name || email,
-        workspaceName: admin.workspace.name,
-        inviterName: inviter?.name ?? inviter?.email ?? "an admin",
-      }),
-      appUrl("/login"),
-    ),
-  });
+  if (await notificationsEnabled(admin.workspaceId, "member")) {
+    const inviter = await getCurrentUser();
+    await enqueueEmail({
+      to: email,
+      ...withLink(
+        memberWelcome({
+          name: parsed.data.name || email,
+          workspaceName: admin.workspace.name,
+          inviterName: inviter?.name ?? inviter?.email ?? "an admin",
+        }),
+        appUrl("/login"),
+      ),
+    });
+  }
   return { success: `Created ${email}. Share the password with them securely.` };
 }
 
@@ -119,7 +122,7 @@ export async function resetUserPassword(userId: string, password: string): Promi
   });
 
   const me = await getCurrentUser();
-  if (userId !== me?.id) {
+  if (userId !== me?.id && (await notificationsEnabled(admin.workspaceId, "member"))) {
     const target = await prisma.user.findUnique({ where: { id: userId }, select: { name: true, email: true } });
     if (target?.email) {
       await enqueueEmail({

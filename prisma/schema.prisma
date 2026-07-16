@@ -43,6 +43,7 @@ model Workspace {
   name           String
   slug           String          @unique
   intakeEnabled  Boolean         @default(true) // admin on/off toggle for the public intake form
+  notificationSettings Json?     // admin per-type email toggles; null/absent key = enabled (opt-out). See src/lib/notifications.ts
   createdAt      DateTime        @default(now())
   updatedAt      DateTime        @updatedAt
   members        Membership[]

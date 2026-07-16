@@ -4,10 +4,11 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
-import { getActiveMembership } from "@/lib/dal";
+import { getActiveMembership, getCurrentUser } from "@/lib/dal";
 import { getBoardForUser, getColumnForUser, getCardForUser, getProjectForUser } from "@/lib/authz";
 import { positionBetween, positionsAfter, positionForIndex } from "@/lib/ordering";
 import { pickStatusIdForName } from "@/lib/status";
+import { notifyCardStatusChange } from "@/lib/notify";
 
 const Name = z.string().trim().min(1, "Required").max(120);
 const Title = z.string().trim().min(1, "Required").max(280);
@@ -397,9 +398,10 @@ export async function setCardStatus(cardId: string, statusId: string) {
   if (!board) return { error: "Board not found." };
   const status = await prisma.workspaceStatus.findFirst({
     where: { id: statusId, workspaceId: board.workspaceId },
-    select: { id: true },
+    select: { id: true, name: true },
   });
   if (!status) return { error: "Status not found." };
+  const before = await prisma.card.findUnique({ where: { id: cardId }, select: { statusId: true } });
 
   const data: { statusId: string; columnId?: string; position?: string } = { statusId };
   const col = await prisma.column.findFirst({
@@ -418,6 +420,17 @@ export async function setCardStatus(cardId: string, statusId: string) {
   }
   await prisma.card.update({ where: { id: cardId }, data });
   revalidatePath(boardPath(card.boardId));
+
+  if (before?.statusId !== statusId) {
+    const actor = await getCurrentUser();
+    await notifyCardStatusChange({
+      cardId,
+      boardId: card.boardId,
+      workspaceId: board.workspaceId,
+      statusName: status.name,
+      actor: actor ? { id: actor.id, name: actor.name, email: actor.email } : null,
+    });
+  }
   return { ok: true };
 }
 
@@ -435,10 +448,30 @@ export async function moveCard(cardId: string, toColumnId: string, targetIndex: 
     select: { position: true },
   });
   const position = positionForIndex(siblings.map((c) => c.position), targetIndex);
+  const before = await prisma.card.findUnique({ where: { id: cardId }, select: { statusId: true } });
   // Keep the card's canonical status in sync with the column it lands in.
   await prisma.card.update({
     where: { id: cardId },
     data: { columnId: toColumnId, position, statusId: target.statusId },
   });
   revalidatePath(boardPath(card.boardId));
+
+  // Notify assignees/SMEs only when the canonical status actually changed (a
+  // reorder, or a move between two columns mapped to the same status, doesn't).
+  if (target.statusId && before?.statusId !== target.statusId) {
+    const status = await prisma.workspaceStatus.findUnique({
+      where: { id: target.statusId },
+      select: { name: true, workspaceId: true },
+    });
+    if (status) {
+      const actor = await getCurrentUser();
+      await notifyCardStatusChange({
+        cardId,
+        boardId: card.boardId,
+        workspaceId: status.workspaceId,
+        statusName: status.name,
+        actor: actor ? { id: actor.id, name: actor.name, email: actor.email } : null,
+      });
+    }
+  }
 }

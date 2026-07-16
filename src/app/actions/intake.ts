@@ -18,6 +18,7 @@ import {
   withLink,
 } from "@/lib/email-templates";
 import { appUrl } from "@/lib/app-url";
+import { notificationsEnabled } from "@/lib/notify";
 
 const Requester = z.object({
   name: z.string().trim().min(1, "Your name is required").max(140),
@@ -109,10 +110,15 @@ export async function submitIntakeRequest(
   }
 
   const ticket = ticketLabel(request.number);
-  const admins = await prisma.membership.findMany({
-    where: { workspaceId, role: Role.ADMIN },
-    select: { user: { select: { email: true } } },
-  });
+  // The requester confirmation is transactional (a reply to their submission)
+  // and always sends; the admin heads-up is gated by the "intake" toggle.
+  const notifyAdmins = await notificationsEnabled(workspaceId, "intake");
+  const admins = notifyAdmins
+    ? await prisma.membership.findMany({
+        where: { workspaceId, role: Role.ADMIN },
+        select: { user: { select: { email: true } } },
+      })
+    : [];
   await Promise.all([
     enqueueEmail({
       to: requester.data.email,

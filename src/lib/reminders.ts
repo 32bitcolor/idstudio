@@ -1,6 +1,7 @@
 import type { PrismaClient } from "../generated/prisma/client";
 import { cardDueReminder, milestoneDueReminder, withLink } from "./email-templates";
 import { appUrl } from "./app-url";
+import { notificationEnabled } from "./notifications";
 
 type EmailMsg = { to: string; subject: string; html: string; text: string };
 type Enqueue = (msg: EmailMsg) => Promise<void>;
@@ -17,6 +18,20 @@ export async function runDueReminders(prisma: PrismaClient, enqueue: Enqueue): P
   const dayAfter = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 2));
   let sent = 0;
 
+  // Per-workspace "reminders" toggle, cached so each workspace is read once.
+  const remindersOnCache = new Map<string, boolean>();
+  async function remindersOn(workspaceId: string): Promise<boolean> {
+    const cached = remindersOnCache.get(workspaceId);
+    if (cached !== undefined) return cached;
+    const ws = await prisma.workspace.findUnique({
+      where: { id: workspaceId },
+      select: { notificationSettings: true },
+    });
+    const on = notificationEnabled(ws?.notificationSettings, "reminders");
+    remindersOnCache.set(workspaceId, on);
+    return on;
+  }
+
   // Cards due tomorrow, not done, top-level (has a column), with assignees.
   const cards = await prisma.card.findMany({
     where: { dueDate: { gte: tomorrow, lt: dayAfter }, done: false, columnId: { not: null } },
@@ -24,10 +39,11 @@ export async function runDueReminders(prisma: PrismaClient, enqueue: Enqueue): P
       id: true,
       title: true,
       assignees: { select: { user: { select: { name: true, email: true } } } },
-      column: { select: { board: { select: { id: true, name: true } } } },
+      column: { select: { board: { select: { id: true, name: true, workspaceId: true } } } },
     },
   });
   for (const c of cards) {
+    if (c.column && !(await remindersOn(c.column.board.workspaceId))) continue;
     const boardId = c.column?.board.id;
     const link = boardId ? appUrl(`/boards/${boardId}?card=${c.id}`) : undefined;
     for (const a of c.assignees) {
@@ -54,6 +70,7 @@ export async function runDueReminders(prisma: PrismaClient, enqueue: Enqueue): P
     select: { name: true, project: { select: { id: true, name: true, workspaceId: true } } },
   });
   for (const m of milestones) {
+    if (!(await remindersOn(m.project.workspaceId))) continue;
     const admins = await prisma.user.findMany({
       where: { memberships: { some: { workspaceId: m.project.workspaceId, role: "ADMIN" } } },
       select: { name: true, email: true },

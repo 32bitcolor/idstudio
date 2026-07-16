@@ -284,3 +284,45 @@ export function milestoneDueReminder(params: { recipientName: string; milestoneN
     text: `Hi ${recipientName},\n\nMilestone "${milestoneName}" in project "${projectName}" is due ${when}.`,
   };
 }
+
+export function statusChanged(params: {
+  recipientName: string;
+  actorName: string;
+  cardTitle: string;
+  boardName: string;
+  statusName: string;
+}): Email {
+  const { recipientName, actorName, cardTitle, boardName, statusName } = params;
+  return {
+    subject: `"${cardTitle}" moved to ${statusName}`,
+    html: layout(
+      "A card changed status",
+      `<p>Hi ${esc(recipientName)},</p>
+<p>${esc(actorName)} moved <strong>${esc(cardTitle)}</strong> to <strong>${esc(statusName)}</strong>.</p>
+<p>On board ${esc(boardName)}.</p>`,
+    ),
+    text: `Hi ${recipientName},\n\n${actorName} moved "${cardTitle}" to ${statusName}.\n\nOn board ${boardName}.`,
+  };
+}
+
+export function subtaskStatusChanged(params: {
+  recipientName: string;
+  actorName: string;
+  subtaskText: string;
+  cardTitle: string;
+  boardName: string;
+  done: boolean;
+}): Email {
+  const { recipientName, actorName, subtaskText, cardTitle, boardName, done } = params;
+  const verb = done ? "completed" : "reopened";
+  return {
+    subject: `Subtask ${verb} on "${cardTitle}"`,
+    html: layout(
+      `A subtask was ${verb}`,
+      `<p>Hi ${esc(recipientName)},</p>
+<p>${esc(actorName)} ${esc(verb)} <strong>${esc(subtaskText)}</strong>.</p>
+<p>On card "${esc(cardTitle)}" in ${esc(boardName)}.</p>`,
+    ),
+    text: `Hi ${recipientName},\n\n${actorName} ${verb} "${subtaskText}".\n\nOn card "${cardTitle}" in ${boardName}.`,
+  };
+}

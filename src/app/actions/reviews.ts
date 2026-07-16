@@ -9,6 +9,7 @@ import { getDeliverableForUser, getReviewForUser } from "@/lib/authz";
 import { REVIEW_STATUSES } from "@/lib/methodology";
 import { enqueueEmail } from "@/lib/queues";
 import { reviewRequested, reviewDecided, withLink } from "@/lib/email-templates";
+import { notificationsEnabled } from "@/lib/notify";
 import { appUrl } from "@/lib/app-url";
 
 function fmtDate(d: Date | null): string | null {
@@ -77,7 +78,7 @@ export async function addReviewCycle(deliverableId: string, reviewerId: string, 
   revalidateReview(d.projectId);
 
   // Notify the reviewer (skip a self-review).
-  if (review.reviewer.email && review.reviewerId !== me.id) {
+  if (review.reviewer.email && review.reviewerId !== me.id && (await notificationsEnabled(project.workspaceId, "review"))) {
     const meta = await prisma.deliverable.findUnique({
       where: { id: deliverableId },
       select: { name: true, project: { select: { name: true } } },
@@ -119,10 +120,14 @@ export async function setReviewStatus(reviewId: string, status: string) {
         feedback: true,
         requestedBy: { select: { id: true, name: true, email: true } },
         reviewer: { select: { name: true, email: true } },
-        deliverable: { select: { name: true, project: { select: { name: true } } } },
+        deliverable: { select: { name: true, project: { select: { name: true, workspaceId: true } } } },
       },
     });
-    if (detail?.requestedBy?.email && detail.requestedBy.id !== me?.id) {
+    if (
+      detail?.requestedBy?.email &&
+      detail.requestedBy.id !== me?.id &&
+      (await notificationsEnabled(detail.deliverable.project.workspaceId, "review"))
+    ) {
       await enqueueEmail({
         to: detail.requestedBy.email,
         ...withLink(
