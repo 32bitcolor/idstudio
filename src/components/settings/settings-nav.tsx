@@ -10,6 +10,7 @@ const TABS = [
   { href: "/settings/groups", label: "Groups", adminOnly: true },
   { href: "/settings/backup", label: "Backup", adminOnly: true },
   { href: "/settings/intake", label: "Intake", adminOnly: true },
+  { href: "/settings/notifications", label: "Notifications", adminOnly: true },
   { href: "/settings/updates", label: "Updates", adminOnly: true },
 ];
 
