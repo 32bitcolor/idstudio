@@ -20,9 +20,6 @@ import {
 } from "@/app/actions/cards";
 import { renameCard, deleteCard } from "@/app/actions/boards";
 import {
-  requestUpload,
-  finalizeUpload,
-  getDownloadUrl,
   deleteAttachment,
 } from "@/app/actions/attachments";
 import { DescriptionEditor } from "@/components/board/description-editor";
@@ -279,27 +276,19 @@ export function CardDrawer({
     }
     setUploading(true);
     try {
-      const req = await requestUpload(cardId, file.name, file.type, file.size);
-      if ("error" in req) {
-        setUploadError(req.error ?? "Upload failed.");
+      const form = new FormData();
+      form.append("cardId", cardId);
+      form.append("file", file);
+      const res = await fetch("/api/attachments/upload", { method: "POST", body: form });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || data.error) {
+        setUploadError(data.error ?? "Upload failed.");
         return;
       }
-      const put = await fetch(req.uploadUrl, {
-        method: "PUT",
-        body: file,
-        headers: { "Content-Type": req.contentType },
-      });
-      if (!put.ok) {
-        setUploadError("Upload failed.");
-        return;
-      }
-      const fin = await finalizeUpload(cardId, req.key, file.name, file.type, file.size);
-      if ("attachment" in fin && fin.attachment) {
-        const next = [...attachments, fin.attachment];
+      if (data.attachment) {
+        const next = [...attachments, data.attachment];
         setAttachments(next);
         onPatch(cardId, { attachments: next.length });
-      } else if ("error" in fin) {
-        setUploadError(fin.error ?? "Upload failed.");
       }
     } catch {
       setUploadError("Upload failed.");
@@ -308,9 +297,8 @@ export function CardDrawer({
     }
   }
 
-  async function downloadAttachment(a: AttachmentT) {
-    const res = await getDownloadUrl(a.id);
-    if ("url" in res) window.open(res.url, "_blank");
+  function downloadAttachment(a: AttachmentT) {
+    window.open(`/api/attachments/${a.id}/download`, "_blank");
   }
 
   async function removeAttachment(a: AttachmentT) {
