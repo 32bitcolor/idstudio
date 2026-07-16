@@ -78,14 +78,15 @@ async function main() {
     return;
   }
   if (RESET) {
-    console.log("[demo] DEMO_RESET=1 — clearing existing demo content…");
+    console.log("[demo] DEMO_RESET=1 — clearing content (keeping users, memberships, groups, statuses)…");
     await prisma.intakeRequest.deleteMany({ where: { workspaceId: workspace.id } });
+    await prisma.sprint.deleteMany({ where: { workspaceId: workspace.id } });
     await prisma.whiteboard.deleteMany({ where: { workspaceId: workspace.id } });
     await prisma.board.deleteMany({ where: { workspaceId: workspace.id } });
     await prisma.storyboard.deleteMany({ where: { workspaceId: workspace.id } });
     await prisma.project.deleteMany({ where: { workspaceId: workspace.id } });
-    await prisma.group.deleteMany({ where: { workspaceId: workspace.id } });
-    await prisma.user.deleteMany({ where: { email: { endsWith: `@${DEMO_DOMAIN}` }, id: { not: admin.id } } });
+    // Users, memberships, groups, and the canonical WorkspaceStatus set are
+    // intentionally preserved (per the reset request — keep the people & config).
   }
 
   const pwHash = await argon(DEMO_PASSWORD);
@@ -111,6 +112,7 @@ async function main() {
   await seedProjects(workspace.id, U, storyboards);
   await seedWhiteboards(workspace.id, admin.id);
   await seedIntake(workspace.id, U);
+  await applyNewFeatures(workspace.id);
 
   console.log("[demo] done.");
   console.log(`[demo] team logins: <first>.<last>@${DEMO_DOMAIN} / ${DEMO_PASSWORD} (e.g. priya.anand@${DEMO_DOMAIN})`);
@@ -118,6 +120,11 @@ async function main() {
 
 // ── groups ───────────────────────────────────────────────────────────────────
 async function seedGroups(workspaceId: string, U: Record<string, string>) {
+  // Groups are preserved across resets — only create them if none exist yet.
+  if ((await prisma.group.count({ where: { workspaceId } })) > 0) {
+    console.log("[demo] groups: keeping existing");
+    return;
+  }
   await prisma.group.create({
     data: {
       workspaceId, name: "Instructional Designers",
@@ -724,6 +731,109 @@ async function seedIntake(workspaceId: string, U: Record<string, string>) {
     });
   }
   console.log(`[demo] intake requests: ${specs.length} (spanning submitted/triaging/converted/rejected)`);
+}
+
+// ── new features: canonical statuses, board→project links, sprints, the
+//    alignment spine, and per-project sprint opt-in ────────────────────────────
+const CERT_PROJECT = "JumpCloud Admin Certification Program";
+const SSO_PROJECT = "SSO & Conditional Access Course Refresh";
+
+async function applyNewFeatures(workspaceId: string) {
+  // 1. Map every board column to a canonical status by name (fallback "In
+  //    progress"), and derive each card's status from its column.
+  const statuses = await prisma.workspaceStatus.findMany({ where: { workspaceId }, select: { id: true, name: true } });
+  if (statuses.length === 0) {
+    console.log("[demo] no workspace statuses found — skipping status/sprint seeding");
+    return;
+  }
+  const byName = new Map(statuses.map((s) => [s.name.toLowerCase(), s.id] as const));
+  const fallback = statuses.find((s) => s.name === "In progress")?.id ?? statuses[0].id;
+  const columns = await prisma.column.findMany({ where: { board: { workspaceId } }, select: { id: true, name: true } });
+  for (const col of columns) {
+    const sid = byName.get(col.name.trim().toLowerCase()) ?? fallback;
+    await prisma.column.update({ where: { id: col.id }, data: { statusId: sid } });
+    await prisma.card.updateMany({ where: { columnId: col.id }, data: { statusId: sid } });
+  }
+  console.log(`[demo] statuses: mapped ${columns.length} columns + their cards`);
+
+  // 2. Link a board to a project (the other board stays a standalone quick board),
+  //    and opt the two active projects into sprint planning.
+  const certProject = await prisma.project.findFirst({ where: { workspaceId, name: CERT_PROJECT }, select: { id: true } });
+  const opsBoard = await prisma.board.findFirst({ where: { workspaceId, name: "Certification Program Ops" }, select: { id: true } });
+  if (certProject && opsBoard) {
+    await prisma.board.update({ where: { id: opsBoard.id }, data: { projectId: certProject.id } });
+  }
+  await prisma.project.updateMany({ where: { workspaceId, name: { in: [CERT_PROJECT, SSO_PROJECT] } }, data: { sprintsEnabled: true } });
+  console.log("[demo] linked 1 board to a project; enabled sprints on 2 projects");
+
+  // 3. Sprints — one active, one planned — with a spread of cards assigned to the
+  //    active sprint across statuses (so the sprint board has real content).
+  const doneId = statuses.find((s) => s.name === "Done")?.id;
+  const active = await prisma.sprint.create({
+    data: {
+      workspaceId, name: "Sprint 24", status: "active", goal: "Ship the Admin Certification module 1 build and SSO refresh storyboards.",
+      startDate: day(-4), endDate: day(10),
+    },
+  });
+  await prisma.sprint.create({
+    data: { workspaceId, name: "Sprint 25", status: "planned", goal: "Exam question bank + device-management course.", startDate: day(10), endDate: day(24) },
+  });
+  // Assign up to 8 non-done cards to the active sprint (across all boards).
+  const assignable = await prisma.card.findMany({
+    where: { columnId: { not: null }, sprintId: null, statusId: doneId ? { not: doneId } : undefined, column: { board: { workspaceId } } },
+    orderBy: { createdAt: "asc" },
+    take: 8,
+    select: { id: true },
+  });
+  if (assignable.length > 0) {
+    await prisma.card.updateMany({ where: { id: { in: assignable.map((c) => c.id) } }, data: { sprintId: active.id } });
+  }
+  console.log(`[demo] sprints: 2 (Sprint 24 active with ${assignable.length} cards, Sprint 25 planned)`);
+
+  // 4. Alignment spine — objectives on the cert project, a couple assessment
+  //    items, and objectives threaded to storyboard screens (coverage view).
+  if (certProject) {
+    const objSpecs = [
+      { text: "Navigate the JumpCloud Admin Console and locate core management areas", bloom: "understand" },
+      { text: "Configure a Conditional Access policy for a customer scenario", bloom: "apply" },
+      { text: "Enroll and manage devices across macOS, Windows, and Linux", bloom: "apply" },
+      { text: "Diagnose a failed SSO integration from console logs", bloom: "analyze" },
+    ];
+    const objKeys = keys(objSpecs.length);
+    const objIds: string[] = [];
+    for (let i = 0; i < objSpecs.length; i++) {
+      const o = await prisma.learningObjective.create({
+        data: { projectId: certProject.id, text: objSpecs[i].text, bloomLevel: objSpecs[i].bloom, position: objKeys[i] },
+        select: { id: true },
+      });
+      objIds.push(o.id);
+    }
+    const asmtSpecs = [
+      { prompt: "Which console area manages Conditional Access policies?", itemType: "multiple_choice" },
+      { prompt: "Walk through resolving a SAML assertion mismatch for a customer.", itemType: "scenario" },
+    ];
+    const asmtKeys = keys(asmtSpecs.length);
+    for (let i = 0; i < asmtSpecs.length; i++) {
+      const a = await prisma.assessmentItem.create({
+        data: { projectId: certProject.id, prompt: asmtSpecs[i].prompt, itemType: asmtSpecs[i].itemType, position: asmtKeys[i] },
+        select: { id: true },
+      });
+      // tie each assessment item to an objective (coverage)
+      await prisma.assessmentItemObjective.create({ data: { itemId: a.id, objectiveId: objIds[i] } });
+    }
+    // Thread objectives through the cert storyboard's screens (leave one objective
+    // unlinked so the coverage view shows a real gap).
+    const screens = await prisma.screen.findMany({
+      where: { storyboard: { workspaceId, title: "Welcome to JumpCloud: Admin Console Tour" } },
+      orderBy: { position: "asc" },
+      take: 3,
+      select: { id: true },
+    });
+    for (let i = 0; i < screens.length && i < objIds.length; i++) {
+      await prisma.screenObjective.create({ data: { screenId: screens[i].id, objectiveId: objIds[i] } });
+    }
+    console.log(`[demo] alignment spine: ${objSpecs.length} objectives, ${asmtSpecs.length} assessment items, ${Math.min(screens.length, objIds.length)} screen links`);
+  }
 }
 
 main()
