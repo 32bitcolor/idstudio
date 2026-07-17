@@ -4,9 +4,12 @@ import {
   Target,
   Columns3,
   FolderKanban,
+  Timer,
   Film,
   Shapes,
+  Inbox,
   ListChecks,
+  Bell,
   Users,
   Palette,
   type LucideIcon,
@@ -17,9 +20,12 @@ import AddieSam from "@/components/help/topics/addie-sam";
 import ObjectivesAlignment from "@/components/help/topics/objectives-alignment";
 import Boards from "@/components/help/topics/boards";
 import Projects from "@/components/help/topics/projects";
+import Sprints from "@/components/help/topics/sprints";
 import Storyboards from "@/components/help/topics/storyboards";
 import Whiteboards from "@/components/help/topics/whiteboards";
+import Intake from "@/components/help/topics/intake";
 import MyWork from "@/components/help/topics/my-work";
+import Notifications from "@/components/help/topics/notifications";
 import MembersAccess from "@/components/help/topics/members-access";
 import AccountThemes from "@/components/help/topics/account-themes";
 
@@ -77,6 +83,14 @@ export const HELP_TOPICS: HelpTopic[] = [
     Body: Projects,
   },
   {
+    slug: "sprints",
+    title: "Sprints",
+    summary: "Time-boxed iterations and the team sprint board.",
+    icon: Timer,
+    group: "Modules",
+    Body: Sprints,
+  },
+  {
     slug: "storyboards",
     title: "Storyboards",
     summary: "Screen-by-screen course design with rich per-screen fields.",
@@ -93,12 +107,28 @@ export const HELP_TOPICS: HelpTopic[] = [
     Body: Whiteboards,
   },
   {
+    slug: "intake",
+    title: "Intake",
+    summary: "Capture, triage, score, and convert stakeholder requests.",
+    icon: Inbox,
+    group: "Modules",
+    Body: Intake,
+  },
+  {
     slug: "my-work",
     title: "My Work & reviews",
     summary: "Your personal hub and the SME review lifecycle.",
     icon: ListChecks,
     group: "Modules",
     Body: MyWork,
+  },
+  {
+    slug: "notifications",
+    title: "Notifications & email",
+    summary: "What sends an email, @-mentions, and admin controls.",
+    icon: Bell,
+    group: "Modules",
+    Body: Notifications,
   },
   {
     slug: "members-access",

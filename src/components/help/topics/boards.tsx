@@ -75,15 +75,32 @@ export default function Boards() {
         </Def>
         <Def term="Assignees">
           Click <UI>+ Assign</UI> to add workspace members. Their initials appear on the card face,
-          and assigned cards surface in each person&rsquo;s My Work.
+          and assigned cards surface in each person&rsquo;s My Work. Adding someone emails them.
+        </Def>
+        <Def term="SMEs">
+          Name the subject-matter expert(s) on the card with <UI>+ Assign</UI> under <UI>SMEs</UI> —
+          the people you&rsquo;ll pull in for an accuracy pass. They&rsquo;re notified when named, and
+          they receive comment notifications on the card.
+        </Def>
+        <Def term="Status">
+          Every card carries a canonical status (Backlog, To do, In progress, In review, Done). Moving
+          a card between columns keeps its status in sync automatically, and status drives the sprint
+          board and cross-board views. A status change emails the card&rsquo;s assignees and SMEs.
+        </Def>
+        <Def term="Sprint">
+          When the card&rsquo;s board belongs to a sprint-enabled project, assign it to a{" "}
+          <UI>Sprint</UI> here to pull it onto that sprint&rsquo;s board. See the Sprints guide for the
+          full picture.
         </Def>
         <Def term="Checklist">
           Break the card into sub-tasks with <UI>Add an item…</UI>. Check items off; the header shows
-          a running <em>done / total</em> count that mirrors onto the card.
+          a running <em>done / total</em> count that mirrors onto the card. Completing or reopening a
+          sub-task notifies the people on the card.
         </Def>
         <Def term="Description">
-          A rich-text field with bold, italic, an H2 heading, and bulleted or numbered lists. Click
-          out of the editor to save.
+          A rich-text field with bold, italic, an H2 heading, and bulleted or numbered lists. Type{" "}
+          <UI>@</UI> to mention a teammate who can see the card — they get an email with a link
+          straight back to it. Click out of the editor to save.
         </Def>
         <Def term="Attachments">
           Upload files with <UI>+ Add file</UI> (up to 25 MB each), then <UI>Download</UI> or remove
@@ -94,8 +111,9 @@ export default function Boards() {
           linked to it — handy for wireframing or mapping a flow in context.
         </Def>
         <Def term="Comments">
-          A running discussion thread. Write a note and click <UI>Comment</UI>; you can delete your
-          own comments (admins can delete any).
+          A running rich-text discussion thread. Write a note and click <UI>Comment</UI>; type{" "}
+          <UI>@</UI> to mention someone (they&rsquo;re emailed), and the card&rsquo;s assignees and SMEs
+          are notified of new comments. You can delete your own comments (admins can delete any).
         </Def>
       </DefList>
 

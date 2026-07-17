@@ -107,7 +107,8 @@ export default function Projects() {
       <Steps>
         <>
           Click <UI>+ Request a review</UI>, choose a reviewer from your workspace members, optionally
-          set a due date, and click <UI>Request review</UI>. This opens <strong>Round 1</strong>.
+          set a due date, and click <UI>Request review</UI>. This opens <strong>Round 1</strong> and
+          emails the reviewer a link to it.
         </>
         <>
           The reviewer acts on it — an approve / request-changes decision they&rsquo;ll find in{" "}
@@ -137,6 +138,18 @@ export default function Projects() {
         enter the date and hours, optionally attribute it to a deliverable and add a note, then click{" "}
         <UI>Log</UI>. The section header keeps a running total of hours logged across the whole
         project.
+      </P>
+
+      <H2>Sprint planning</H2>
+      <P>
+        A project can opt into <strong>sprints</strong> — time-boxed iterations the team runs on a
+        shared board. Turn on <UI>Sprint planning</UI> on the project to make its board cards
+        assignable to a sprint; from there they show up on the team sprint board grouped by status.
+        See the{" "}
+        <Link href="/help/sprints" className="underline underline-offset-2">
+          Sprints
+        </Link>{" "}
+        guide for how sprints work end to end.
       </P>
 
       <Callout tone="note" title="Access">

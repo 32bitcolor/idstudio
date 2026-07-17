@@ -31,7 +31,8 @@ export default function MembersAccess() {
           the credential you&rsquo;ll hand off.
         </>
         <>
-          Choose a <UI>Role</UI> — <UI>Member</UI> or <UI>Admin</UI> — then click <UI>Add member</UI>.
+          Choose a <UI>Role</UI> — <UI>Member</UI>, <UI>Manager</UI>, or <UI>Admin</UI> — then click{" "}
+          <UI>Add member</UI>.
         </>
         <>
           Share the email and initial password with the new person through a secure channel. They can
@@ -53,10 +54,26 @@ export default function MembersAccess() {
 
       <H3>Change a role</H3>
       <P>
-        Use the role dropdown on a member&rsquo;s row to switch them between <UI>Member</UI> and{" "}
-        <UI>Admin</UI>. Admins can manage members and groups and always retain access to every
-        resource; members work within what they&rsquo;ve been granted.
+        Use the role dropdown on a member&rsquo;s row to switch them between the three roles. There are
+        exactly three, from most to least privileged:
       </P>
+      <DefList>
+        <Def term="Admin">
+          Full control: manage members, groups, and workspace settings (intake, notifications, backup,
+          updates), plus see and edit every board, project, storyboard, and whiteboard. Restricting a
+          resource never locks out an admin.
+        </Def>
+        <Def term="Manager">
+          An oversight role: the same &ldquo;see everything&rdquo; visibility as an admin across boards,
+          projects, storyboards, and whiteboards &mdash; but <em>no</em> access to member, group, or
+          workspace-settings management. Ideal for a team lead who needs the full picture without the
+          admin keys.
+        </Def>
+        <Def term="Member">
+          The default. Works within what they&rsquo;ve been granted &mdash; open resources and any
+          restricted ones shared with a group they belong to.
+        </Def>
+      </DefList>
 
       <H3>Remove a member</H3>
       <P>
