@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { Check } from "lucide-react";
 
+import { SavedViewsMenu } from "@/components/shared/saved-views-menu";
+import type { SavedViewDTO } from "@/app/actions/saved-views";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
@@ -26,6 +28,10 @@ export function FilterBar({
   onClear,
   visible,
   total,
+  boardId,
+  currentFilters,
+  activeViewId,
+  onApplyView,
 }: {
   labels: Label[];
   members: Member[];
@@ -41,6 +47,10 @@ export function FilterBar({
   onClear: () => void;
   visible: number;
   total: number;
+  boardId: string;
+  currentFilters: () => unknown;
+  activeViewId: string | null;
+  onApplyView: (view: SavedViewDTO | null) => void;
 }) {
   return (
     <div className="flex flex-wrap items-center gap-2 px-6 pb-3">
@@ -80,6 +90,15 @@ export function FilterBar({
         <option value="week">Due this week</option>
         <option value="none">No due date</option>
       </Select>
+
+      <SavedViewsMenu
+        scope="board"
+        boardId={boardId}
+        currentFilters={currentFilters}
+        filtersActive={active}
+        activeViewId={activeViewId}
+        onApply={onApplyView}
+      />
 
       {active && (
         <>

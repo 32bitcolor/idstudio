@@ -73,7 +73,9 @@ export default function Sprints() {
         comments, attachments, and all. Filter the view by <UI>All projects</UI>,{" "}
         <UI>All assignees</UI>, or <UI>All labels</UI> at the top, with a live{" "}
         <em>visible / total</em> count beside them. Filtering by label works across projects because
-        labels belong to the workspace, not to a single board.
+        labels belong to the workspace, not to a single board. Keep a combination you use often by
+        opening <UI>Views</UI> → <UI>Save current filters…</UI>; sprint views are personal to you and
+        available on every sprint board.
       </P>
 
       <H3>Moving cards changes their status</H3>

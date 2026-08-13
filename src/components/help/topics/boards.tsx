@@ -156,6 +156,17 @@ export default function Boards() {
         everything and re-enable dragging.
       </P>
 
+      <H3>Saved views</H3>
+      <P>
+        Once you&rsquo;ve set up a combination of filters you keep coming back to, open <UI>Views</UI>{" "}
+        and choose <UI>Save current filters…</UI> to name it. Pick it from that menu any time to
+        re-apply the whole combination at once. Saved views are <strong>yours</strong> — they&rsquo;re
+        not shared with the workspace — and a board&rsquo;s views stay with that board. Saving over a
+        name you&rsquo;ve already used updates that view rather than creating a second one, and
+        changing any filter by hand detaches the view so the menu never names one while showing
+        something else. The team sprint board has its own <UI>Views</UI> menu that works the same way.
+      </P>
+
       <H3>How boards fit the pipeline</H3>
       <P>
         Boards are the execution layer beneath your projects. A project deliverable can link to a

@@ -36,6 +36,7 @@ model User {
   whiteboards             Whiteboard[]
   submittedIntakeRequests IntakeRequest[]   @relation("IntakeRequester")
   assignedIntakeRequests  IntakeRequest[]   @relation("IntakeAssignee")
+  savedViews              SavedView[]
 }
 
 model Workspace {
@@ -56,6 +57,7 @@ model Workspace {
   statuses       WorkspaceStatus[]
   sprints        Sprint[]
   labels         Label[]
+  savedViews     SavedView[]
 }
 
 // Workspace/team-level, time-boxed grouping of work — independent of a project's
@@ -128,6 +130,7 @@ model Board {
   project       Project?     @relation(fields: [projectId], references: [id], onDelete: SetNull)
   columns       Column[]
   groupAccess   BoardGroup[]
+  savedViews    SavedView[]
 
   @@unique([workspaceId, cardKeyPrefix])
   @@index([workspaceId])
@@ -469,6 +472,31 @@ model Label {
   cards       CardLabel[]
 
   @@index([workspaceId, name])
+}
+
+// A named, reusable set of filters — the second half of Phase 5. Personal to the
+// user who saved it (filters are a working preference, not shared workspace config).
+// scope "board" pins the view to one board, since its label/assignee ids only mean
+// something there; scope "sprint" applies to any sprint board, which is inherently
+// cross-project. `filters` holds the scope's filter shape verbatim — see
+// lib/saved-views.ts, which is the single place that knows those shapes.
+model SavedView {
+  id          String    @id @default(cuid())
+  workspaceId String
+  userId      String
+  name        String
+  scope       String // "board" | "sprint"
+  boardId     String? // set when scope = "board"
+  filters     Json
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  board       Board?    @relation(fields: [boardId], references: [id], onDelete: Cascade)
+
+  @@index([userId, scope, boardId])
+  @@index([workspaceId])
+  @@index([boardId])
 }
 
 model CardLabel {

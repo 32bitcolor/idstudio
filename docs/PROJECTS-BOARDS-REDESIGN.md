@@ -1,7 +1,7 @@
 # Projects ↔ Boards redesign — item-first model + team sprint board
 
-**Status:** Phases 0–4 shipped. Phase 5 half-done — workspace-level labels shipped
-(2026-08-12); saved filter views still outstanding.
+**Status:** Complete. Phases 0–4 shipped; Phase 5 finished 2026-08-13
+(workspace-level labels + saved filter views).
 **Owner:** @32bitcolor
 
 ## Why
@@ -51,7 +51,8 @@ board *maps* statuses to columns.
 3. **Several boards per project** allowed (`Board.projectId`, nullable).
 4. **Standalone quick boards** kept (`Board.projectId = null`).
 5. **Label filtering on the sprint board:** launch **without** it; add later once labels go
-   workspace-level (Phase 5). Labels are board-scoped today.
+   workspace-level (Phase 5). ~~Labels are board-scoped today.~~ *Done — labels went
+   workspace-level 2026-08-12 and the sprint board filters by them.*
 6. **Standalone-board cards on the sprint board:** **included** (sprint and project are
    independent axes); they show project "—".
 
@@ -171,7 +172,7 @@ Each phase is independently shippable and useful on its own.
 | **2 — Filter bar** | Shared filter UI on any board (assignee / status / due), server-side, visibility-aware. | Low–Med | Useful standalone; de-risks Phase 4. |
 | **3 — Sprints** | `Sprint` + `Card.sprintId` + `Project.sprintsEnabled`; sprint create/close UI; assign cards to a sprint. | Med | Sprint planning (fits SAM iterations). |
 | **4 — Team Sprint Board** | Cross-project view: pick a sprint → all cards across projects grouped by canonical status; filter by assignee / status / project; includes standalone-board cards; drag updates `statusId`. Visibility-enforced. | Med | The payoff. |
-| **5 — optional** | ~~Workspace-level labels (cross-project label filtering)~~ **shipped 2026-08-12** + saved filter views *(outstanding)*. | Med | Polish / power-user. |
+| **5 — optional** | ~~Workspace-level labels (cross-project label filtering) + saved filter views~~ **both shipped (labels 2026-08-12, saved views 2026-08-13)**. | Med | Polish / power-user. |
 
 Stop-anywhere: after Phase 1 you already have "Projects drive Boards."
 
@@ -182,7 +183,14 @@ Stop-anywhere: after Phase 1 you already have "Projects drive Boards."
   `workspace_level_labels` migration (most-used wins, tie-broken by id). The sprint board
   filters by label; admins manage them in Settings → Labels. Restore upgrades pre-format-4
   backups in `upgradeLegacyLabels`.
-- **Saved views / filters** (Phase 5) — still outstanding.
+- ~~**Saved views / filters** (Phase 5).~~ **Done 2026-08-13** — `SavedView` model, personal
+  to the user (filters are a working preference, not shared workspace config). `scope`
+  "board" pins a view to one board because its label/assignee ids only mean something
+  there; "sprint" applies to any sprint board. Filter shapes live in one place,
+  `lib/saved-views.ts`, and parse leniently so a view saved before a filter was added or
+  renamed degrades to the filters still understood rather than erroring. Saving over an
+  existing name updates that view. The active view detaches as soon as a filter is
+  hand-edited, so the menu never names a view while showing something else.
 - **Card.projectId denormalization** — only if cross-project query perf demands it.
 - Access control: every cross-project query MUST spread the existing visibility fragments
   (`boardVisibilityWhere` / `projectVisibilityWhere`) so restricted resources don't leak.

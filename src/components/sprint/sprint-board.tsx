@@ -21,6 +21,9 @@ import { useSetPageTitle } from "@/components/app-shell/breadcrumbs";
 import { CardDrawer, type CardFacePatch } from "@/components/board/card-drawer";
 import { AddCardsDialog } from "@/components/sprint/add-cards-dialog";
 import { Select } from "@/components/ui/select";
+import { SavedViewsMenu } from "@/components/shared/saved-views-menu";
+import type { SavedViewDTO } from "@/app/actions/saved-views";
+import type { SprintFilters } from "@/lib/saved-views";
 import { dueMeta, dueToneClass } from "@/lib/due";
 
 type Person = { id: string; name: string | null; email: string };
@@ -57,6 +60,8 @@ export function SprintBoard({
   const [projectFilter, setProjectFilter] = useState("");
   const [assigneeFilter, setAssigneeFilter] = useState("");
   const [labelFilter, setLabelFilter] = useState("");
+  // See board-view: the active view detaches as soon as a filter is hand-edited.
+  const [activeViewId, setActiveViewId] = useState<string | null>(null);
   const [openCardId, setOpenCardId] = useState<string | null>(null);
   const [activeCard, setActiveCard] = useState<SprintCard | null>(null);
   useSetPageTitle(sprint.name);
@@ -76,6 +81,25 @@ export function SprintBoard({
           : c,
       ),
     );
+  }
+
+  function currentFilters() {
+    return { project: projectFilter, assignee: assigneeFilter, label: labelFilter };
+  }
+
+  function applyView(view: SavedViewDTO | null) {
+    if (!view) {
+      setProjectFilter("");
+      setAssigneeFilter("");
+      setLabelFilter("");
+      setActiveViewId(null);
+      return;
+    }
+    const f = view.filters as SprintFilters;
+    setProjectFilter(f.project);
+    setAssigneeFilter(f.assignee);
+    setLabelFilter(f.label);
+    setActiveViewId(view.id);
   }
 
   function handleCardDeleted(cardId: string) {
@@ -170,27 +194,34 @@ export function SprintBoard({
         {sprint.goal && <p className="mt-0.5 text-sm text-muted-foreground">{sprint.goal}</p>}
 
         <div className="mt-3 flex flex-wrap items-center gap-2">
-          <Select value={projectFilter} onChange={(e) => setProjectFilter(e.target.value)} className="h-8 w-auto py-1 text-xs">
+          <Select value={projectFilter} onChange={(e) => { setActiveViewId(null); setProjectFilter(e.target.value); }} className="h-8 w-auto py-1 text-xs">
             <option value="">All projects</option>
             {projects.list.map(([id, name]) => (
               <option key={id} value={id}>{name}</option>
             ))}
             {projects.hasNone && <option value={NO_PROJECT}>No project</option>}
           </Select>
-          <Select value={assigneeFilter} onChange={(e) => setAssigneeFilter(e.target.value)} className="h-8 w-auto py-1 text-xs">
+          <Select value={assigneeFilter} onChange={(e) => { setActiveViewId(null); setAssigneeFilter(e.target.value); }} className="h-8 w-auto py-1 text-xs">
             <option value="">All assignees</option>
             {people.list.map((p) => (
               <option key={p.id} value={p.id}>{p.name ?? p.email}</option>
             ))}
             {people.hasUnassigned && <option value={UNASSIGNED}>Unassigned</option>}
           </Select>
-          <Select value={labelFilter} onChange={(e) => setLabelFilter(e.target.value)} className="h-8 w-auto py-1 text-xs">
+          <Select value={labelFilter} onChange={(e) => { setActiveViewId(null); setLabelFilter(e.target.value); }} className="h-8 w-auto py-1 text-xs">
             <option value="">All labels</option>
             {labels.list.map((l) => (
               <option key={l.id} value={l.id}>{l.name}</option>
             ))}
             {labels.hasNone && <option value={NO_LABEL}>No label</option>}
           </Select>
+          <SavedViewsMenu
+            scope="sprint"
+            currentFilters={currentFilters}
+            filtersActive={!!(projectFilter || assigneeFilter || labelFilter)}
+            activeViewId={activeViewId}
+            onApply={applyView}
+          />
           <span className="text-xs text-muted-foreground">{visible.length} of {cards.length} cards</span>
           <div className="ml-auto">
             <AddCardsDialog sprintId={sprint.id} onAdded={(card) => setCards((cs) => [card, ...cs])} />

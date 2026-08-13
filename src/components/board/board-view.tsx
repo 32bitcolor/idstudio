@@ -38,6 +38,8 @@ import {
   setBoardCardKeyPrefix,
 } from "@/app/actions/boards";
 import { CardDrawer, type CardFacePatch } from "@/components/board/card-drawer";
+import type { SavedViewDTO } from "@/app/actions/saved-views";
+import type { BoardFilters } from "@/lib/saved-views";
 import { FilterBar, type DueFilter } from "@/components/board/filter-bar";
 import { useSetPageTitle } from "@/components/app-shell/breadcrumbs";
 import { InlineTitle } from "@/components/shared/inline-title";
@@ -119,6 +121,10 @@ export function BoardView({
   const [fAssignees, setFAssignees] = useState<Set<string>>(new Set());
   const [fDue, setFDue] = useState<DueFilter>("any");
   const [search, setSearch] = useState("");
+  // Which saved view (if any) produced the filters currently applied. Cleared the
+  // moment the user hand-edits a filter, so the menu never claims a view is active
+  // while showing something else.
+  const [activeViewId, setActiveViewId] = useState<string | null>(null);
 
   const availableLabels = useMemo(() => {
     const map = new Map<string, Label>();
@@ -178,6 +184,29 @@ export function BoardView({
     setFAssignees(new Set());
     setFDue("any");
     setSearch("");
+    setActiveViewId(null);
+  }
+
+  function currentFilters() {
+    return {
+      labels: [...fLabels],
+      assignees: [...fAssignees],
+      due: fDue,
+      search,
+    };
+  }
+
+  function applyView(view: SavedViewDTO | null) {
+    if (!view) {
+      clearFilters();
+      return;
+    }
+    const f = view.filters as BoardFilters;
+    setFLabels(new Set(f.labels));
+    setFAssignees(new Set(f.assignees));
+    setFDue(f.due);
+    setSearch(f.search);
+    setActiveViewId(view.id);
   }
 
   const sensors = useSensors(
@@ -319,17 +348,21 @@ export function BoardView({
         labels={availableLabels}
         members={availableMembers}
         selectedLabels={fLabels}
-        onToggleLabel={(id) => toggleSet(setFLabels, id)}
+        onToggleLabel={(id) => { setActiveViewId(null); toggleSet(setFLabels, id); }}
         selectedAssignees={fAssignees}
-        onToggleAssignee={(id) => toggleSet(setFAssignees, id)}
+        onToggleAssignee={(id) => { setActiveViewId(null); toggleSet(setFAssignees, id); }}
         due={fDue}
-        onDue={setFDue}
+        onDue={(d) => { setActiveViewId(null); setFDue(d); }}
         search={search}
-        onSearch={setSearch}
+        onSearch={(s) => { setActiveViewId(null); setSearch(s); }}
         active={filtersActive}
         onClear={clearFilters}
         visible={visibleCount}
         total={totalCount}
+        boardId={boardId}
+        currentFilters={currentFilters}
+        activeViewId={activeViewId}
+        onApplyView={applyView}
       />
 
       <DndContext
