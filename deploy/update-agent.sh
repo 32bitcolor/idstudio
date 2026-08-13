@@ -18,8 +18,24 @@ export GIT_TERMINAL_PROMPT=0 GIT_PAGER=cat PAGER=cat
 set_field() { printf '%s' "$2" > "$CTRL/$1"; chmod 666 "$CTRL/$1" 2>/dev/null || true; }
 now() { date -u +%Y-%m-%dT%H:%M:%SZ; }
 
+# Trim a git error to one useful line for the status field: drop the progress
+# chatter, keep the first line that actually says what went wrong.
+first_error_line() {
+  grep -viE '^(remote:|Receiving|Resolving|Counting|Compressing|From )' \
+    | grep -iE 'fatal|error|denied|could not|timed out|unable' \
+    | head -1 | cut -c1-200
+}
+
 refresh_git() {
-  git fetch origin --quiet 2>/dev/null || true
+  # A failed fetch used to be swallowed (`2>/dev/null || true`), so `behind` silently
+  # froze at its last good value and the UI kept showing a stale count forever — the
+  # thing that hid a repo-auth breakage for days. Record the failure instead.
+  local fetch_err
+  if fetch_err="$(git fetch origin 2>&1 >/dev/null)"; then
+    set_field fetch_error ""
+  else
+    set_field fetch_error "$(printf '%s' "$fetch_err" | first_error_line)"
+  fi
   set_field current_commit  "$(git rev-parse --short HEAD)"
   set_field current_message "$(git log -1 --format=%s)"
   set_field current_date    "$(git log -1 --format=%cI)"
@@ -63,9 +79,16 @@ do_update() {
   fi
   set_field previous_commit "$(git rev-parse --short HEAD)"
   git fetch origin --quiet 2>/dev/null || true
-  if ! git pull --ff-only origin "$BRANCH" >>"$CTRL/log" 2>&1; then
-    set_field state error; set_field stage ""; set_field last_result "git pull failed (not a fast-forward?)"; return
+  # Report what git actually said. This used to be a blanket "not a fast-forward?"
+  # for every failure mode, which sent a repo-auth outage down the wrong path.
+  local pull_out
+  if ! pull_out="$(git pull --ff-only origin "$BRANCH" 2>&1)"; then
+    printf '%s\n' "$pull_out" >>"$CTRL/log"
+    local reason; reason="$(printf '%s' "$pull_out" | first_error_line)"
+    [ -z "$reason" ] && reason="git pull failed — see update-control/log"
+    set_field state error; set_field stage ""; set_field last_result "$reason"; return
   fi
+  printf '%s\n' "$pull_out" >>"$CTRL/log"
   run_deploy "Updated to"
 }
 

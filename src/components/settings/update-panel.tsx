@@ -242,6 +242,22 @@ export function UpdatePanel({ initial }: { initial: UpdateStatus | null }) {
         )}
       </section>
 
+      {/* A failed fetch means the counts below came from the last successful check and
+          may be arbitrarily old — say so, rather than presenting a stale number as
+          current. This is the signal that was silently swallowed before. */}
+      {s?.fetchError && (
+        <section className="rounded-xl border border-warning/35 bg-warning/7 p-5">
+          <h2 className="font-medium text-warning">Can&rsquo;t reach the update source</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            The version info below is from the last successful check and may be out of
+            date. Git reported:
+          </p>
+          <code className="mt-2 block overflow-x-auto rounded bg-muted px-2 py-1.5 text-xs">
+            {s.fetchError}
+          </code>
+        </section>
+      )}
+
       {updateAvailable && (
         <section className="rounded-xl border border-info/35 bg-info/7 p-5">
           <div className="flex items-start justify-between gap-3">

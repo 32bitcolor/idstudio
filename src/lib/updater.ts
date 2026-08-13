@@ -29,6 +29,9 @@ export type UpdateStatus = {
   stage: string; // "" | pulling | building | starting — only meaningful while state is "updating"
   lastResult: string;
   lastChecked: string;
+  /** Non-empty when the agent's last `git fetch` failed — the update count below is
+   *  then stale, not authoritative. Empty on agents predating this field. */
+  fetchError: string;
   previousCommit: string;
   pending: PendingCommit[];
 };
@@ -78,8 +81,9 @@ export async function readUpdateStatus(): Promise<UpdateStatus | null> {
     "last_result",
     "last_checked",
     "previous_commit",
+    "fetch_error",
   ];
-  const [cc, cm, cd, be, lc, lm, st, sg, lr, ch, pv] = await Promise.all(names.map(field));
+  const [cc, cm, cd, be, lc, lm, st, sg, lr, ch, pv, fe] = await Promise.all(names.map(field));
   return {
     configured: true,
     currentCommit: cc,
@@ -93,6 +97,7 @@ export async function readUpdateStatus(): Promise<UpdateStatus | null> {
     lastResult: lr,
     lastChecked: ch,
     previousCommit: pv,
+    fetchError: fe,
     pending: await readPending(),
   };
 }
