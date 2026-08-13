@@ -32,6 +32,7 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { LABEL_PALETTE as PALETTE } from "@/lib/label-colors";
 import { dueMeta, dueToneClass } from "@/lib/due";
 
 export type LabelT = { id: string; name: string; color: string };
@@ -58,11 +59,6 @@ export type CardFacePatch = {
   comments?: number;
   attachments?: number;
 };
-
-const PALETTE = [
-  "#ef4444", "#f97316", "#f59e0b", "#22c55e",
-  "#3b82f6", "#8b5cf6", "#ec4899", "#6b7280",
-];
 
 export function CardDrawer({
   cardId,
@@ -94,7 +90,7 @@ export function CardDrawer({
   const [sprintId, setSprintId] = useState<string | null>(null);
   const [sprints, setSprints] = useState<{ id: string; name: string }[]>([]);
   const [sprintsEnabled, setSprintsEnabled] = useState(false);
-  const [boardLabels, setBoardLabels] = useState<LabelT[]>([]);
+  const [workspaceLabels, setWorkspaceLabels] = useState<LabelT[]>([]);
   const [members, setMembers] = useState<MemberT[]>([]);
   const [mentionable, setMentionable] = useState<MemberT[]>([]);
   const [newLabelName, setNewLabelName] = useState("");
@@ -127,7 +123,7 @@ export function CardDrawer({
       setSprintId(d.card.sprintId);
       setSprints(d.sprints);
       setSprintsEnabled(d.sprintsEnabled);
-      setBoardLabels(d.boardLabels);
+      setWorkspaceLabels(d.workspaceLabels);
       setMembers(d.members);
       setMentionable(d.mentionable);
       setSubtasks(d.subtasks);
@@ -174,7 +170,7 @@ export function CardDrawer({
   }
 
   function patchLabelsFace(nextIds: Set<string>) {
-    onPatch(cardId, { labels: boardLabels.filter((l) => nextIds.has(l.id)) });
+    onPatch(cardId, { labels: workspaceLabels.filter((l) => nextIds.has(l.id)) });
   }
 
   function toggleLabel(label: LabelT) {
@@ -191,10 +187,18 @@ export function CardDrawer({
     const name = newLabelName.trim();
     if (!name || !boardId) return;
     const res = await createLabel(boardId, name, newLabelColor);
-    if ("label" in res && res.label) {
-      setBoardLabels((prev) => [...prev, res.label].sort((a, b) => a.name.localeCompare(b.name)));
-      setNewLabelName("");
-    }
+    if (!("label" in res) || !res.label) return;
+    const label = res.label;
+    setNewLabelName("");
+    // Labels are workspace-wide, so this may be one that already exists (created on
+    // another board). Don't double-list it — and apply it to the card either way,
+    // since typing a name and hitting add means "put this label on this card".
+    setWorkspaceLabels((prev) =>
+      prev.some((l) => l.id === label.id)
+        ? prev
+        : [...prev, label].sort((a, b) => a.name.localeCompare(b.name)),
+    );
+    if (!labelIds.has(label.id)) toggleLabel(label);
   }
 
   function toggleAssignee(m: MemberT) {
@@ -440,7 +444,7 @@ export function CardDrawer({
                 <div className="sm:col-span-2">
                   <Field label="Labels">
                     <div className="flex flex-wrap gap-1.5">
-                      {boardLabels.map((l) => {
+                      {workspaceLabels.map((l) => {
                         const on = labelIds.has(l.id);
                         return (
                           <button

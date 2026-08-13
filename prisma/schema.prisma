@@ -55,6 +55,7 @@ model Workspace {
   intakeRequests IntakeRequest[]
   statuses       WorkspaceStatus[]
   sprints        Sprint[]
+  labels         Label[]
 }
 
 // Workspace/team-level, time-boxed grouping of work — independent of a project's
@@ -126,7 +127,6 @@ model Board {
   workspace     Workspace    @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   project       Project?     @relation(fields: [projectId], references: [id], onDelete: SetNull)
   columns       Column[]
-  labels        Label[]
   groupAccess   BoardGroup[]
 
   @@unique([workspaceId, cardKeyPrefix])
@@ -456,15 +456,19 @@ model Comment {
   @@index([cardId, createdAt])
 }
 
+// Workspace-level (not board-level) so a label means the same thing everywhere and
+// cross-project views — the team sprint board — can filter by it. Names are unique
+// per workspace, case-insensitively (enforced by a lower(name) index, see the
+// workspace_level_labels migration; Prisma can't express a functional unique index).
 model Label {
-  id      String      @id @default(cuid())
-  boardId String
-  name    String
-  color   String // hex like "#ef4444"
-  board   Board       @relation(fields: [boardId], references: [id], onDelete: Cascade)
-  cards   CardLabel[]
+  id          String      @id @default(cuid())
+  workspaceId String
+  name        String
+  color       String // hex like "#ef4444"
+  workspace   Workspace   @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  cards       CardLabel[]
 
-  @@index([boardId])
+  @@index([workspaceId, name])
 }
 
 model CardLabel {

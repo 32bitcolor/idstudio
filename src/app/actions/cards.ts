@@ -3,7 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
-import { getCurrentUser } from "@/lib/dal";
+import { getCurrentUser, getActiveMembership } from "@/lib/dal";
+import { Role } from "@/generated/prisma/client";
 import { getBoardForUser, getCardForUser, whiteboardVisibilityWhere } from "@/lib/authz";
 import { positionBetween } from "@/lib/ordering";
 import { enqueueEmail } from "@/lib/queues";
@@ -47,7 +48,7 @@ export async function getCardDetail(cardId: string) {
   // project has opted into sprint planning.
   const sprintsEnabled = !board.project || board.project.sprintsEnabled;
 
-  const [card, boardLabels, members, membership, sprints] = await Promise.all([
+  const [card, workspaceLabels, members, membership, sprints] = await Promise.all([
     prisma.card.findUnique({
       where: { id: cardId },
       select: {
@@ -86,7 +87,7 @@ export async function getCardDetail(cardId: string) {
       },
     }),
     prisma.label.findMany({
-      where: { boardId },
+      where: { workspaceId: board.workspaceId },
       orderBy: { name: "asc" },
       select: { id: true, name: true, color: true },
     }),
@@ -147,7 +148,7 @@ export async function getCardDetail(cardId: string) {
     },
     isSubtask: card.parentCardId !== null,
     parent: card.parentCard,
-    boardLabels,
+    workspaceLabels,
     members,
     mentionable,
     sprints,
@@ -237,39 +238,115 @@ export async function setCardDueDate(cardId: string, iso: string | null) {
 
 // ── Labels ───────────────────────────────────────────────────────────────────
 
+/** Create a workspace label. `boardId` is the context the user is creating from —
+ *  it carries the group-aware access check and tells us which revalidate. Because
+ *  labels are workspace-wide and unique per name, creating one that already exists
+ *  returns the existing label rather than erroring: from the card drawer, "add the
+ *  label called Bug" should succeed whether or not another board got there first. */
 export async function createLabel(boardId: string, name: string, color: string) {
   const board = await getBoardForUser(boardId);
   if (!board) return { error: "Board not found." };
   const n = LabelName.safeParse(name);
   const c = Hex.safeParse(color);
   if (!n.success || !c.success) return { error: "Invalid label." };
+
+  const existing = await prisma.label.findFirst({
+    where: { workspaceId: board.workspaceId, name: { equals: n.data, mode: "insensitive" } },
+    select: { id: true, name: true, color: true },
+  });
+  if (existing) return { label: existing };
+
   const label = await prisma.label.create({
-    data: { boardId, name: n.data, color: c.data },
+    data: { workspaceId: board.workspaceId, name: n.data, color: c.data },
     select: { id: true, name: true, color: true },
   });
   revalidatePath(boardPath(boardId));
   return { label };
 }
 
+/** Delete a workspace label. This strips it from every card in the workspace, so
+ *  unlike applying a label it's an admin-only control. */
 export async function deleteLabel(labelId: string) {
-  const user = await getCurrentUser();
-  if (!user) return { error: "Unauthorized." };
-  const label = await prisma.label.findUnique({
-    where: { id: labelId },
-    select: { id: true, boardId: true },
+  const membership = await getActiveMembership();
+  if (!membership) return { error: "Unauthorized." };
+  if (membership.role !== Role.ADMIN) {
+    return { error: "Only workspace admins can delete labels." };
+  }
+  const label = await prisma.label.findFirst({
+    where: { id: labelId, workspaceId: membership.workspaceId },
+    select: { id: true },
   });
-  // Group-aware board access, matching createLabel — not just workspace membership.
-  if (!label || !(await getBoardForUser(label.boardId))) return { error: "Label not found." };
+  if (!label) return { error: "Label not found." };
   await prisma.label.delete({ where: { id: labelId } });
-  revalidatePath(boardPath(label.boardId));
+  revalidatePath("/boards");
+  revalidatePath("/sprints");
+  revalidatePath("/settings/labels");
+}
+
+/** List every label in the active workspace, with how many cards carry each.
+ *  Backs Settings → Labels. */
+export async function listWorkspaceLabels() {
+  const membership = await getActiveMembership();
+  if (!membership) return { error: "Unauthorized." as const };
+  const labels = await prisma.label.findMany({
+    where: { workspaceId: membership.workspaceId },
+    orderBy: { name: "asc" },
+    select: { id: true, name: true, color: true, _count: { select: { cards: true } } },
+  });
+  return {
+    labels: labels.map((l) => ({ id: l.id, name: l.name, color: l.color, uses: l._count.cards })),
+    canManage: membership.role === Role.ADMIN,
+  };
+}
+
+/** Rename / recolour a workspace label. Admin-only, matching delete — a rename is
+ *  workspace-wide and shows up on every card carrying it. */
+export async function updateLabel(labelId: string, name: string, color: string) {
+  const membership = await getActiveMembership();
+  if (!membership) return { error: "Unauthorized." };
+  if (membership.role !== Role.ADMIN) {
+    return { error: "Only workspace admins can edit labels." };
+  }
+  const n = LabelName.safeParse(name);
+  const c = Hex.safeParse(color);
+  if (!n.success || !c.success) return { error: "Invalid label." };
+
+  const label = await prisma.label.findFirst({
+    where: { id: labelId, workspaceId: membership.workspaceId },
+    select: { id: true },
+  });
+  if (!label) return { error: "Label not found." };
+
+  const clash = await prisma.label.findFirst({
+    where: {
+      workspaceId: membership.workspaceId,
+      name: { equals: n.data, mode: "insensitive" },
+      id: { not: labelId },
+    },
+    select: { id: true },
+  });
+  if (clash) return { error: `A label called "${n.data}" already exists.` };
+
+  const updated = await prisma.label.update({
+    where: { id: labelId },
+    data: { name: n.data, color: c.data },
+    select: { id: true, name: true, color: true },
+  });
+  revalidatePath("/boards");
+  revalidatePath("/sprints");
+  revalidatePath("/settings/labels");
+  return { label: updated };
 }
 
 export async function toggleCardLabel(cardId: string, labelId: string, on: boolean) {
   const card = await getCardForUser(cardId);
   if (!card) return { error: "Card not found." };
-  // ensure the label belongs to the same board as the card
+  // Ensure the label belongs to the same workspace as the card. Labels are no longer
+  // board-scoped, so the board is the wrong unit to check against.
+  const board = await getBoardForUser(card.boardId);
+  if (!board) return { error: "Card not found." };
   const label = await prisma.label.findFirst({
-    where: { id: labelId, boardId: card.boardId },
+    where: { id: labelId, workspaceId: board.workspaceId },
     select: { id: true },
   });
   if (!label) return { error: "Label not found." };

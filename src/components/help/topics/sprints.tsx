@@ -68,10 +68,12 @@ export default function Sprints() {
         different boards reads as one shared picture of progress.
       </P>
       <P>
-        Each card shows its key, title, home project, due date, and assignees. Click a card to open
-        the same full card drawer you use on a board &mdash; description, checklist, comments,
-        attachments, and all. Filter the view by <UI>All projects</UI> or <UI>All assignees</UI> at
-        the top, with a live <em>visible / total</em> count beside them.
+        Each card shows its key, title, home project, labels, due date, and assignees. Click a card
+        to open the same full card drawer you use on a board &mdash; description, checklist,
+        comments, attachments, and all. Filter the view by <UI>All projects</UI>,{" "}
+        <UI>All assignees</UI>, or <UI>All labels</UI> at the top, with a live{" "}
+        <em>visible / total</em> count beside them. Filtering by label works across projects because
+        labels belong to the workspace, not to a single board.
       </P>
 
       <H3>Moving cards changes their status</H3>

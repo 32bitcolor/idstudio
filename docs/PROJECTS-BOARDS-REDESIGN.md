@@ -1,6 +1,7 @@
 # Projects ↔ Boards redesign — item-first model + team sprint board
 
-**Status:** design agreed; Phase 0 in progress.
+**Status:** Phases 0–4 shipped. Phase 5 half-done — workspace-level labels shipped
+(2026-08-12); saved filter views still outstanding.
 **Owner:** @32bitcolor
 
 ## Why
@@ -170,13 +171,18 @@ Each phase is independently shippable and useful on its own.
 | **2 — Filter bar** | Shared filter UI on any board (assignee / status / due), server-side, visibility-aware. | Low–Med | Useful standalone; de-risks Phase 4. |
 | **3 — Sprints** | `Sprint` + `Card.sprintId` + `Project.sprintsEnabled`; sprint create/close UI; assign cards to a sprint. | Med | Sprint planning (fits SAM iterations). |
 | **4 — Team Sprint Board** | Cross-project view: pick a sprint → all cards across projects grouped by canonical status; filter by assignee / status / project; includes standalone-board cards; drag updates `statusId`. Visibility-enforced. | Med | The payoff. |
-| **5 — optional** | Workspace-level labels (cross-project label filtering) + saved filter views. | Med | Polish / power-user. |
+| **5 — optional** | ~~Workspace-level labels (cross-project label filtering)~~ **shipped 2026-08-12** + saved filter views *(outstanding)*. | Med | Polish / power-user. |
 
 Stop-anywhere: after Phase 1 you already have "Projects drive Boards."
 
 ## Open items / deferred
-- **Labels → workspace-level** (Phase 5) before the sprint board can filter by label.
-- **Saved views / filters** (Phase 5).
+- ~~**Labels → workspace-level** (Phase 5) before the sprint board can filter by label.~~
+  **Done 2026-08-12** — `Label.boardId` → `Label.workspaceId`, unique per workspace
+  case-insensitively, same-named labels across boards merged by the
+  `workspace_level_labels` migration (most-used wins, tie-broken by id). The sprint board
+  filters by label; admins manage them in Settings → Labels. Restore upgrades pre-format-4
+  backups in `upgradeLegacyLabels`.
+- **Saved views / filters** (Phase 5) — still outstanding.
 - **Card.projectId denormalization** — only if cross-project query perf demands it.
 - Access control: every cross-project query MUST spread the existing visibility fragments
   (`boardVisibilityWhere` / `projectVisibilityWhere`) so restricted resources don't leak.

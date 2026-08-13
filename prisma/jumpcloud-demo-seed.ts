@@ -83,6 +83,8 @@ async function main() {
     await prisma.sprint.deleteMany({ where: { workspaceId: workspace.id } });
     await prisma.whiteboard.deleteMany({ where: { workspaceId: workspace.id } });
     await prisma.board.deleteMany({ where: { workspaceId: workspace.id } });
+    // Labels hang off the workspace now, so deleting boards no longer cascades to them.
+    await prisma.label.deleteMany({ where: { workspaceId: workspace.id } });
     await prisma.storyboard.deleteMany({ where: { workspaceId: workspace.id } });
     await prisma.project.deleteMany({ where: { workspaceId: workspace.id } });
     // Users, memberships, groups, and the canonical WorkspaceStatus set are
@@ -270,12 +272,25 @@ async function makeBoard(
     data: {
       workspaceId, name,
       columns: { create: cols.map((c, i) => ({ name: c, position: colKeys[i] })) },
-      labels: { create: labelDefs },
     },
-    include: { columns: true, labels: true },
+    include: { columns: true },
   });
+  // Labels are workspace-level and unique per name, so if two boards declare the same
+  // label they share one row rather than each creating their own (which the unique
+  // index would reject).
+  const labelByName: Record<string, string> = {};
+  for (const def of labelDefs) {
+    const existing = await prisma.label.findFirst({
+      where: { workspaceId, name: { equals: def.name, mode: "insensitive" } },
+      select: { id: true },
+    });
+    const label = existing ?? (await prisma.label.create({
+      data: { workspaceId, name: def.name, color: def.color },
+      select: { id: true },
+    }));
+    labelByName[def.name] = label.id;
+  }
   const colByName = Object.fromEntries(board.columns.map((c) => [c.name, c.id]));
-  const labelByName = Object.fromEntries(board.labels.map((l) => [l.name, l.id]));
   const counters: Record<string, string | null> = {};
   return { id: board.id, colByName, labelByName, counters };
 }

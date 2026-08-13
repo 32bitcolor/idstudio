@@ -40,6 +40,7 @@ export default async function SprintBoardPage({ params }: { params: Promise<{ sp
         statusId: true,
         dueDate: true,
         assignees: { select: { user: { select: { id: true, name: true, email: true } } } },
+        labels: { select: { label: { select: { id: true, name: true, color: true } } } },
         column: {
           select: {
             board: {
@@ -65,6 +66,7 @@ export default async function SprintBoardPage({ params }: { params: Promise<{ sp
     cardKeyPrefix: c.column!.board.cardKeyPrefix,
     project: c.column!.board.project,
     assignees: c.assignees.map((a) => a.user),
+    labels: c.labels.map((l) => l.label),
   }));
 
   return <SprintBoard sprint={sprint} statuses={statuses} initialCards={items} />;

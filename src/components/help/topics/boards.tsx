@@ -70,8 +70,11 @@ export default function Boards() {
           filters and the overdue chip on the card.
         </Def>
         <Def term="Labels">
-          Toggle any of the board&rsquo;s labels on or off. Create a new one by typing a name, picking
-          a color swatch, and clicking <UI>Add</UI> — labels are shared across the whole board.
+          Toggle any of the workspace&rsquo;s labels on or off. Create a new one by typing a name,
+          picking a color swatch, and clicking <UI>Add</UI> — labels are shared across the whole
+          workspace, so a label created on one board is immediately available on every other board
+          (and the team sprint board can filter across projects by it). Admins rename, recolor, and
+          delete them in <UI>Settings → Labels</UI>.
         </Def>
         <Def term="Assignees">
           Click <UI>+ Assign</UI> to add workspace members. Their initials appear on the card face,

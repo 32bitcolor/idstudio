@@ -98,6 +98,7 @@ export async function listAssignableCards(sprintId: string) {
       statusId: true,
       dueDate: true,
       assignees: { select: { user: { select: { id: true, name: true, email: true } } } },
+      labels: { select: { label: { select: { id: true, name: true, color: true } } } },
       column: { select: { board: { select: { id: true, cardKeyPrefix: true, project: { select: { id: true, name: true } } } } } },
     },
   });
@@ -112,6 +113,7 @@ export async function listAssignableCards(sprintId: string) {
       cardKeyPrefix: c.column!.board.cardKeyPrefix,
       project: c.column!.board.project,
       assignees: c.assignees.map((a) => a.user),
+      labels: c.labels.map((l) => l.label),
     })),
   };
 }

@@ -10,7 +10,7 @@ import { workspaceStatusSeedData } from "@/lib/status";
 // can be restored into the same instance (a copy) or a fresh one (disaster
 // recovery). Media re-uploads to object storage under new keys.
 
-export const BACKUP_FORMAT = 3; // bump when the shape changes
+export const BACKUP_FORMAT = 4; // bump when the shape changes
 
 const WS = "__ws";
 const USER = "__user";
@@ -55,7 +55,7 @@ const SPECS: Spec[] = [
     fks: { columnId: "column", parentCardId: "card", statusId: "workspaceStatus" },
     sort: (rows) => [...rows].sort((a, b) => (a.parentCardId ? 1 : 0) - (b.parentCardId ? 1 : 0)),
   },
-  { key: "label", model: "label", where: (w) => ({ board: { workspaceId: w } }), fks: { boardId: "board" } },
+  { key: "label", model: "label", where: (w) => ({ workspaceId: w }), fks: { workspaceId: WS } },
   { key: "phase", model: "phase", where: (w) => ({ project: { workspaceId: w } }), fks: { projectId: "project" } },
   { key: "deliverable", model: "deliverable", where: (w) => ({ project: { workspaceId: w } }), fks: { projectId: "project", phaseId: "phase", cardId: "card" } },
   { key: "milestone", model: "milestone", where: (w) => ({ project: { workspaceId: w } }), fks: { projectId: "project" } },
@@ -144,11 +144,63 @@ export async function exportWorkspace(workspaceId: string): Promise<{
 
 const NO_LOGIN_HASH = "!restored:no-login"; // invalid argon2 → login always fails until reset
 
+/** Backups at format ≤3 carry board-scoped labels: a `boardId` column, no
+ *  `workspaceId`, and possibly several same-named labels across different boards.
+ *  Fold them into the workspace-level shape the schema now expects — same merge rule
+ *  as the workspace_level_labels migration (most-used wins, tie-broken by id) — so
+ *  the generic import loop below sees only format-4 data. */
+function upgradeLegacyLabels(exp: WorkspaceExport): void {
+  if ((exp.format ?? 0) >= 4) return;
+  const labels: any[] = exp.data.label ?? [];
+  if (!labels.length) return;
+
+  const uses = new Map<string, number>();
+  for (const cl of (exp.data.cardLabel ?? []) as any[]) {
+    uses.set(cl.labelId, (uses.get(cl.labelId) ?? 0) + 1);
+  }
+
+  const keptByName = new Map<string, any>();
+  const remap: Record<string, string> = {};
+  const ranked = [...labels].sort(
+    (a, b) => (uses.get(b.id) ?? 0) - (uses.get(a.id) ?? 0) || (a.id < b.id ? -1 : 1),
+  );
+  for (const l of ranked) {
+    const key = String(l.name ?? "").toLowerCase();
+    const kept = keptByName.get(key);
+    if (kept) {
+      remap[l.id] = kept.id;
+      continue;
+    }
+    keptByName.set(key, l);
+    remap[l.id] = l.id;
+  }
+
+  exp.data.label = [...keptByName.values()].map((l) => {
+    const row = { ...l };
+    delete row.boardId; // no such column any more; workspaceId is filled by the WS remap
+    return row;
+  });
+
+  // A merge can collapse two of a card's labels into one link — dedupe, since
+  // (cardId, labelId) is the primary key.
+  const seen = new Set<string>();
+  exp.data.cardLabel = ((exp.data.cardLabel ?? []) as any[]).flatMap((cl) => {
+    const labelId = remap[cl.labelId];
+    if (!labelId) return [];
+    const key = `${cl.cardId} ${labelId}`;
+    if (seen.has(key)) return [];
+    seen.add(key);
+    return [{ ...cl, labelId }];
+  });
+}
+
 export async function importWorkspace(
   exp: WorkspaceExport,
   media: Record<string, Uint8Array>,
   importerUserId: string,
 ): Promise<{ workspaceId: string; name: string }> {
+  upgradeLegacyLabels(exp);
+
   const maps: Record<string, Record<string, string>> = {};
   const userMap: Record<string, string> = {}; // old userId -> new userId
   const emailToUser: Record<string, string> = {};

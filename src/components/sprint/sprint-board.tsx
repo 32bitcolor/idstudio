@@ -34,12 +34,15 @@ export type SprintCard = {
   cardKeyPrefix: string | null;
   project: { id: string; name: string } | null;
   assignees: Person[];
+  labels: LabelT[];
 };
 type StatusT = { id: string; name: string };
+type LabelT = { id: string; name: string; color: string };
 
 const NO_STATUS = "__none__";
 const NO_PROJECT = "__noproject__";
 const UNASSIGNED = "__unassigned__";
+const NO_LABEL = "__nolabel__";
 
 export function SprintBoard({
   sprint,
@@ -53,6 +56,7 @@ export function SprintBoard({
   const [cards, setCards] = useState<SprintCard[]>(initialCards);
   const [projectFilter, setProjectFilter] = useState("");
   const [assigneeFilter, setAssigneeFilter] = useState("");
+  const [labelFilter, setLabelFilter] = useState("");
   const [openCardId, setOpenCardId] = useState<string | null>(null);
   const [activeCard, setActiveCard] = useState<SprintCard | null>(null);
   useSetPageTitle(sprint.name);
@@ -93,6 +97,15 @@ export function SprintBoard({
     return { list: [...map.values()].sort((a, b) => (a.name ?? a.email).localeCompare(b.name ?? b.email)), hasUnassigned };
   }, [cards]);
 
+  // Labels are workspace-level, so a cross-project sprint board can finally filter by
+  // them — the same label means the same thing on every project's board.
+  const labels = useMemo(() => {
+    const map = new Map<string, LabelT>();
+    let hasNone = false;
+    cards.forEach((c) => (c.labels.length ? c.labels.forEach((l) => map.set(l.id, l)) : (hasNone = true)));
+    return { list: [...map.values()].sort((a, b) => a.name.localeCompare(b.name)), hasNone };
+  }, [cards]);
+
   const visible = useMemo(() => {
     return cards.filter((c) => {
       if (projectFilter) {
@@ -103,9 +116,13 @@ export function SprintBoard({
         if (assigneeFilter === UNASSIGNED && c.assignees.length) return false;
         if (assigneeFilter !== UNASSIGNED && !c.assignees.some((a) => a.id === assigneeFilter)) return false;
       }
+      if (labelFilter) {
+        if (labelFilter === NO_LABEL && c.labels.length) return false;
+        if (labelFilter !== NO_LABEL && !c.labels.some((l) => l.id === labelFilter)) return false;
+      }
       return true;
     });
-  }, [cards, projectFilter, assigneeFilter]);
+  }, [cards, projectFilter, assigneeFilter, labelFilter]);
 
   const statusIds = useMemo(() => new Set(statuses.map((s) => s.id)), [statuses]);
   const needsNoStatus = visible.some((c) => !c.statusId || !statusIds.has(c.statusId));
@@ -166,6 +183,13 @@ export function SprintBoard({
               <option key={p.id} value={p.id}>{p.name ?? p.email}</option>
             ))}
             {people.hasUnassigned && <option value={UNASSIGNED}>Unassigned</option>}
+          </Select>
+          <Select value={labelFilter} onChange={(e) => setLabelFilter(e.target.value)} className="h-8 w-auto py-1 text-xs">
+            <option value="">All labels</option>
+            {labels.list.map((l) => (
+              <option key={l.id} value={l.id}>{l.name}</option>
+            ))}
+            {labels.hasNone && <option value={NO_LABEL}>No label</option>}
           </Select>
           <span className="text-xs text-muted-foreground">{visible.length} of {cards.length} cards</span>
           <div className="ml-auto">
@@ -287,6 +311,19 @@ function SprintCardCell({
         )}
         {card.title}
       </button>
+      {card.labels.length > 0 && (
+        <div className="mt-1.5 flex flex-wrap gap-1">
+          {card.labels.map((l) => (
+            <span
+              key={l.id}
+              className="rounded px-1.5 py-0.5 text-[10px] font-medium text-white"
+              style={{ backgroundColor: l.color }}
+            >
+              {l.name}
+            </span>
+          ))}
+        </div>
+      )}
       <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
         {card.project && (
           <span className="truncate rounded bg-muted px-1.5 py-0.5 text-[11px] text-muted-foreground" title={`Project: ${card.project.name}`}>
