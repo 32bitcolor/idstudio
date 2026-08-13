@@ -162,6 +162,7 @@ next:
    storyboard screens and assessment items, with coverage and gap analysis.
 4. **Content lifecycle & a reusable asset library** — content inventory with review/expiry dates
    and impact analysis, plus a searchable library of templates, scenarios, and question banks.
+   → design: [docs/CONTENT-LIFECYCLE-REUSE.md](docs/CONTENT-LIFECYCLE-REUSE.md)
 5. **LMS integration** — publish/sync courses to your LMS and pull completion and assessment data
    back for impact reporting.
 
