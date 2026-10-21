@@ -33,7 +33,10 @@ services:
       retries: 12
 
   minio:
-    image: minio/minio:latest
+    # MinIO stopped publishing images to Docker Hub/Quay (minio/minio no longer pulls),
+    # so use Chainguard's build. It runs as uid 65532, not root: a miniodata volume
+    # created by the old image needs a one-time `chown -R 65532:65532` on its data.
+    image: cgr.dev/chainguard/minio:latest
     restart: unless-stopped
     command: server /data --console-address ":9001"
     environment:
