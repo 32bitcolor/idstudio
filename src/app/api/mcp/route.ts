@@ -46,5 +46,11 @@ async function handle(req: Request) {
   });
 }
 
-export { handle as GET, handle as POST, handle as DELETE };
+/** Stateless server: no standalone event stream to open (GET) and no session to end
+ *  (DELETE). The spec's answer to both is 405, which clients handle. */
+function notAllowed() {
+  return new Response(null, { status: 405, headers: { ...CORS, Allow: "POST, OPTIONS" } });
+}
+
+export { handle as POST, notAllowed as GET, notAllowed as DELETE };
 export const OPTIONS = preflight;
