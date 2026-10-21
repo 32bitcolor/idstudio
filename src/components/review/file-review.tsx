@@ -358,7 +358,8 @@ function Marker({
       )}
       style={box2css(anchor.x, anchor.y, anchor.w, anchor.h)}
     >
-      <span className="pointer-events-auto absolute -top-3 -left-3">{dot}</span>
+      {/* On a quote, the badge sits past the end of the text instead of on its first words. */}
+      <span className={cn("pointer-events-auto absolute -top-3", anchor.quote ? "-right-3" : "-left-3")}>{dot}</span>
     </span>
   );
 }

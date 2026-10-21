@@ -1147,7 +1147,7 @@ async function main() {
     },
     { by: "marcus", ago: 1, pin: { page: 1, x: 0, y: 0, w: 1, h: 1 }, body: "Title slide works. No notes." },
     {
-      by: "marcus", ago: 0, pin: { page: 2, x: 0.07, y: 0.26, w: 0.55, h: 0.05, quote: "Keep your password: sign in at the link below." },
+      by: "marcus", ago: 0, pin: { page: 2, x: 0.065, y: 0.285, w: 0.5, h: 0.045, quote: "Keep your password: sign in at the link below." },
       body: "Real phish rarely says \"sign in at the link\" this plainly. Try \"Action required: verify your account to avoid interruption.\"",
     },
   ]);
