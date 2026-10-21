@@ -45,7 +45,10 @@ services:
     volumes:
       - miniodata:/data
     ports:
-      - "9000:9000" # S3 API — used by the browser for presigned uploads/downloads
+      # Published for local development (`npm run dev` talks to MinIO on localhost:9000).
+      # Browsers never use it — all file traffic streams through the app — so a
+      # production host can drop these mappings.
+      - "9000:9000" # S3 API
       - "9001:9001" # web console
 
   # One-shot: apply migrations then seed the first admin, then exit.
