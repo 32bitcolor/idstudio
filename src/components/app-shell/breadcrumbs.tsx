@@ -59,6 +59,8 @@ export function useSetPageTitle(title: string, trail?: Crumb[] | null) {
   }, [trailKey, setTrail]);
 }
 
+const SECTIONS_WITHOUT_INDEX = new Set(["reviews"]);
+
 export function Breadcrumbs() {
   const pathname = usePathname();
   const { title, trail } = useContext(PageTitleContext);
@@ -71,6 +73,9 @@ export function Breadcrumbs() {
   if (!sectionLabel) return null;
 
   const isDetail = segments.length > 1;
+  // Sections that only have detail pages (/reviews/<id>) — never link to their bare
+  // path, even for the one render before the page sets its own trail.
+  const hasIndex = !SECTIONS_WITHOUT_INDEX.has(section);
 
   if (isDetail && trail?.length) {
     return (
@@ -100,7 +105,7 @@ export function Breadcrumbs() {
     <Breadcrumb>
       <BreadcrumbList>
         <BreadcrumbItem>
-          {isDetail ? (
+          {isDetail && hasIndex ? (
             <BreadcrumbLink asChild>
               <Link href={`/${section}`}>{sectionLabel}</Link>
             </BreadcrumbLink>

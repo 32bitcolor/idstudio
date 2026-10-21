@@ -53,7 +53,7 @@ export function CommentComposer({
         <EditorContent editor={editor} />
       </div>
       <div className="flex items-center justify-between gap-2 border-t border-border px-2 py-1.5">
-        <span className="text-[11px] text-muted-foreground">@ to mention · ⌘↵ to send</span>
+        <span className="text-[11px] text-muted-foreground">{mentionMembers ? "@ to mention · " : ""}⌘↵ to send</span>
         <Button size="xs" onClick={submit}>{buttonLabel}</Button>
       </div>
     </div>
