@@ -611,14 +611,18 @@ let groupIds: Record<string, string> = {};
 
 // ── main ──────────────────────────────────────────────────────────────────────
 async function main() {
+  // Target the workspace NAMED by DEMO_SEED_CONFIRM — never "the admin's first one",
+  // which is unordered and flipped to the seeded second workspace on a re-run.
+  const confirm = process.env.DEMO_SEED_CONFIRM;
   const admin = await prisma.user.findUnique({
     where: { email: ADMIN_EMAIL },
-    include: { memberships: { where: { role: "ADMIN" }, include: { workspace: true }, take: 1 } },
+    include: { memberships: { where: { role: "ADMIN" }, include: { workspace: true }, orderBy: { createdAt: "asc" } } },
   });
-  const target = admin?.memberships[0]?.workspace;
-  if (!admin || !target) throw new Error(`${ADMIN_EMAIL} isn't an ADMIN of any workspace — run the normal seed first.`);
-  if (process.env.DEMO_SEED_CONFIRM !== target.name) {
-    throw new Error(`Refusing to wipe "${target.name}". Re-run with DEMO_SEED_CONFIRM="${target.name}".`);
+  if (!admin || admin.memberships.length === 0) throw new Error(`${ADMIN_EMAIL} isn't an ADMIN of any workspace — run the normal seed first.`);
+  const target = admin.memberships.find((m) => m.workspace.name === confirm && m.workspace.slug !== SECOND_WS_SLUG)?.workspace;
+  if (!target) {
+    const names = admin.memberships.filter((m) => m.workspace.slug !== SECOND_WS_SLUG).map((m) => `"${m.workspace.name}"`);
+    throw new Error(`Set DEMO_SEED_CONFIRM to the workspace to wipe and rebuild — one of: ${names.join(", ")}.`);
   }
   ws = { id: target.id };
   console.log(`[demo-seed] wiping + rebuilding "${target.name}"${s3 ? "" : " (no S3 env — skipping attachments)"}`);
