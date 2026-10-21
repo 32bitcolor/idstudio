@@ -292,12 +292,12 @@ export function ProjectView({
                     onClick={() => cycleStatus(p)}
                     title="Click to advance status"
                     aria-label={`Phase status: ${label}. Click to advance.`}
-                    className="inline-flex h-6 w-28 shrink-0 items-center gap-1.5 rounded-full border border-border px-2 text-xs font-medium outline-none hover:bg-hover focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                    className="inline-flex h-6 shrink-0 items-center sm:w-28 gap-1.5 rounded-full border border-border px-2 text-xs font-medium outline-none hover:bg-hover focus-visible:ring-[3px] focus-visible:ring-ring/50"
                   >
                     <StatusDot category={PHASE_CATEGORY[p.status] ?? null} />
                     {label}
                   </button>
-                  <div className="min-w-0 flex-1 basis-40">
+                  <div className="min-w-0 flex-1 basis-0 sm:basis-40">
                     <InlineTitle
                       value={p.name}
                       onChange={(v) => renamePhaseLocal(p.id, v)}
@@ -306,7 +306,7 @@ export function ProjectView({
                       className={cn("text-sm font-medium tracking-normal", p.status === "done" && "text-muted-foreground")}
                     />
                   </div>
-                  <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                  <div className="order-last flex w-full items-center gap-1 pl-8 text-xs text-muted-foreground sm:order-none sm:w-auto sm:pl-0">
                     <PhaseDate label="Phase start date" value={p.startDate} onChange={(v) => changeDate(p, "start", v)} />
                     <span aria-hidden="true">–</span>
                     <PhaseDate label="Phase end date" value={p.endDate} onChange={(v) => changeDate(p, "end", v)} />
