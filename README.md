@@ -16,6 +16,7 @@ L&D / enablement teams. Runs on your own server (a Proxmox VM is the documented 
 > - a stakeholder intake queue
 > - an objectives → content → assessment alignment spine
 > - email notifications
+> - an **MCP server**, so Claude and other AI assistants can read and work in a workspace
 >
 > SME review is now **review links**:
 > - rounds frozen at the moment they start
@@ -148,6 +149,16 @@ review that.
   - **backup and restore**, including attachments and review files
   - workspace **labels**
   - a one-click **self-update** (pull, rebuild, migrate) from **Settings → Updates**
+- **AI assistants over MCP**: IDStudio is a Model Context Protocol server at `/api/mcp`.
+  - Claude.ai and Claude Desktop connect from just the URL. They sign in through OAuth, and you pick
+    the workspace and read-only or read-and-change access.
+  - Claude Code and other tools connect the same way, or with a personal token.
+  - 49 tools cover search, My Work, boards and cards, projects, storyboards, review rounds, intake and
+    sprints, with rich text as Markdown. There are also resources for each project, board, storyboard,
+    card and round, and prompts for status reports, review-feedback summaries, storyboard drafts,
+    intake triage and sprint planning.
+  - Assistants act as you, see only what you can see, and can be disconnected any time in
+    **Settings → AI & MCP**.
 - **In-app Help**: a guide library (getting started, ADDIE and SAM, objectives and alignment, and a
   walkthrough of every module) built with the same design system.
 
@@ -265,9 +276,10 @@ IDStudio is built around five pillars of an ID operating system. Three are live;
 | Whiteboards   | Excalidraw |
 | PDF review    | pdf.js, drawing pages to canvas with a selectable text layer (no scripts, no forms) |
 | Database      | PostgreSQL 16 + Prisma 7 (`@prisma/adapter-pg` driver adapter) |
-| Auth          | Email/password with argon2 (`@node-rs/argon2`), signed-JWT sessions (`jose`) and a Data Access Layer; per-workspace roles. Guest reviewers use separate HMAC-signed links, not accounts |
+| Auth          | Email/password with argon2 (`@node-rs/argon2`), signed-JWT sessions (`jose`) and a Data Access Layer; per-workspace roles. Guest reviewers use separate HMAC-signed links, not accounts. MCP clients use OAuth 2.1 (PKCE, dynamic registration) or personal tokens |
+| MCP           | `@modelcontextprotocol/sdk`, Streamable HTTP (stateless) |
 | Validation    | Zod 4 |
-| Background    | BullMQ + Redis worker: queued email (nodemailer), daily due-date reminders, and a nightly clean-up of unused review files |
+| Background    | BullMQ + Redis worker: queued email (nodemailer), daily due-date reminders, and a nightly clean-up of unused review files and stale MCP credentials |
 | Object store  | S3-compatible (MinIO) via the AWS SDK. Uploads and downloads stream through the app (large files as multipart uploads, with HTTP Range for PDFs), so MinIO never needs to be public |
 | Ordering      | Fractional indexing for drag-and-drop positions |
 | Reverse proxy | Caddy (automatic HTTPS) |
@@ -292,6 +304,7 @@ authorization layer can return a guest, and a database dump alone can't forge a 
 src/
   app/
     (auth)/login, (auth)/signup    Sign-in and sign-up
+    (auth)/oauth/authorize         OAuth consent for MCP clients
     request/[slug]                 Public intake form
     review/                        Guest review pages (no app shell): /review/<token> swaps the
                                    link for a cookie → /review/g/<guestId>, plus its file route
@@ -301,10 +314,11 @@ src/
       storyboards, whiteboards, team, help
       reviews/[roundId]            A review round (members)
       c/[key]                      Card short-link resolver (e.g. /c/SEC-7)
-      settings/                    Account (everyone) + Members, Groups, Intake, Labels,
+      settings/                    Account and AI & MCP (everyone) + Members, Groups, Intake, Labels,
                                    Notifications, Backup, Updates (admins)
     api/                           search (⌘K), attachments, review-files (streamed upload +
-                                   ranged download), workspace backup/restore
+                                   ranged download), workspace backup/restore, mcp (the MCP
+                                   server), oauth/* (metadata, register, token, revoke)
     actions/                       Server Actions, one file per domain (boards, cards, projects,
                                    reviews, review-guest, sprints, storyboards, intake, …)
   components/
@@ -320,6 +334,9 @@ src/
     review-*.ts       Review rounds: anchors, snapshots/diffs, outcomes, comments, files,
                       guest links and sessions, and the nightly file sweep
     storage.ts        MinIO access (streamed uploads, ranged reads)
+    mcp/              MCP server: tools by area, resources, prompts (docs/MCP.md)
+    principal.ts / api-tokens.ts / oauth.ts   Who an MCP request acts as; tokens; OAuth helpers
+    markdown.ts / rich-text.ts   TipTap JSON ⇄ Markdown, and the block model exports use
     notifications.ts / notify.ts / email-templates.ts / mailer.ts / queues.ts / reminders.ts
     workspace-backup.ts   Workspace export/import
     status.ts / sprint.ts / methodology.ts / storyboard.ts / saved-views.ts   Domain vocabularies
@@ -392,3 +409,5 @@ the shell.
   file review, with the decisions behind them and what's left.
 - [docs/PROJECTS-BOARDS-REDESIGN.md](docs/PROJECTS-BOARDS-REDESIGN.md): the item-first model that
   connects projects, boards and the team sprint board.
+- [docs/MCP.md](docs/MCP.md): the MCP server, covering authentication, how it reuses the app's permission
+  model, and every tool, resource and prompt.
