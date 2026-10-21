@@ -107,6 +107,7 @@ export async function runDueReminders(prisma: PrismaClient, enqueue: Enqueue): P
     },
     select: {
       roundId: true,
+      reviewRound: { select: { number: true, deliverableId: true } },
       reviewer: { select: { name: true, email: true } },
       guest: { select: { id: true, name: true, email: true, nonce: true, revokedAt: true, expiresAt: true } },
       deliverable: { select: { name: true, project: { select: { workspaceId: true } } } },
@@ -114,6 +115,11 @@ export async function runDueReminders(prisma: PrismaClient, enqueue: Enqueue): P
   });
   for (const r of reviews) {
     if (!(await remindersOn(r.deliverable.project.workspaceId))) continue;
+    // A later round has replaced this one; its reviewers were asked again there.
+    const newer = await prisma.reviewRound.count({
+      where: { deliverableId: r.reviewRound.deliverableId, number: { gt: r.reviewRound.number } },
+    });
+    if (newer) continue;
     let to: { name: string; email: string } | null = null;
     let link: string | undefined;
     if (r.reviewer?.email) {
