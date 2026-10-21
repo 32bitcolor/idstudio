@@ -8,8 +8,15 @@ import { ReviewRoundView } from "@/components/review/review-round-view";
 
 export const metadata = { title: "Review · IDStudio" };
 
-export default async function ReviewRoundPage({ params }: { params: Promise<{ roundId: string }> }) {
+export default async function ReviewRoundPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ roundId: string }>;
+  searchParams: Promise<{ thread?: string }>;
+}) {
   const { roundId } = await params;
+  const { thread } = await searchParams;
   const access = await getReviewRoundForUser(roundId);
   if (!access) notFound();
   const me = await getCurrentUser();
@@ -121,6 +128,7 @@ export default async function ReviewRoundPage({ params }: { params: Promise<{ ro
       previousNumber={previous && prevSnapshot ? previous.number : null}
       diff={diff}
       initialComments={round.comments.map((c) => toCommentDTO(c, "member"))}
+      focusThread={typeof thread === "string" ? thread : null}
     />
   );
 }

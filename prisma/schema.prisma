@@ -158,31 +158,32 @@ model Column {
 }
 
 model Card {
-  id           String           @id @default(cuid())
-  columnId     String? // null means this card is a subtask (see parentCardId)
-  parentCardId String? // set means this card IS a subtask, nested one level under another card
-  title        String
-  description  String? // TipTap document, stored as JSON string
-  dueDate      DateTime?
-  done         Boolean          @default(false) // only meaningful for subtask-cards
-  keySeq       Int? // this card's number in its board's key sequence — null if the board has no cardKeyPrefix; display as "{board.cardKeyPrefix}-{keySeq}"
-  statusId     String? // canonical status — source of truth for cross-board views; kept in sync with the card's column on move
-  sprintId     String? // optional sprint assignment (independent of project); powers the team sprint board
-  position     String
-  createdAt    DateTime         @default(now())
-  updatedAt    DateTime         @updatedAt
-  column       Column?          @relation(fields: [columnId], references: [id], onDelete: Cascade)
-  parentCard   Card?            @relation("CardSubtasks", fields: [parentCardId], references: [id], onDelete: Cascade)
-  subtasks     Card[]           @relation("CardSubtasks")
-  status       WorkspaceStatus? @relation(fields: [statusId], references: [id], onDelete: SetNull)
-  sprint       Sprint?          @relation(fields: [sprintId], references: [id], onDelete: SetNull)
-  labels       CardLabel[]
-  assignees    CardAssignee[]
-  smes         CardSme[]
-  comments     Comment[]
-  attachments  Attachment[]
-  deliverables Deliverable[]
-  whiteboards  Whiteboard[]
+  id             String           @id @default(cuid())
+  columnId       String? // null means this card is a subtask (see parentCardId)
+  parentCardId   String? // set means this card IS a subtask, nested one level under another card
+  title          String
+  description    String? // TipTap document, stored as JSON string
+  dueDate        DateTime?
+  done           Boolean          @default(false) // only meaningful for subtask-cards
+  keySeq         Int? // this card's number in its board's key sequence — null if the board has no cardKeyPrefix; display as "{board.cardKeyPrefix}-{keySeq}"
+  statusId       String? // canonical status — source of truth for cross-board views; kept in sync with the card's column on move
+  sprintId       String? // optional sprint assignment (independent of project); powers the team sprint board
+  position       String
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  column         Column?          @relation(fields: [columnId], references: [id], onDelete: Cascade)
+  parentCard     Card?            @relation("CardSubtasks", fields: [parentCardId], references: [id], onDelete: Cascade)
+  subtasks       Card[]           @relation("CardSubtasks")
+  status         WorkspaceStatus? @relation(fields: [statusId], references: [id], onDelete: SetNull)
+  sprint         Sprint?          @relation(fields: [sprintId], references: [id], onDelete: SetNull)
+  labels         CardLabel[]
+  assignees      CardAssignee[]
+  smes           CardSme[]
+  comments       Comment[]
+  attachments    Attachment[]
+  deliverables   Deliverable[]
+  whiteboards    Whiteboard[]
+  reviewComments ReviewComment[]
 
   @@index([columnId, position])
   @@index([parentCardId, position])
@@ -346,6 +347,9 @@ model ReviewComment {
   resolvedById String?
   resolvedNote String?
   resolvedAt   DateTime?
+  // Set once the comment is sent to a board (docs/REVIEW-LINKS.md, phase 4): the card
+  // itself, or a subtask when several comments went to one card as a checklist.
+  cardId       String?
   createdAt    DateTime        @default(now())
   updatedAt    DateTime        @updatedAt
   round        ReviewRound     @relation(fields: [roundId], references: [id], onDelete: Cascade)
@@ -354,9 +358,11 @@ model ReviewComment {
   author       User?           @relation("ReviewCommentAuthor", fields: [authorId], references: [id], onDelete: SetNull)
   guest        ReviewGuest?    @relation(fields: [guestId], references: [id], onDelete: SetNull)
   resolvedBy   User?           @relation("ReviewCommentResolver", fields: [resolvedById], references: [id], onDelete: SetNull)
+  card         Card?           @relation(fields: [cardId], references: [id], onDelete: SetNull)
 
   @@index([roundId, status])
   @@index([parentId])
+  @@index([cardId])
 }
 
 // An outside reviewer's credential for ONE assignment — not a User, no Membership, so

@@ -13,6 +13,7 @@ import { useSetPageTitle } from "@/components/app-shell/breadcrumbs";
 import { PageContainer, PageHeader } from "@/components/shared/page";
 import { InlineTitle } from "@/components/shared/inline-title";
 import { ConfirmDelete } from "@/components/shared/confirm-delete";
+import { ExportMenu } from "@/components/shared/export-menu";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
@@ -68,6 +69,7 @@ export function StoryboardView({
             </>
           ) : undefined
         }
+        actions={<ExportMenu wordHref={`/api/storyboards/${storyboard.id}/export`} printHref={`/print/storyboards/${storyboard.id}`} />}
       />
 
       <div className="mt-4 flex flex-wrap items-center gap-3">

@@ -26,6 +26,7 @@ import { DescriptionEditor } from "@/components/board/description-editor";
 import { CommentComposer, CommentBody } from "@/components/board/comment-editor";
 import { assignCardToSprint } from "@/app/actions/sprints";
 import { ConfirmDelete } from "@/components/shared/confirm-delete";
+import { CardReviewFeedback, type CardReviewComment } from "@/components/review/card-review-feedback";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -113,6 +114,8 @@ export function CardDrawer({
   const [comments, setComments] = useState<CommentT[]>([]);
   const [attachments, setAttachments] = useState<AttachmentT[]>([]);
   const [whiteboards, setWhiteboards] = useState<WhiteboardT[]>([]);
+  const [reviewFeedback, setReviewFeedback] = useState<CardReviewComment[]>([]);
+  const [cardDone, setCardDone] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [currentUserId, setCurrentUserId] = useState("");
@@ -144,6 +147,8 @@ export function CardDrawer({
       setComments(d.comments);
       setAttachments(d.attachments);
       setWhiteboards(d.whiteboards);
+      setReviewFeedback(d.reviewFeedback);
+      setCardDone(d.cardDone);
       setCurrentUserId(d.currentUserId);
       setIsAdmin(d.isAdmin);
       setLoadedFor(cardId);
@@ -462,6 +467,17 @@ export function CardDrawer({
                   ))}
                 </div>
                 <InlineComposer placeholder="Add a subtask…" buttonLabel="Add" onSubmit={addItem} />
+              </Section>
+            )}
+
+            {reviewFeedback.length > 0 && (
+              <Section title={`Review feedback · ${reviewFeedback.length}`}>
+                <CardReviewFeedback
+                  key={cardId}
+                  items={reviewFeedback}
+                  cardDone={cardDone}
+                  doneSubtasks={new Set(subtasks.filter((s) => s.done).map((s) => s.id))}
+                />
               </Section>
             )}
 

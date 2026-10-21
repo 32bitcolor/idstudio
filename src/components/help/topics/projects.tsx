@@ -156,6 +156,36 @@ export default function Projects() {
         example when an SME has gone silent. A reason is required, and it&rsquo;s shown on the round.
       </Callout>
 
+      <H3>Turn feedback into work</H3>
+      <P>
+        Review comments become board cards, so fixing them happens where the rest of your work does.
+      </P>
+      <UL>
+        <LI>
+          On any open comment, click <UI>Send to board</UI>. Pick a board and column, and IDStudio makes a
+          card that quotes the comment and links back to it. The comment shows the card&rsquo;s key.
+        </LI>
+        <LI>
+          <UI>All feedback</UI> (on the deliverable, or at the top of a round) lists every comment from every
+          round, grouped by screen or page. Filter by reviewer, round, or whether it&rsquo;s on a board yet,
+          then select several to resolve them together or send them to a board: one card each, or one card
+          with a subtask per comment.
+        </LI>
+        <LI>
+          A card made from feedback lists its comments under <UI>Review feedback</UI>. When the card is
+          done (or a comment&rsquo;s subtask is ticked), it offers to resolve the comments, so the reviewer
+          sees the outcome.
+        </LI>
+      </UL>
+
+      <H3>Export</H3>
+      <P>
+        <UI>Export</UI> on a round gives you a <strong>Word document</strong> or a <strong>PDF</strong> (a
+        print view: choose <UI>Save as PDF</UI> in the print dialog). It lists the reviewers and their
+        decisions, then every screen with each comment beside the field it&rsquo;s about, or each page of a
+        reviewed file with its comments. Storyboards have the same <UI>Export</UI> menu, without comments.
+      </P>
+
       <H2>Milestones and time tracking</H2>
       <P>
         <strong>Milestones</strong> are the dated checkpoints that matter — a kickoff, a pilot, a

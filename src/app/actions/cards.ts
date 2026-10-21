@@ -5,7 +5,9 @@ import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { getCurrentUser, getActiveMembership } from "@/lib/dal";
 import { Role } from "@/generated/prisma/client";
-import { getBoardForUser, getCardForUser, whiteboardVisibilityWhere } from "@/lib/authz";
+import { getBoardForUser, getCardForUser, projectVisibilityWhere, whiteboardVisibilityWhere } from "@/lib/authz";
+import { parseAnchor } from "@/lib/review-anchor";
+import { excerpt, quoteOf } from "@/lib/review-feedback";
 import { positionBetween } from "@/lib/ordering";
 import { enqueueEmail } from "@/lib/queues";
 import { subtaskAssigned, cardAssigned, smeAssigned, commentPosted, mentioned, withLink } from "@/lib/email-templates";
@@ -58,6 +60,8 @@ export async function getCardDetail(cardId: string) {
         dueDate: true,
         keySeq: true,
         sprintId: true,
+        done: true,
+        status: { select: { category: true } },
         parentCardId: true,
         parentCard: { select: { id: true, title: true } },
         labels: { select: { labelId: true } },
@@ -132,6 +136,28 @@ export async function getCardDetail(cardId: string) {
     select: { id: true, title: true },
   });
 
+  // Review comments this card (or one of its subtasks) was made from — only those on
+  // projects this member can see.
+  const reviewComments = await prisma.reviewComment.findMany({
+    where: {
+      cardId: { in: [card.id, ...card.subtasks.map((s) => s.id)] },
+      round: { deliverable: { project: { workspaceId: board.workspaceId, ...(await projectVisibilityWhere()) } } },
+    },
+    orderBy: { createdAt: "asc" },
+    select: {
+      id: true,
+      cardId: true,
+      body: true,
+      anchor: true,
+      status: true,
+      roundId: true,
+      round: { select: { number: true, deliverable: { select: { name: true } } } },
+      author: { select: { name: true, email: true } },
+      guest: { select: { name: true } },
+    },
+  });
+  const subtaskTitle = new Map(card.subtasks.map((s) => [s.id, s.title]));
+
   return {
     boardId,
     boardCardKeyPrefix: board.cardKeyPrefix,
@@ -154,6 +180,18 @@ export async function getCardDetail(cardId: string) {
     sprints,
     sprintsEnabled,
     whiteboards,
+    cardDone: card.parentCardId ? card.done : card.status?.category === "done",
+    reviewFeedback: reviewComments.map((c) => ({
+      id: c.id,
+      roundId: c.roundId,
+      roundNumber: c.round.number,
+      deliverableName: c.round.deliverable.name,
+      status: c.status,
+      excerpt: excerpt(c.body, 160),
+      quote: quoteOf(parseAnchor(c.anchor)) ?? null,
+      author: c.author ? (c.author.name ?? c.author.email) : c.guest ? `${c.guest.name} (guest)` : "Former reviewer",
+      subtask: c.cardId !== card.id ? { id: c.cardId!, title: subtaskTitle.get(c.cardId!) ?? "" } : null,
+    })),
     currentUserId: me.id,
     isAdmin: membership?.role === "ADMIN",
     subtasks: card.subtasks.map((s) => ({

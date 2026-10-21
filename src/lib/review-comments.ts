@@ -19,11 +19,43 @@ export type ReviewCommentDTO = {
   createdAt: string;
   /** null once the author's account (or guest link) is deleted. */
   author: { id: string; name: string; guest: boolean } | null;
+  /** The board card this comment was sent to (members only; always null for guests). */
+  card: CardRef | null;
 };
+
+/** A link to the card a comment became: "WP-12" when the board numbers its cards. */
+export type CardRef = { id: string; boardId: string; key: string | null; done: boolean };
 
 /** Who's looking. Guests never get member email addresses — a member without a
  *  display name shows as "Team member". */
 export type Audience = "member" | "guest";
+
+const BOARD_KEY = { select: { board: { select: { id: true, cardKeyPrefix: true } } } } as const;
+
+/** Enough of a card to link to it and say whether it's done. A subtask (one comment of
+ *  a checklist) reaches its board through its parent, and is done when ticked. */
+export const CARD_REF_SELECT = {
+  id: true,
+  keySeq: true,
+  done: true,
+  parentCardId: true,
+  status: { select: { category: true } },
+  column: BOARD_KEY,
+  parentCard: { select: { column: BOARD_KEY } },
+} satisfies Prisma.CardSelect;
+
+type CardRow = Prisma.CardGetPayload<{ select: typeof CARD_REF_SELECT }>;
+
+export function toCardRef(c: CardRow): CardRef | null {
+  const board = c.column?.board ?? c.parentCard?.column?.board;
+  if (!board) return null;
+  return {
+    id: c.id,
+    boardId: board.id,
+    key: board.cardKeyPrefix && c.keySeq != null ? `${board.cardKeyPrefix}-${c.keySeq}` : null,
+    done: c.parentCardId ? c.done : c.status?.category === "done",
+  };
+}
 
 export const COMMENT_SELECT = {
   id: true,
@@ -36,6 +68,7 @@ export const COMMENT_SELECT = {
   resolvedBy: { select: { name: true, email: true } },
   author: { select: { id: true, name: true, email: true } },
   guest: { select: { id: true, name: true } },
+  card: { select: CARD_REF_SELECT },
 } satisfies Prisma.ReviewCommentSelect;
 
 type Row = Prisma.ReviewCommentGetPayload<{ select: typeof COMMENT_SELECT }>;
@@ -59,6 +92,7 @@ export function toCommentDTO(c: Row, audience: Audience): ReviewCommentDTO {
       : c.guest
         ? { id: c.guest.id, name: c.guest.name, guest: true }
         : null,
+    card: audience === "member" && c.card ? toCardRef(c.card) : null,
   };
 }
 

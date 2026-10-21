@@ -22,6 +22,7 @@ L&D / enablement teams. Runs on your own server (a Proxmox VM is the documented 
 > - comments pinned to storyboard text, PDF pages and images
 > - guest links for reviewers without an account
 > - an every-reviewer-approves gate with an admin override
+> - comments sent to a board as cards, and rounds exported to Word or PDF
 >
 > Still to come: content lifecycle and reuse, and LMS integration
 > (see **[The vision](#the-vision)**).
@@ -112,6 +113,12 @@ review that.
   - **For designers:** guest links can be copied, re-sent, reset or turned off. Reviewers get
     reminders the day before a review is due, and the requester is emailed each decision with a
     comment count.
+  - **Feedback becomes work:** send comments to a board as cards (one each, or one card with a
+    subtask per comment) that quote the comment and link back to it. **All feedback** shows every
+    comment from every round, grouped by screen or page, for bulk resolving or sending. A finished
+    card offers to resolve the comments it came from.
+  - **Export** a round, with each comment beside the field or page it's about, to **Word** or
+    **PDF**. Storyboards export the same way.
 - **Sprints**: workspace-wide, time-boxed iterations (planned → active → completed) with a goal and
   dates. A **team sprint board** pulls cards from every board into one view, grouped by status,
   with the same filters and saved views.
@@ -120,7 +127,7 @@ review that.
   or unassessed.
 - **Storyboards**: screen-by-screen course design. Each screen has a type, rich-text fields
   (on-screen text, narration, visual, interaction and developer notes) and the objectives it
-  teaches. Storyboards can be linked to a project deliverable.
+  teaches. Storyboards can be linked to a project deliverable, and export to Word or PDF.
 - **Whiteboards**: Excalidraw canvases for workflows, wireframes and ideas. They autosave, and can
   be linked to a storyboard or started from a board card.
 - **My Work**: everything waiting on you.
@@ -222,9 +229,9 @@ IDStudio is built around five pillars of an ID operating system. Three are live;
 1. **Intake and demand management** ✅: structured request capture, triage, impact/effort scoring,
    and approve-to-project conversion.
 2. **SME review and approval** ✅: review rounds on frozen storyboards, PDFs and images, with
-   anchored comments, guest links, an every-reviewer gate, and email notifications. Still planned:
-   turning feedback into board cards, exporting a storyboard with its comments to Word/PDF,
-   reviewing videos, and reporting SME turnaround times. See
+   anchored comments, guest links, an every-reviewer gate, email notifications, comments sent to
+   the board as cards, and Word/PDF export. Still planned: reviewing videos and reporting SME
+   turnaround times. See
    [docs/REVIEW-LINKS.md](docs/REVIEW-LINKS.md).
 3. **Objectives → content → assessment alignment spine** ✅: objectives threaded through storyboard
    screens and assessment items, with coverage and gap analysis.

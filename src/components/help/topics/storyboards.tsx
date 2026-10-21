@@ -112,6 +112,14 @@ export default function Storyboards() {
         deliverable.
       </P>
 
+      <H2>Export</H2>
+      <P>
+        <UI>Export</UI> at the top of a storyboard gives you a <strong>Word document</strong> (to edit or
+        send) or a <strong>PDF</strong> (a print view: choose <UI>Save as PDF</UI> in the print dialog),
+        screen by screen with every field that has content. To export a storyboard together with an
+        SME&rsquo;s comments, use <UI>Export</UI> on the review round instead.
+      </P>
+
       <H2>Whiteboards on a storyboard</H2>
       <P>
         Every storyboard has a <UI>Whiteboards</UI> section for the loose, visual thinking that

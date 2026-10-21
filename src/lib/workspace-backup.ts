@@ -12,7 +12,7 @@ import { newGuestNonce } from "@/lib/review-guest-token";
 // can be restored into the same instance (a copy) or a fresh one (disaster
 // recovery). Media re-uploads to object storage under new keys.
 
-export const BACKUP_FORMAT = 7; // bump when the shape changes
+export const BACKUP_FORMAT = 8; // bump when the shape changes
 
 const WS = "__ws";
 const USER = "__user";
@@ -118,7 +118,7 @@ const SPECS: Spec[] = [
     key: "reviewComment",
     model: "reviewComment",
     where: (w) => ({ round: { deliverable: { project: { workspaceId: w } } } }),
-    fks: { roundId: "reviewRound", parentId: "reviewComment", authorId: USER, guestId: "reviewGuest", resolvedById: USER },
+    fks: { roundId: "reviewRound", parentId: "reviewComment", authorId: USER, guestId: "reviewGuest", resolvedById: USER, cardId: "card" },
     sort: (rows) => [...rows].sort((a, b) => (a.parentId ? 1 : 0) - (b.parentId ? 1 : 0)),
   },
   { key: "timeEntry", model: "timeEntry", where: (w) => ({ project: { workspaceId: w } }), fks: { projectId: "project", deliverableId: "deliverable", userId: USER } },

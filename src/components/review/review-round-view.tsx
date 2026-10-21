@@ -2,16 +2,18 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import {
   Check,
   CheckCheck,
   CircleSlash,
+  ListChecks,
   MessageSquare,
   MessageSquarePlus,
   Quote,
   RotateCcw,
   ShieldCheck,
+  SquareKanban,
   Trash2,
   Undo2,
 } from "lucide-react";
@@ -28,6 +30,9 @@ import type { ReviewCommentDTO } from "@/lib/review-comments";
 import { FileReview, pageDomId, pinDomId, type FilePin, type ReviewFileView } from "@/components/review/file-review";
 import { guestAddComment, guestDecide, guestDeleteComment, guestReopen } from "@/app/actions/review-guest";
 import { ReviewerList, type Assignment } from "@/components/review/reviewer-list";
+import { CardChip, SendToBoardDialog } from "@/components/review/send-to-board";
+import type { LinkedComment } from "@/app/actions/review-feedback";
+import { ExportMenu } from "@/components/shared/export-menu";
 import { useSetPageTitle } from "@/components/app-shell/breadcrumbs";
 import { CommentBody, CommentComposer } from "@/components/board/comment-editor";
 import type { MentionMember } from "@/components/board/mention-list";
@@ -135,6 +140,7 @@ export function ReviewRoundView({
   previousNumber,
   diff,
   initialComments,
+  focusThread = null,
 }: {
   viewer: Viewer;
   /** For @-mentions. Empty for guests: the picker would hand them the member list. */
@@ -147,6 +153,8 @@ export function ReviewRoundView({
   previousNumber: number | null;
   diff: SnapshotDiff | null;
   initialComments: ReviewCommentDTO[];
+  /** A thread to scroll to on load (?thread=<id>, from the feedback page or a card). */
+  focusThread?: string | null;
 }) {
   const guest = viewer.kind === "guest";
   useSetPageTitle(`${deliverable.name} · Round ${round.number}`, [
@@ -209,8 +217,17 @@ export function ReviewRoundView({
     return whole ? where : `${where} · #${pinNumber.get(threadId) ?? "?"}`;
   }
 
-  const [highlight, setHighlight] = useState<string | null>(null);
-  const [tab, setTab] = useState<Tab>("open");
+  const [highlight, setHighlight] = useState<string | null>(focusThread);
+  // A linked thread that's already closed would be hidden under "Open".
+  const [tab, setTab] = useState<Tab>(() =>
+    focusThread && initialComments.some((c) => c.id === focusThread && c.status !== "open") ? "all" : "open",
+  );
+  useEffect(() => {
+    if (!focusThread) return;
+    requestAnimationFrame(() => document.getElementById(`thread-${focusThread}`)?.scrollIntoView({ block: "center" }));
+    const t = setTimeout(() => setHighlight((h) => (h === focusThread ? null : h)), 2500);
+    return () => clearTimeout(t);
+  }, [focusThread]);
   function selectThread(threadId: string) {
     setHighlight(threadId);
     // A pin on a resolved thread: show it, even if the panel was on "Open".
@@ -283,7 +300,17 @@ export function ReviewRoundView({
             <span>· {approved}/{assignments.length} approved</span>
           </p>
         </div>
-        {canOverride && round.outcome !== "passed" && <OverrideButton roundId={round.id} approved={approved} total={assignments.length} />}
+        {viewer.kind === "member" && (
+          <div className="flex shrink-0 flex-wrap items-center gap-2">
+            <Button asChild variant="outline" size="sm">
+              <Link href={`/reviews/feedback/${deliverable.id}`}>
+                <ListChecks className="size-4" aria-hidden="true" /> All feedback
+              </Link>
+            </Button>
+            <ExportMenu wordHref={`/api/review-rounds/${round.id}/export`} printHref={`/print/reviews/${round.id}`} />
+            {canOverride && round.outcome !== "passed" && <OverrideButton roundId={round.id} approved={approved} total={assignments.length} />}
+          </div>
+        )}
       </header>
 
       {round.overridden && (
@@ -412,7 +439,11 @@ export function ReviewRoundView({
           setTab={setTab}
           onJump={jumpTo}
           onPost={post}
+          deliverableId={deliverable.id}
           onUpdate={(c) => setComments((prev) => prev.map((x) => (x.id === c.id ? c : x)))}
+          onLinked={(linked) =>
+            setComments((prev) => prev.map((x) => ({ ...x, card: linked.find((l) => l.commentId === x.id)?.card ?? x.card })))
+          }
           onDelete={(id) => setComments((prev) => prev.filter((x) => x.id !== id && x.parentId !== id))}
         />
       </div>
@@ -829,7 +860,9 @@ function CommentsPanel({
   setTab,
   onJump,
   onPost,
+  deliverableId,
   onUpdate,
+  onLinked,
   onDelete,
 }: {
   threads: ReviewCommentDTO[];
@@ -844,10 +877,11 @@ function CommentsPanel({
   setTab: (t: Tab) => void;
   onJump: (a: ReviewAnchor, threadId?: string) => void;
   onPost: (anchor: ReviewAnchor, body: string, parentId?: string) => Promise<string | null>;
+  deliverableId: string;
   onUpdate: (c: ReviewCommentDTO) => void;
+  onLinked: (linked: LinkedComment[]) => void;
   onDelete: (id: string) => void;
 }) {
-
   const open = threads.filter((t) => t.status === "open");
   const closed = threads.filter((t) => t.status !== "open");
   const shown = tab === "open" ? open : tab === "closed" ? closed : threads;
@@ -912,7 +946,9 @@ function CommentsPanel({
             highlighted={highlight === t.id}
             onJump={onJump}
             onReply={(body) => onPost(parseAnchor(t.anchor), body, t.id)}
+            deliverableId={deliverableId}
             onUpdate={onUpdate}
+            onLinked={onLinked}
             onDelete={onDelete}
           />
         ))}
@@ -934,7 +970,9 @@ function Thread({
   highlighted,
   onJump,
   onReply,
+  deliverableId,
   onUpdate,
+  onLinked,
   onDelete,
 }: {
   thread: ReviewCommentDTO;
@@ -947,11 +985,14 @@ function Thread({
   highlighted: boolean;
   onJump: (a: ReviewAnchor, threadId?: string) => void;
   onReply: (body: string) => Promise<string | null>;
+  deliverableId: string;
   onUpdate: (c: ReviewCommentDTO) => void;
+  onLinked: (linked: LinkedComment[]) => void;
   onDelete: (id: string) => void;
 }) {
   const anchor = parseAnchor(thread.anchor);
   const [replying, setReplying] = useState(false);
+  const [sending, setSending] = useState(false);
   const [closing, setClosing] = useState<"resolved" | "wont_fix" | null>(null);
   const [note, setNote] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -1008,6 +1049,7 @@ function Thread({
             {CLOSED_LABEL[thread.status] ?? thread.status}
           </StatusBadge>
         )}
+        {thread.card && <CardChip card={thread.card} />}
       </div>
       {quoteOf(anchor) && (
         <blockquote className="mb-1.5 flex gap-1.5 border-l-2 border-accent/60 pl-2 text-xs text-muted-foreground">
@@ -1068,6 +1110,11 @@ function Thread({
               <Button size="xs" variant="ghost" onClick={() => setClosing("wont_fix")}>
                 <CircleSlash className="size-3" aria-hidden="true" /> Won&apos;t fix
               </Button>
+              {!thread.card && (
+                <Button size="xs" variant="ghost" onClick={() => setSending(true)}>
+                  <SquareKanban className="size-3" aria-hidden="true" /> Send to board
+                </Button>
+              )}
             </>
           ) : (
             <Button size="xs" variant="ghost" onClick={() => setStatus("open")} disabled={pending}>
@@ -1075,6 +1122,14 @@ function Thread({
             </Button>
           )}
         </div>
+      )}
+      {sending && (
+        <SendToBoardDialog
+          deliverableId={deliverableId}
+          commentIds={[thread.id]}
+          onClose={() => setSending(false)}
+          onSent={(r) => onLinked(r.linked)}
+        />
       )}
       {replying && (
         <div className="mt-1">

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import { ArrowRight, FileText, Image as ImageIcon, MessageSquare, Plus, ShieldCheck, Upload, UserRound, X } from "lucide-react";
+import { ArrowRight, FileText, Image as ImageIcon, ListChecks, MessageSquare, Plus, ShieldCheck, Upload, UserRound, X } from "lucide-react";
 import { discardReviewFile, startReviewRound, type RoundTarget } from "@/app/actions/reviews";
 import { REVIEW_STATUS_LABEL, isApproval, type ReviewStatus } from "@/lib/methodology";
 import { Button } from "@/components/ui/button";
@@ -133,14 +133,25 @@ export function ReviewRounds({
           onDone={() => setStarting(false)}
         />
       ) : (
-        <button
-          type="button"
-          onClick={() => setStarting(true)}
-          className="flex w-fit items-center gap-1.5 rounded-md px-2 py-1 text-sm text-muted-foreground hover:bg-hover hover:text-foreground"
-        >
-          <Plus className="size-4" aria-hidden="true" />
-          {rounds.length ? `Start round ${(latest?.number ?? 0) + 1}` : "Request a review"}
-        </button>
+        <div className="flex flex-wrap items-center gap-1">
+          <button
+            type="button"
+            onClick={() => setStarting(true)}
+            className="flex w-fit items-center gap-1.5 rounded-md px-2 py-1 text-sm text-muted-foreground hover:bg-hover hover:text-foreground"
+          >
+            <Plus className="size-4" aria-hidden="true" />
+            {rounds.length ? `Start round ${(latest?.number ?? 0) + 1}` : "Request a review"}
+          </button>
+          {rounds.length > 0 && (
+            <Link
+              href={`/reviews/feedback/${deliverableId}`}
+              className="flex w-fit items-center gap-1.5 rounded-md px-2 py-1 text-sm text-muted-foreground hover:bg-hover hover:text-foreground"
+            >
+              <ListChecks className="size-4" aria-hidden="true" />
+              All feedback
+            </Link>
+          )}
+        </div>
       )}
     </div>
   );

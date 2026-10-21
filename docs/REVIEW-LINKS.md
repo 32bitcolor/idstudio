@@ -303,7 +303,7 @@ All phases are additive. Each one ships something usable, and it's fine to stop 
    and the "Approve with minor changes" status.
 3. ✅ *Built 2026-10-21 (PDF + images; video deferred).* **File targets.** `ReviewFile`, streamed large uploads, Range downloads, and PDF (pdf.js),
    image and video anchors.
-4. **Feedback → work, and export.** Comments → cards, a consolidated feedback view, and
+4. ✅ *Built 2026-10-22.* **Feedback → work, and export.** Comments → cards, a consolidated feedback view, and
    **storyboard + comments export to Word/PDF**. This folds in the long-requested storyboard
    export, since export is how reviews leave the building anyway.
 5. **Hardening and insight.** An optional email-code check for guests, an external-URL target,
@@ -389,3 +389,39 @@ No open questions remain.
   already in place).
 - Backup format 7 carries review files with their bytes, re-uploaded on restore. The dead presign
   helpers, `S3_PUBLIC_ENDPOINT` and `@aws-sdk/s3-request-presigner` are gone.
+
+### Phase 4 as built
+
+- **Comments → cards.** `ReviewComment.cardId` (nullable, `SET NULL` when the card is deleted)
+  records the card a thread became. *Send to board* on an open thread, or on a selection in the
+  feedback view, picks a board and column (the project's boards first; the default is the board of
+  the card the deliverable is linked to). Several comments go to **one card each**, or to **one
+  card with a subtask per comment** (each comment then links to its subtask). A card's description
+  quotes the comment, carries its text (mentions flattened to `@Name`), says who, which round and
+  where, and links back to `/reviews/<roundId>?thread=<id>`. Already-sent comments are skipped, so
+  sending twice never makes two cards. Members only (`app/actions/review-feedback.ts`).
+- **Back from the card.** The card panel lists its review comments under *Review feedback*. When
+  the card is in a `done` status category, or the comment's subtask is ticked, it offers to resolve
+  them in one click. Comments on projects the member can't see are left out. Resolving stays a
+  deliberate step: closing a card never changes a comment by itself.
+- **Feedback view** at `/reviews/feedback/<deliverableId>` (linked from the deliverable and every
+  round): all threads across all rounds, grouped by screen (named and ordered by the newest
+  snapshot that has it), by PDF page, or as general feedback. Filters: status, reviewer, round, and
+  on a board or not. Selected threads can be resolved, marked won't fix (one shared note) or
+  reopened together, or sent to a board.
+- **Deep links:** `?thread=<id>` on a round page scrolls to the thread and highlights it, switching
+  to *All* if it's closed.
+- **Export.** One neutral document model (`lib/review-export.ts`, with `lib/rich-text.ts`
+  flattening TipTap JSON) renders two ways:
+  - **Word:** `lib/docx.ts` writes the WordprocessingML by hand and zips it with `fflate` (already a
+    dependency). No template, no numbering part. Served from `/api/review-rounds/<id>/export` and
+    `/api/storyboards/<id>/export`.
+  - **PDF:** the print views at `/print/reviews/<id>` and `/print/storyboards/<id>` (no app chrome,
+    paper styling whatever the theme), printed with the browser's *Save as PDF*. The page title is the
+    document's name, so it becomes the PDF's file name. No headless browser on the server.
+
+  A round's export has the meta (project, what was reviewed, outcome, dates, comment counts), the
+  reviewers with decisions and summaries, then general feedback, then each screen with its fields
+  and each comment (status, quote, replies, resolution note) under the field it's about. File rounds
+  list comments by page. A storyboard export is the same without comments.
+- Backup format 8 carries `ReviewComment.cardId`, remapped to the restored card.
