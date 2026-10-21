@@ -466,7 +466,10 @@ export function BoardView({
           onDragOver={onDragOver}
           onDragEnd={onDragEnd}
         >
-          <div className="-mx-6 flex min-w-0 flex-1 items-start gap-3 overflow-x-auto px-6 pb-2">
+          {/* `relative` makes this scroller the containing block for the cards' sr-only
+              (absolutely positioned) text — otherwise those resolve against <main>
+              and stretch the whole page sideways on narrow screens. */}
+          <div className="relative -mx-6 flex min-w-0 flex-1 items-start gap-3 overflow-x-auto px-6 pb-2">
             {filteredColumns.map((col, i) => (
               <ColumnView
                 key={col.id}
@@ -554,7 +557,7 @@ function BoardHeader({
 
   return (
     <header className="flex flex-wrap items-center justify-between gap-3">
-      <div className="min-w-0 flex-1">
+      <div className="min-w-[12rem] flex-1">
         <InlineTitle
           value={name}
           onChange={setName}
@@ -962,7 +965,7 @@ function CardShell({
     <div
       onClick={onOpen}
       className={cn(
-        "group flex flex-col gap-2 rounded-lg border bg-surface p-3 text-sm shadow-xs transition-shadow",
+        "group relative flex flex-col gap-2 rounded-lg border bg-surface p-3 text-sm shadow-xs transition-shadow",
         selected ? "border-accent ring-1 ring-accent" : "border-border hover:shadow-sm",
         dragging ? "rotate-1 shadow-md" : "cursor-pointer active:cursor-grabbing",
       )}
@@ -1025,9 +1028,9 @@ function CardShell({
       )}
 
       {hasMeta && (
-        <div className="flex items-center gap-2.5 text-xs font-medium text-muted-foreground">
+        <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1.5 text-xs font-medium text-muted-foreground">
           {due && (
-            <span className={cn("rounded px-1.5 py-0.5", DUE_CHIP[due.tone])}>
+            <span className={cn("rounded px-1.5 py-0.5 whitespace-nowrap", DUE_CHIP[due.tone])}>
               <span className="sr-only">Due </span>
               {due.label}
             </span>
@@ -1056,9 +1059,8 @@ function CardShell({
               <span className="sr-only"> attachments</span>
             </span>
           )}
-          <span className="flex-1" />
           {people.length > 0 && (
-            <span className="flex -space-x-1.5">
+            <span className="ml-auto flex shrink-0 -space-x-1.5">
               {people.map(({ m, sme }) => (
                 <Avatar key={(sme ? "s" : "a") + m.id} member={m} sme={sme} />
               ))}
@@ -1083,14 +1085,14 @@ function ListView({
   onOpen: (id: string) => void;
 }) {
   return (
-    <div className="overflow-x-auto rounded-lg border border-border bg-surface">
-      <table className="w-full min-w-[44rem] border-collapse text-sm">
+    <div className="relative overflow-x-auto rounded-lg border border-border bg-surface">
+      <table className="w-full min-w-[44rem] table-fixed border-collapse text-sm">
         <caption className="sr-only">Cards grouped by column</caption>
         <thead>
           <tr className="border-b border-border text-left text-xs font-medium text-muted-foreground">
-            {cardKeyPrefix && <th scope="col" className="w-20 px-4 py-2 font-medium">Key</th>}
+            {cardKeyPrefix && <th scope="col" className="w-24 px-4 py-2 font-medium">Key</th>}
             <th scope="col" className="px-4 py-2 font-medium">Title</th>
-            <th scope="col" className="px-4 py-2 font-medium">Labels</th>
+            <th scope="col" className="w-72 px-4 py-2 font-medium">Labels</th>
             <th scope="col" className="w-28 px-4 py-2 font-medium">Due</th>
             <th scope="col" className="w-28 px-4 py-2 font-medium">People</th>
           </tr>
@@ -1128,7 +1130,7 @@ function ListView({
                       {card.keySeq != null ? `${cardKeyPrefix}-${card.keySeq}` : ""}
                     </td>
                   )}
-                  <td className="max-w-0 px-4 py-2">
+                  <td className="px-4 py-2">
                     <button
                       type="button"
                       onClick={(e) => {
@@ -1141,7 +1143,7 @@ function ListView({
                     </button>
                   </td>
                   <td className="px-4 py-2">
-                    <span className="flex flex-wrap gap-1">
+                    <span className="flex flex-wrap gap-1 overflow-hidden">
                       {card.labels.map((l) => (
                         <LabelPill key={l.id} label={l} />
                       ))}

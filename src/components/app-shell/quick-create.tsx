@@ -42,7 +42,7 @@ export function QuickCreate() {
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button variant="outline" size="sm">
-            <Plus className="size-4" /> New
+            <Plus className="size-4" aria-hidden="true" /> <span className="sr-only sm:not-sr-only">New</span>
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">

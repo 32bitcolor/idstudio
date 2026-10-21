@@ -391,7 +391,7 @@ export function CardDrawer({
                 onBlur={saveTitle}
                 rows={1}
                 aria-label="Card title"
-                className="min-h-[2rem] w-full resize-none rounded bg-transparent px-1 text-lg leading-snug font-semibold outline-none hover:bg-hover focus:bg-hover"
+                className="field-sizing-content min-h-[2rem] w-full resize-none rounded bg-transparent px-1 text-lg leading-snug font-semibold outline-none hover:bg-hover focus:bg-hover"
               />
             </div>
           </SheetTitle>
