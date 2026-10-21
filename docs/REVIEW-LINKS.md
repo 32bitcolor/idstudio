@@ -376,9 +376,16 @@ No open questions remain.
 - **Anchors:** `file_point` and `file_region` (page, plus 0–1 fractions). Click to pin, drag with a
   mouse to mark an area, or use **Comment on page N** (keyboard path; stored as a whole-page
   region). Markers are numbered in thread order and link both ways with the comments panel.
+- **Quoting PDF text** (added 2026-10-21): pdf.js's text layer sits over each canvas, invisible
+  but selectable. Selecting text inside one page offers **Comment on selection**, stored as a
+  `file_region` (the selection's bounding box) with a `quote`, shown on the thread like a storyboard
+  quote. Pressing on text selects rather than starting a region drag; a plain click on text still
+  pins. Touch long-press selection works too. Scanned PDFs have no text to select.
+- **Unused uploads** (added 2026-10-21): cancelling or picking another file deletes the upload at
+  once. A nightly worker job (04:30 UTC, `lib/review-file-sweep.ts`) removes review files no round
+  uses after a 24-hour grace period, plus review-file objects whose rows went away when a
+  deliverable, project or workspace was deleted. The worker now gets the S3 settings.
 - **Not yet:** video (the 500 MB cap needs chunked upload through Cloudflare; Range serving is
-  already in place), and quoting text inside a PDF (it would need pdf.js's text layer). Uploads
-  abandoned before a round starts are deleted when the designer cancels or picks another file;
-  closing the tab instead leaves an unused file behind, which a periodic sweep should clean up.
+  already in place).
 - Backup format 7 carries review files with their bytes, re-uploaded on restore. The dead presign
   helpers, `S3_PUBLIC_ENDPOINT` and `@aws-sdk/s3-request-presigner` are gone.

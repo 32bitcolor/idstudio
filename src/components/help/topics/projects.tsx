@@ -114,7 +114,8 @@ export default function Projects() {
         </>
         <>
           Reviewers select text in any storyboard field and comment on it. On a PDF or image, they click
-          to drop a numbered pin or drag to mark an area. They can also leave general feedback.
+          to drop a numbered pin or drag to mark an area. On a PDF, they can also select text and choose
+          <UI>Comment on selection</UI> to quote it. They can also leave general feedback.
           Then they choose <UI>Approve</UI>, <UI>Approve with minor changes</UI>, or{" "}
           <UI>Request changes</UI>. The round passes only when <strong>every</strong> reviewer approves
           (with or without minor changes).
