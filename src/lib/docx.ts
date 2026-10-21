@@ -29,7 +29,7 @@ function run(r: Run, extra: RunStyle = {}): string {
   if (r.br) return "<w:r><w:br/></w:r>";
   const props = [
     r.code && '<w:rFonts w:ascii="Consolas" w:hAnsi="Consolas" w:cs="Consolas"/>',
-    (r.bold || extra.bold) && "<w:b/>",
+    (r.bold || extra.bold) ? "<w:b/>" : extra.bold === false && '<w:b w:val="0"/>',
     (r.italic || extra.italic) && "<w:i/>",
     r.strike && "<w:strike/>",
     extra.color && `<w:color w:val="${extra.color}"/>`,
@@ -139,7 +139,7 @@ function table(widths: number[], rows: string[][], header: boolean): string {
 function body(doc: ExportDoc): string {
   let out = para(text(doc.title), { style: "Title" }) + para(text(doc.subtitle), { style: "Subtitle" });
   out += table(
-    [2200, 7160],
+    [2400, 7680],
     doc.meta.map(([k, v]) => [para(text(k, { bold: true })), para(text(v))]),
     false,
   );
@@ -147,7 +147,7 @@ function body(doc: ExportDoc): string {
   if (doc.reviewers.length) {
     out += para(text("Reviewers"), { style: "Heading1" });
     out += table(
-      [2600, 2400, 4360],
+      [2800, 2400, 4880],
       [
         [para(text("Reviewer", { bold: true })), para(text("Decision", { bold: true })), para(text("Summary", { bold: true }))],
         ...doc.reviewers.map((r) => [para(text(r.name)), para(text(r.decision)), blocks(textBlocks(r.summary)) || para("")]),
@@ -157,7 +157,7 @@ function body(doc: ExportDoc): string {
   }
 
   for (const s of doc.sections) {
-    out += para(text(s.heading) + s.tags.map((t) => text(`   ${t}`, { color: MUTED, size: 20 })).join(""), {
+    out += para(text(s.heading) + s.tags.map((t) => text(`   ${t}`, { color: MUTED, size: 20, bold: false })).join(""), {
       style: "Heading1",
     });
     if (s.note) out += para(text(s.note, { italic: true, color: MUTED }));

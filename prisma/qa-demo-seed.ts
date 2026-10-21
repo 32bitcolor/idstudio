@@ -9,7 +9,8 @@ import { Prisma } from "../src/generated/prisma/client";
 import { positionsAfter } from "../src/lib/ordering";
 import { buildSnapshot, type StoryboardSnapshot } from "../src/lib/review-snapshot";
 import { guestExpiry, guestLinkPath, newGuestNonce } from "../src/lib/review-guest-token";
-import type { ScreenField } from "../src/lib/review-anchor";
+import { parseAnchor, type ScreenField } from "../src/lib/review-anchor";
+import { cardDescriptionForComment, describePlace, excerpt } from "../src/lib/review-feedback";
 
 // QA demo seed: fills the admin's workspace with a lived-in L&D team — 10 people, six projects at
 // different stages, boards, sprints, storyboards, reviews, intake, whiteboards and attachments —
@@ -1540,6 +1541,36 @@ async function main() {
 
   // Saved views (personal to admin) ------------------------------------------------
   const secBoard = await prisma.board.findFirstOrThrow({ where: { workspaceId: ws.id, cardKeyPrefix: "SEC" } });
+
+  // One round-2 comment already sent to the board (review links, phase 4) ------------
+  {
+    const c = await prisma.reviewComment.findFirstOrThrow({
+      where: { body: { contains: "two-digit number" }, round: { deliverable: { project: { workspaceId: ws.id } } } },
+      select: { id: true, roundId: true, body: true, anchor: true, round: { select: { number: true, snapshot: true, deliverable: { select: { name: true } } } } },
+    });
+    const anchor = parseAnchor(c.anchor);
+    const toDo = await prisma.column.findFirstOrThrow({ where: { boardId: secBoard.id, name: "To do" } });
+    const { cardKeySeq } = await prisma.board.update({ where: { id: secBoard.id }, data: { cardKeySeq: { increment: 1 } } });
+    const card = await prisma.card.create({
+      data: {
+        columnId: toDo.id,
+        title: excerpt(c.body, 120),
+        description: cardDescriptionForComment(
+          {
+            id: c.id, roundId: c.roundId, roundNumber: c.round.number, body: c.body, anchor, author: "Marcus Bell",
+            place: describePlace(anchor, { snapshot: c.round.snapshot as StoryboardSnapshot, isPdf: false }),
+          },
+          c.round.deliverable.name,
+        ),
+        keySeq: cardKeySeq,
+        statusId: toDo.statusId,
+        position: "a0V",
+        createdAt: day(0, 9),
+        assignees: { create: [{ userId: users.priya.id }] },
+      },
+    });
+    await prisma.reviewComment.update({ where: { id: c.id }, data: { cardId: card.id } });
+  }
   await prisma.savedView.createMany({
     data: [
       { workspaceId: ws.id, userId: admin.id, name: "Accessibility work", scope: "board", boardId: secBoard.id, filters: { labels: [labelIds["Accessibility"]], assignees: [], due: "any", search: "" } },
