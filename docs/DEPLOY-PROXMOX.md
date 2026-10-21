@@ -81,6 +81,10 @@ Point your domain at the VM:
   Let's Encrypt certificate automatically.
 - **LAN-only:** set `DOMAIN` to a hostname your internal DNS resolves to the VM (or use the
   VM's IP). With `DOMAIN=localhost` Caddy serves a self-signed cert (browsers warn).
+- **Behind a tunnel or another proxy** (Cloudflare Tunnel, for example): copy
+  `docker-compose.override.example.yml` to `docker-compose.override.yml`. That publishes the
+  app on port 3000, so the tunnel can use `http://<vm-ip>:3000` as a plain-HTTP origin. The
+  override file is gitignored, so updates never touch it.
 
 ## 6. Launch
 

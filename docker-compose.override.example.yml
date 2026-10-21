@@ -1,0 +1,10 @@
+# Example local override. Copy it to docker-compose.override.yml (which is gitignored, so
+# each host keeps its own) and Compose picks it up automatically.
+#
+# This one publishes the Next app on the LAN, for a Cloudflare tunnel or another proxy
+# that wants a plain-HTTP origin (http://<host-ip>:3000) instead of going through Caddy.
+# The public Host header reaches the app unchanged, so Server Actions keep working.
+services:
+  app:
+    ports:
+      - "3000:3000"
