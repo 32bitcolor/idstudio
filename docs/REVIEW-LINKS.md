@@ -73,8 +73,10 @@ is the supported path for authoring-tool output, and it's what SMEs already rece
    - The page sends `Referrer-Policy: no-referrer` and `X-Robots-Tag: noindex`.
    - Expiry defaults to the round's due date + 14 days (capped at 90), and every link is
      **revocable**. A new round mints new links; old ones become read-only.
-   - Possession of the link is the credential in v1 (same trust model as the intake form, but
-     per-person and expiring). An optional **email verification code** is phase 5.
+   - Possession of the link is the credential (same trust model as the intake form, but
+     per-person and expiring). **Decided 2026-10-20: link-only is acceptable**, compliance
+     content included. An optional **email verification code** stays in phase 5 as hardening,
+     not a prerequisite.
    - Redis rate limiting reuses the `intake-throttle.ts` pattern (fail open, per IP).
 
 3. **Review against a frozen snapshot, never the live record.** Starting a round freezes the
@@ -294,8 +296,8 @@ All phases are additive. Each one ships something usable, and it's fine to stop 
 
 ## Open questions
 
-1. **Guest identity:** is link-only access acceptable for v1 for JumpCloud-internal SMEs, or does
-   compliance content need the email-code check from day one (pulling part of phase 5 into 2)?
+1. ~~**Guest identity:** is link-only access acceptable?~~ **Resolved 2026-10-20: yes**, including
+   compliance content. The email-code check stays in phase 5.
 2. **Multi-reviewer gating:** does a round need *all* reviewers to approve, or is it per-reviewer
    (today's behaviour)? Proposal: per-reviewer, with the round showing "2 of 3 approved".
 3. **Video size cap:** 500 MB is a guess. What do the team's walkthrough recordings actually
