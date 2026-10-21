@@ -1,18 +1,34 @@
 "use client";
 
-import { useState } from "react";
-import { Check } from "lucide-react";
+import { useEffect, useRef } from "react";
+import { CalendarClock, ChevronDown, Search, Tag, User, X } from "lucide-react";
 
 import { SavedViewsMenu } from "@/components/shared/saved-views-menu";
 import type { SavedViewDTO } from "@/app/actions/saved-views";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Select } from "@/components/ui/select";
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { cn } from "@/lib/utils";
 
 type Label = { id: string; name: string; color: string };
 type Member = { id: string; name: string | null; email: string };
 export type DueFilter = "any" | "overdue" | "week" | "none";
 
+const DUE_LABEL: Record<DueFilter, string> = {
+  any: "Due date",
+  overdue: "Overdue",
+  week: "Due this week",
+  none: "No due date",
+};
+
+/** One row: search, filter chips, saved views — and a clear/count when filtering. */
 export function FilterBar({
   labels,
   members,
@@ -52,44 +68,114 @@ export function FilterBar({
   activeViewId: string | null;
   onApplyView: (view: SavedViewDTO | null) => void;
 }) {
+  const searchRef = useRef<HTMLInputElement>(null);
+
+  // "/" focuses search, as in most keyboard-first tools — unless the user is
+  // already typing somewhere.
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key !== "/" || e.metaKey || e.ctrlKey || e.altKey) return;
+      const t = e.target as HTMLElement | null;
+      if (t && (t.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(t.tagName))) return;
+      e.preventDefault();
+      searchRef.current?.focus();
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
+  const labelSummary = summarize(labels.filter((l) => selectedLabels.has(l.id)).map((l) => l.name));
+  const assigneeSummary = summarize(
+    members.filter((m) => selectedAssignees.has(m.id)).map((m) => m.name ?? m.email),
+  );
+
   return (
-    <div className="flex flex-wrap items-center gap-2 px-6 pb-3">
-      <Input
-        value={search}
-        onChange={(e) => onSearch(e.target.value)}
-        placeholder="Search cards…"
-        className="h-8 w-44"
-      />
+    <div className="flex flex-wrap items-center gap-2">
+      <label className="flex h-8 w-56 items-center gap-2 rounded-md border border-border bg-surface px-2.5 text-muted-foreground focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/30">
+        <Search className="size-4 shrink-0" aria-hidden="true" />
+        <span className="sr-only">Search cards</span>
+        <input
+          ref={searchRef}
+          value={search}
+          onChange={(e) => onSearch(e.target.value)}
+          onKeyDown={(e) => e.key === "Escape" && (e.target as HTMLInputElement).blur()}
+          placeholder="Search cards"
+          className="min-w-0 flex-1 bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
+        />
+        <kbd className="hidden rounded border border-border px-1.5 font-mono text-[11px] sm:inline">/</kbd>
+      </label>
 
-      <Dropdown label="Labels" count={selectedLabels.size} empty={labels.length === 0}>
-        {labels.map((l) => (
-          <CheckRow
-            key={l.id}
-            checked={selectedLabels.has(l.id)}
-            onClick={() => onToggleLabel(l.id)}
-            text={l.name}
-            color={l.color}
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <FilterChip icon={<Tag className="size-3.5" />} label="Label" current={labelSummary} disabled={labels.length === 0} />
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start" className="max-h-72 w-56 overflow-y-auto">
+          <DropdownMenuLabel>Labels</DropdownMenuLabel>
+          {labels.map((l) => (
+            <DropdownMenuCheckboxItem
+              key={l.id}
+              checked={selectedLabels.has(l.id)}
+              onCheckedChange={() => onToggleLabel(l.id)}
+              onSelect={(e) => e.preventDefault()}
+            >
+              <span className="size-2.5 shrink-0 rounded-full" style={{ backgroundColor: l.color }} aria-hidden="true" />
+              <span className="truncate">{l.name}</span>
+            </DropdownMenuCheckboxItem>
+          ))}
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <FilterChip icon={<User className="size-3.5" />} label="Assignee" current={assigneeSummary} disabled={members.length === 0} />
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start" className="max-h-72 w-56 overflow-y-auto">
+          <DropdownMenuLabel>Assignees</DropdownMenuLabel>
+          {members.map((m) => (
+            <DropdownMenuCheckboxItem
+              key={m.id}
+              checked={selectedAssignees.has(m.id)}
+              onCheckedChange={() => onToggleAssignee(m.id)}
+              onSelect={(e) => e.preventDefault()}
+            >
+              <span className="truncate">{m.name ?? m.email}</span>
+            </DropdownMenuCheckboxItem>
+          ))}
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <FilterChip
+            icon={<CalendarClock className="size-3.5" />}
+            label="Due date"
+            current={due === "any" ? null : DUE_LABEL[due]}
           />
-        ))}
-      </Dropdown>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start" className="w-48">
+          <DropdownMenuRadioGroup value={due} onValueChange={(v) => onDue(v as DueFilter)}>
+            {(Object.keys(DUE_LABEL) as DueFilter[]).map((k) => (
+              <DropdownMenuRadioItem key={k} value={k}>
+                {k === "any" ? "Any due date" : DUE_LABEL[k]}
+              </DropdownMenuRadioItem>
+            ))}
+          </DropdownMenuRadioGroup>
+        </DropdownMenuContent>
+      </DropdownMenu>
 
-      <Dropdown label="Assignees" count={selectedAssignees.size} empty={members.length === 0}>
-        {members.map((m) => (
-          <CheckRow
-            key={m.id}
-            checked={selectedAssignees.has(m.id)}
-            onClick={() => onToggleAssignee(m.id)}
-            text={m.name ?? m.email}
-          />
-        ))}
-      </Dropdown>
+      {active && (
+        <>
+          <Button variant="ghost" size="sm" onClick={onClear} className="h-8 text-muted-foreground">
+            <X className="size-3.5" aria-hidden="true" />
+            Clear
+          </Button>
+          <span className="text-xs text-muted-foreground" aria-live="polite">
+            {visible} of {total} cards
+          </span>
+        </>
+      )}
 
-      <Select value={due} onChange={(e) => onDue(e.target.value as DueFilter)} className="h-8 w-auto py-1">
-        <option value="any">Any due date</option>
-        <option value="overdue">Overdue</option>
-        <option value="week">Due this week</option>
-        <option value="none">No due date</option>
-      </Select>
+      <span className="flex-1" />
 
       <SavedViewsMenu
         scope="board"
@@ -99,68 +185,46 @@ export function FilterBar({
         activeViewId={activeViewId}
         onApply={onApplyView}
       />
-
-      {active && (
-        <>
-          <Button variant="outline" size="sm" onClick={onClear}>Clear</Button>
-          <span className="text-xs text-muted-foreground">
-            {visible}/{total} cards · drag disabled
-          </span>
-        </>
-      )}
     </div>
   );
 }
 
-function Dropdown({
+function summarize(names: string[]): string | null {
+  if (names.length === 0) return null;
+  if (names.length === 1) return names[0];
+  return `${names[0]} +${names.length - 1}`;
+}
+
+/** A filter trigger: dashed and quiet when unset, solid and showing its value when set. */
+function FilterChip({
+  icon,
   label,
-  count,
-  empty,
-  children,
+  current,
+  disabled,
+  ...props
 }: {
+  icon: React.ReactNode;
   label: string;
-  count: number;
-  empty: boolean;
-  children: React.ReactNode;
-}) {
-  const [open, setOpen] = useState(false);
-  return (
-    <div className="relative">
-      <Button variant="outline" size="sm" onClick={() => !empty && setOpen((o) => !o)} disabled={empty}>
-        {label}
-        {count > 0 && <span className="rounded bg-accent px-1 text-xs text-accent-foreground">{count}</span>}
-      </Button>
-      {open && (
-        <>
-          <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
-          <div className="absolute z-20 mt-1 max-h-60 w-56 overflow-y-auto rounded-md border border-border bg-surface py-1 shadow-lg">
-            {children}
-          </div>
-        </>
-      )}
-    </div>
-  );
-}
-
-function CheckRow({
-  checked,
-  onClick,
-  text,
-  color,
-}: {
-  checked: boolean;
-  onClick: () => void;
-  text: string;
-  color?: string;
-}) {
+  current: string | null;
+  disabled?: boolean;
+} & Omit<React.ComponentProps<"button">, "value">) {
+  const set = current != null;
   return (
     <button
-      onClick={onClick}
-      className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm hover:bg-hover"
+      type="button"
+      disabled={disabled}
+      aria-label={set ? `${label}: ${current}` : label}
+      {...props}
+      className={cn(
+        "inline-flex h-8 max-w-56 items-center gap-1.5 rounded-md border px-2.5 text-sm font-medium outline-none transition-colors focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:opacity-50",
+        set
+          ? "border-accent/40 bg-accent/10 text-foreground"
+          : "border-dashed border-border-strong text-muted-foreground hover:bg-hover hover:text-foreground",
+      )}
     >
-      <span className="flex w-3 shrink-0 items-center text-foreground/70">{checked && <Check className="size-3.5" />}</span>
-      {color && <span className="h-3 w-3 shrink-0 rounded-full" style={{ backgroundColor: color }} />}
-      <span className="truncate">{text}</span>
+      <span className="shrink-0" aria-hidden="true">{icon}</span>
+      <span className="truncate">{set ? current : label}</span>
+      <ChevronDown className="size-3.5 shrink-0 opacity-60" aria-hidden="true" />
     </button>
   );
 }

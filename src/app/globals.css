@@ -44,6 +44,12 @@
   --color-warning-foreground: #ffffff;
   --color-info: var(--info);
   --color-info-foreground: #ffffff;
+  /* "Ink" variants for status colors used AS TEXT. The fill hues above are tuned
+     for badges/dots and several sit under 4.5:1 as small text on a light surface;
+     light/dark set darker/lighter inks, other themes fall back to the fill hue. */
+  --color-destructive-ink: var(--destructive-ink, var(--destructive));
+  --color-warning-ink: var(--warning-ink, var(--warning));
+  --color-success-ink: var(--success-ink, var(--success));
   --color-input: var(--border);
   --color-ring: var(--accent);
   --radius-xl: 0.5rem;
@@ -62,10 +68,12 @@
 
   /* Sidebar — a slightly recessed surface with quiet hovers, theme-driven. */
   --color-sidebar: var(--surface-muted);
-  --color-sidebar-foreground: var(--foreground);
+  /* Navigation recedes so the work stands out: light/dark set a quieter item color
+     and a raised "active" surface; other themes keep their previous look. */
+  --color-sidebar-foreground: var(--sidebar-fg, var(--foreground));
   --color-sidebar-primary: var(--accent);
   --color-sidebar-primary-foreground: var(--accent-foreground);
-  --color-sidebar-accent: var(--hover);
+  --color-sidebar-accent: var(--sidebar-active, var(--hover));
   --color-sidebar-accent-foreground: var(--foreground);
   --color-sidebar-border: var(--border);
   --color-sidebar-ring: var(--accent);
@@ -104,6 +112,11 @@
   --warning: #ff7d00;
   --info: #4373c7;
   --shadow-tint: 32 45 56;
+  --destructive-ink: #b42330;
+  --warning-ink: #a14800;
+  --success-ink: #0d7a52;
+  --sidebar-fg: #4a5662;
+  --sidebar-active: #ffffff;
 }
 
 /* System dark: only when no explicit theme is chosen */
@@ -125,6 +138,11 @@
     --warning: #ff7d00;
     --info: #6fa8e0;
     --shadow-tint: 32 45 56;
+    --destructive-ink: #ff8f97;
+    --warning-ink: #ffb066;
+    --success-ink: #5fe0b0;
+    --sidebar-fg: #aeb8c4;
+    --sidebar-active: #202d38;
   }
 }
 
@@ -161,6 +179,11 @@
   --warning: #ff7d00;
   --info: #6fa8e0;
   --shadow-tint: 32 45 56;
+  --destructive-ink: #ff8f97;
+  --warning-ink: #ffb066;
+  --success-ink: #5fe0b0;
+  --sidebar-fg: #aeb8c4;
+  --sidebar-active: #202d38;
 }
 
 /* Nord — arctic, frost accent */

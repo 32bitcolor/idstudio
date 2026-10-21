@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { ConfirmDelete } from "@/components/shared/confirm-delete";
+import { useSetPageTitle } from "@/components/app-shell/breadcrumbs";
 
 // Excalidraw touches `window`, so it must load client-only.
 const WhiteboardCanvas = dynamic(
@@ -31,6 +32,7 @@ export function WhiteboardView({
 }) {
   const router = useRouter();
   const [title, setTitle] = useState(whiteboard.title);
+  useSetPageTitle(title || "Untitled whiteboard");
   const [storyboardId, setStoryboardId] = useState(whiteboard.storyboardId ?? "");
   const [, startTransition] = useTransition();
 

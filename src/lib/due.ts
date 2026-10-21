@@ -15,7 +15,7 @@ export function dueMeta(due: Date | string | null | undefined): { label: string;
 }
 
 export const dueToneClass: Record<DueTone, string> = {
-  overdue: "text-destructive",
-  soon: "text-amber-600",
+  overdue: "text-destructive-ink",
+  soon: "text-warning-ink",
   normal: "text-muted-foreground",
 };

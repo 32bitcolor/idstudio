@@ -23,6 +23,9 @@ import {
  * If `onConfirm` resolves to an `{ error }` object (the shape server actions
  * return on failure), the dialog stays open and shows the message instead of
  * closing as though the delete succeeded.
+ *
+ * Pass `open`/`onOpenChange` instead of `trigger` to drive it from elsewhere —
+ * e.g. a dropdown-menu item, which can't host the dialog trigger itself.
  */
 export function ConfirmDelete({
   trigger,
@@ -30,15 +33,24 @@ export function ConfirmDelete({
   title = "Delete this item?",
   description = "This action can't be undone.",
   confirmLabel = "Delete",
+  open: controlledOpen,
+  onOpenChange,
 }: {
-  trigger: React.ReactNode;
+  trigger?: React.ReactNode;
   /** The delete action. If it returns `{ error }`, the dialog surfaces it. */
   onConfirm: () => unknown | Promise<unknown>;
   title?: string;
   description?: string;
   confirmLabel?: string;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }) {
-  const [open, setOpen] = React.useState(false);
+  const [uncontrolledOpen, setUncontrolledOpen] = React.useState(false);
+  const open = controlledOpen ?? uncontrolledOpen;
+  const setOpen = (o: boolean) => {
+    setUncontrolledOpen(o);
+    onOpenChange?.(o);
+  };
   const [pending, start] = useTransition();
   const [error, setError] = React.useState<string | null>(null);
 
@@ -58,7 +70,7 @@ export function ConfirmDelete({
 
   return (
     <AlertDialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) setError(null); }}>
-      <AlertDialogTrigger asChild>{trigger}</AlertDialogTrigger>
+      {trigger && <AlertDialogTrigger asChild>{trigger}</AlertDialogTrigger>}
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>{title}</AlertDialogTitle>

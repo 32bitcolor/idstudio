@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useTransition, useMemo } from "react";
-import Link from "next/link";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import {
   DndContext,
@@ -24,7 +23,21 @@ import {
   sortableKeyboardCoordinates,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { ChevronLeft, ChevronRight, X, MessageSquare, Paperclip, ListChecks } from "lucide-react";
+import {
+  ArrowLeft,
+  ArrowRight,
+  Columns3,
+  FileCheck2,
+  Hash,
+  List,
+  ListChecks,
+  MessageSquare,
+  MoreHorizontal,
+  Paperclip,
+  Plus,
+  Trash2,
+  X,
+} from "lucide-react";
 import {
   createCard,
   deleteCard,
@@ -38,16 +51,33 @@ import {
   setBoardCardKeyPrefix,
 } from "@/app/actions/boards";
 import { CardDrawer, type CardFacePatch } from "@/components/board/card-drawer";
+import { ProjectContextStrip, type ProjectContext } from "@/components/board/project-context-strip";
 import type { SavedViewDTO } from "@/app/actions/saved-views";
 import type { BoardFilters } from "@/lib/saved-views";
 import { FilterBar, type DueFilter } from "@/components/board/filter-bar";
 import { useSetPageTitle } from "@/components/app-shell/breadcrumbs";
 import { InlineTitle } from "@/components/shared/inline-title";
 import { ConfirmDelete } from "@/components/shared/confirm-delete";
-import { StatusBadge } from "@/components/shared/status-badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { REVIEW_STATUS_LABEL, type ReviewStatus } from "@/lib/methodology";
+import { cn } from "@/lib/utils";
 
 type Label = { id: string; name: string; color: string };
 type Member = { id: string; name: string | null; email: string };
@@ -64,20 +94,25 @@ type Card = {
   checklist: { total: number; done: number };
   comments: number;
   attachments: number;
+  deliverable: { name: string; review: { round: number; status: string } | null } | null;
 };
-type Column = { id: string; name: string; position: string; cards: Card[] };
+type StatusCategory = "todo" | "active" | "done" | null;
+type Column = { id: string; name: string; position: string; category: StatusCategory; cards: Card[] };
+type ViewMode = "board" | "list";
 
 export function BoardView({
   boardId,
   boardName,
   cardKeyPrefix,
   project,
+  context,
   initialColumns,
 }: {
   boardId: string;
   boardName: string;
   cardKeyPrefix: string | null;
   project: { id: string; name: string } | null;
+  context: ProjectContext | null;
   initialColumns: Column[];
 }) {
   const [columns, setColumns] = useState<Column[]>(initialColumns);
@@ -97,6 +132,20 @@ export function BoardView({
   });
   const openCardId = cardStack.length > 0 ? cardStack[cardStack.length - 1] : null;
   const [, startTransition] = useTransition();
+  // Board vs. list is kept in the URL so a reload or a shared link keeps the view.
+  const [view, setView] = useState<ViewMode>(() => (searchParams.get("view") === "list" ? "list" : "board"));
+  // Which column's composer the header's "New card" button opened.
+  const [composeIn, setComposeIn] = useState<string | null>(null);
+
+  function changeView(next: ViewMode) {
+    setView(next);
+    const params = new URLSearchParams(searchParams.toString());
+    if (next === "list") params.set("view", "list");
+    else params.delete("view");
+    params.delete("card");
+    const qs = params.toString();
+    router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+  }
 
   function openCard(cardId: string) {
     setCardStack([cardId]);
@@ -169,6 +218,8 @@ export function BoardView({
     () => filteredColumns.reduce((n, c) => n + c.cards.length, 0),
     [filteredColumns],
   );
+  // The visible cards in reading order — what the panel's previous/next steps through.
+  const navIds = useMemo(() => filteredColumns.flatMap((c) => c.cards.map((card) => card.id)), [filteredColumns]);
 
   function toggleSet(setter: React.Dispatch<React.SetStateAction<Set<string>>>, id: string) {
     setter((prev) => {
@@ -293,6 +344,7 @@ export function BoardView({
         checklist: { total: 0, done: 0 },
         comments: 0,
         attachments: 0,
+        deliverable: null,
       };
       setColumns((prev) => prev.map((c) => (c.id === columnId ? { ...c, cards: [...c.cards, card] } : c)));
     }
@@ -304,6 +356,23 @@ export function BoardView({
     const res = await deleteCard(cardId);
     if (res?.error) return res;
     setColumns((prev) => prev.map((c) => ({ ...c, cards: c.cards.filter((x) => x.id !== cardId) })));
+  }
+
+  /** Move a card to the end of another column — the non-drag path (WCAG 2.5.7)
+   *  behind the panel's Status picker. */
+  function handleMoveToColumn(cardId: string, toColumnId: string) {
+    const from = colOfCard(cardId, columns);
+    const to = columns.find((c) => c.id === toColumnId);
+    if (!from || !to || from.id === to.id) return;
+    const card = from.cards.find((c) => c.id === cardId)!;
+    setColumns((prev) =>
+      prev.map((c) => {
+        if (c.id === from.id) return { ...c, cards: c.cards.filter((x) => x.id !== cardId) };
+        if (c.id === to.id) return { ...c, cards: [...c.cards, card] };
+        return c;
+      }),
+    );
+    startTransition(() => void moveCard(cardId, to.id, to.cards.length));
   }
 
   function patchCard(cardId: string, patch: CardFacePatch) {
@@ -318,7 +387,7 @@ export function BoardView({
   async function handleAddColumn(name: string) {
     const res = await createColumn(boardId, name);
     if ("column" in res && res.column) {
-      setColumns((prev) => [...prev, { ...res.column, cards: [] }]);
+      setColumns((prev) => [...prev, { ...res.column, category: null, cards: [] }]);
     }
   }
 
@@ -340,9 +409,31 @@ export function BoardView({
     startTransition(() => void moveColumn(columnId, newIndex));
   }
 
+  function startNewCard() {
+    const first = columns[0];
+    if (!first) return;
+    if (view === "list") changeView("board");
+    setComposeIn(first.id);
+  }
+
+  // Which column the open card sits in (top-level cards only; a subtask has none).
+  const openCardColumn = openCardId ? colOfCard(openCardId, columns) ?? null : null;
+  const navIndex = openCardId ? navIds.indexOf(openCardId) : -1;
+
   return (
-    <div className="flex h-full min-h-screen min-w-0 flex-col">
-      <BoardHeader boardId={boardId} boardName={boardName} cardKeyPrefix={cardKeyPrefix} project={project} />
+    <div className="flex h-full min-h-screen min-w-0 flex-col gap-4 px-6 pt-5 pb-10">
+      <BoardHeader
+        boardId={boardId}
+        boardName={boardName}
+        cardKeyPrefix={cardKeyPrefix}
+        project={project}
+        view={view}
+        onView={changeView}
+        onNewCard={startNewCard}
+        canAddCard={columns.length > 0}
+      />
+
+      {context && <ProjectContextStrip context={context} />}
 
       <FilterBar
         labels={availableLabels}
@@ -365,38 +456,45 @@ export function BoardView({
         onApplyView={applyView}
       />
 
-      <DndContext
-        sensors={sensors}
-        collisionDetection={closestCorners}
-        onDragStart={onDragStart}
-        onDragOver={onDragOver}
-        onDragEnd={onDragEnd}
-      >
-        <div className="flex min-w-0 flex-1 items-start gap-4 overflow-x-auto px-6 pb-10">
-          {filteredColumns.map((col, i) => (
-            <ColumnView
-              key={col.id}
-              column={col}
-              cardKeyPrefix={cardKeyPrefix}
-              canMoveLeft={i > 0}
-              canMoveRight={i < filteredColumns.length - 1}
-              // Drag stays enabled while filtered — the drag handlers operate on
-              // the full card state, so a drop lands at the visible neighbor's
-              // real position among the hidden cards.
-              dragDisabled={false}
-              onAddCard={handleAddCard}
-              onDeleteCard={handleDeleteCard}
-              onOpenCard={openCard}
-              onRename={handleRenameColumn}
-              onDelete={handleDeleteColumn}
-              onMove={handleMoveColumn}
-            />
-          ))}
-          <AddColumn onAdd={handleAddColumn} />
-        </div>
+      {view === "list" ? (
+        <ListView columns={filteredColumns} cardKeyPrefix={cardKeyPrefix} openCardId={openCardId} onOpen={openCard} />
+      ) : (
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCorners}
+          onDragStart={onDragStart}
+          onDragOver={onDragOver}
+          onDragEnd={onDragEnd}
+        >
+          <div className="-mx-6 flex min-w-0 flex-1 items-start gap-3 overflow-x-auto px-6 pb-2">
+            {filteredColumns.map((col, i) => (
+              <ColumnView
+                key={col.id}
+                column={col}
+                cardKeyPrefix={cardKeyPrefix}
+                canMoveLeft={i > 0}
+                canMoveRight={i < filteredColumns.length - 1}
+                // Drag stays enabled while filtered — the drag handlers operate on
+                // the full card state, so a drop lands at the visible neighbor's
+                // real position among the hidden cards.
+                dragDisabled={false}
+                composing={composeIn === col.id}
+                onComposeDone={() => setComposeIn(null)}
+                openCardId={openCardId}
+                onAddCard={handleAddCard}
+                onDeleteCard={handleDeleteCard}
+                onOpenCard={openCard}
+                onRename={handleRenameColumn}
+                onDelete={handleDeleteColumn}
+                onMove={handleMoveColumn}
+              />
+            ))}
+            <AddColumn onAdd={handleAddColumn} />
+          </div>
 
-        <DragOverlay>{activeCard ? <CardShell card={activeCard} cardKeyPrefix={cardKeyPrefix} dragging /> : null}</DragOverlay>
-      </DndContext>
+          <DragOverlay>{activeCard ? <CardShell card={activeCard} cardKeyPrefix={cardKeyPrefix} dragging /> : null}</DragOverlay>
+        </DndContext>
+      )}
 
       {openCardId && (
         <CardDrawer
@@ -405,6 +503,14 @@ export function BoardView({
           onPatch={patchCard}
           onDeleted={handleDeleteCard}
           onNavigate={navigateCard}
+          columns={columns.map((c) => ({ id: c.id, name: c.name }))}
+          currentColumnId={openCardColumn?.id ?? null}
+          onMoveToColumn={(columnId) => handleMoveToColumn(openCardId, columnId)}
+          position={navIndex >= 0 ? { index: navIndex, total: navIds.length } : null}
+          onStep={(dir) => {
+            const next = navIds[navIndex + dir];
+            if (next) openCard(next);
+          }}
         />
       )}
     </div>
@@ -416,97 +522,219 @@ function BoardHeader({
   boardName,
   cardKeyPrefix,
   project,
+  view,
+  onView,
+  onNewCard,
+  canAddCard,
 }: {
   boardId: string;
   boardName: string;
   cardKeyPrefix: string | null;
   project: { id: string; name: string } | null;
+  view: ViewMode;
+  onView: (v: ViewMode) => void;
+  onNewCard: () => void;
+  canAddCard: boolean;
 }) {
   const [name, setName] = useState(boardName);
-  const [prefix, setPrefix] = useState(cardKeyPrefix ?? "");
-  const [prefixError, setPrefixError] = useState<string | null>(null);
+  const [prefixOpen, setPrefixOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
   const [, startTransition] = useTransition();
-  useSetPageTitle(name);
-
-  function commitPrefix() {
-    const next = prefix.trim().toUpperCase();
-    setPrefix(next);
-    if (next === (cardKeyPrefix ?? "")) return;
-    startTransition(async () => {
-      const res = await setBoardCardKeyPrefix(boardId, next);
-      if ("error" in res && res.error) {
-        setPrefixError(res.error);
-        setPrefix(cardKeyPrefix ?? ""); // revert — the server rejected it
-      } else {
-        setPrefixError(null);
-      }
-    });
-  }
+  // A project's board reads "Projects / <project> / <board>" in the header crumbs,
+  // replacing the separate "‹ project" back-link the page used to carry.
+  useSetPageTitle(
+    name,
+    project
+      ? [
+          { label: "Projects", href: "/projects" },
+          { label: project.name, href: `/projects/${project.id}` },
+        ]
+      : null,
+  );
 
   return (
-    <header className="flex flex-wrap items-center justify-between gap-4 px-6 py-5">
-      <div className="flex min-w-0 flex-1 flex-wrap items-center gap-3">
-        <div className="min-w-0 flex-1">
-          {project && (
-            <Link
-              href={`/projects/${project.id}`}
-              className="mb-0.5 inline-block max-w-full truncate text-xs text-muted-foreground hover:text-foreground hover:underline"
-            >
-              ‹ {project.name}
-            </Link>
-          )}
-          <InlineTitle
-            value={name}
-            onChange={setName}
-            onCommit={() => {
-              if (name.trim() && name !== boardName) startTransition(() => void renameBoard(boardId, name));
-            }}
-            ariaLabel="Board name"
-          />
-        </div>
-        <div className="flex shrink-0 flex-col">
-          <div className="flex items-center gap-1.5">
-            <label htmlFor="card-key-prefix" className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-              Card prefix
-            </label>
-            {!cardKeyPrefix && !prefix && (
-              <span className="hidden text-[10px] text-muted-foreground lg:inline">— cards get labels like WP-1 once set</span>
-            )}
-          </div>
-          <input
-            id="card-key-prefix"
-            value={prefix}
-            onChange={(e) => {
-              setPrefix(e.target.value.toUpperCase());
-              setPrefixError(null);
-            }}
-            onBlur={commitPrefix}
-            onKeyDown={(e) => e.key === "Enter" && (e.target as HTMLInputElement).blur()}
-            placeholder="e.g. WP"
-            maxLength={8}
-            className={`w-24 rounded-md border bg-surface px-2 py-1 text-sm font-medium tracking-wide outline-none hover:bg-hover focus:bg-hover ${
-              prefixError ? "border-destructive" : "border-border-strong"
-            }`}
-          />
-        </div>
-        {prefixError && <span className="shrink-0 text-xs text-destructive">{prefixError}</span>}
+    <header className="flex flex-wrap items-center justify-between gap-3">
+      <div className="min-w-0 flex-1">
+        <InlineTitle
+          value={name}
+          onChange={setName}
+          onCommit={() => {
+            if (name.trim() && name !== boardName) startTransition(() => void renameBoard(boardId, name));
+          }}
+          ariaLabel="Board name"
+          className="text-2xl"
+        />
       </div>
+      <div className="flex shrink-0 flex-wrap items-center gap-2">
+        <div role="group" aria-label="View" className="flex rounded-md bg-muted p-0.5">
+          <ViewToggle active={view === "board"} onClick={() => onView("board")} icon={<Columns3 className="size-4" />}>
+            Board
+          </ViewToggle>
+          <ViewToggle active={view === "list"} onClick={() => onView("list")} icon={<List className="size-4" />}>
+            List
+          </ViewToggle>
+        </div>
+
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" size="icon-sm" aria-label="Board settings">
+              <MoreHorizontal className="size-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-52">
+            <DropdownMenuItem onSelect={() => setPrefixOpen(true)}>
+              <Hash className="size-4" />
+              Card prefix{cardKeyPrefix ? ` · ${cardKeyPrefix}` : "…"}
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem variant="destructive" onSelect={() => setDeleteOpen(true)}>
+              <Trash2 className="size-4" />
+              Delete board…
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+
+        <Button size="sm" onClick={onNewCard} disabled={!canAddCard}>
+          <Plus className="size-4" />
+          New card
+        </Button>
+      </div>
+
+      <PrefixDialog boardId={boardId} current={cardKeyPrefix} open={prefixOpen} onOpenChange={setPrefixOpen} />
       <ConfirmDelete
+        open={deleteOpen}
+        onOpenChange={setDeleteOpen}
         title="Delete this board?"
         description="This permanently deletes the board and all of its columns and cards."
         confirmLabel="Delete board"
         onConfirm={() => deleteBoard(boardId)}
-        trigger={
-          <Button
-            variant="outline"
-            size="sm"
-            className="shrink-0 text-destructive hover:bg-destructive/10 hover:text-destructive"
-          >
-            Delete board
-          </Button>
-        }
       />
     </header>
+  );
+}
+
+function ViewToggle({
+  active,
+  onClick,
+  icon,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  icon: React.ReactNode;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={active}
+      className={cn(
+        "inline-flex h-7 items-center gap-1.5 rounded px-2.5 text-sm font-medium outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50",
+        active ? "bg-surface text-foreground shadow-xs" : "text-muted-foreground hover:text-foreground",
+      )}
+    >
+      <span aria-hidden="true">{icon}</span>
+      {children}
+    </button>
+  );
+}
+
+/** Card-key prefix editing, moved off the page header into its own small dialog. */
+function PrefixDialog({
+  boardId,
+  current,
+  open,
+  onOpenChange,
+}: {
+  boardId: string;
+  current: string | null;
+  open: boolean;
+  onOpenChange: (o: boolean) => void;
+}) {
+  const [value, setValue] = useState(current ?? "");
+  const [error, setError] = useState<string | null>(null);
+  const [pending, startTransition] = useTransition();
+  const router = useRouter();
+
+  function save() {
+    const next = value.trim().toUpperCase();
+    if (next === (current ?? "")) {
+      onOpenChange(false);
+      return;
+    }
+    startTransition(async () => {
+      const res = await setBoardCardKeyPrefix(boardId, next);
+      if ("error" in res && res.error) {
+        setError(res.error);
+        return;
+      }
+      setError(null);
+      onOpenChange(false);
+      router.refresh();
+    });
+  }
+
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={(o) => {
+        onOpenChange(o);
+        if (o) {
+          setValue(current ?? "");
+          setError(null);
+        }
+      }}
+    >
+      <DialogContent className="sm:max-w-sm">
+        <DialogHeader>
+          <DialogTitle>Card prefix</DialogTitle>
+          <DialogDescription>Cards on this board get short keys like WP-12 that you can link to.</DialogDescription>
+        </DialogHeader>
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            save();
+          }}
+          className="flex flex-col gap-2"
+        >
+          <label htmlFor="card-key-prefix" className="text-sm font-medium">Prefix</label>
+          <Input
+            id="card-key-prefix"
+            value={value}
+            onChange={(e) => {
+              setValue(e.target.value.toUpperCase());
+              setError(null);
+            }}
+            placeholder="e.g. WP"
+            maxLength={8}
+            aria-invalid={error ? true : undefined}
+            aria-describedby={error ? "card-key-prefix-error" : undefined}
+            className="w-32 font-medium tracking-wide"
+          />
+          {error && <p id="card-key-prefix-error" role="alert" className="text-sm text-destructive-ink">{error}</p>}
+          <DialogFooter className="mt-2">
+            <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
+            <Button type="submit" disabled={pending}>{pending ? "Saving…" : "Save"}</Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+const CATEGORY_DOT: Record<string, string> = {
+  todo: "bg-muted-foreground/60",
+  active: "bg-info",
+  done: "bg-success",
+};
+
+function StatusDot({ category }: { category: StatusCategory }) {
+  return (
+    <span
+      className={cn("size-2 shrink-0 rounded-full", category ? CATEGORY_DOT[category] : "bg-border-strong")}
+      aria-hidden="true"
+    />
   );
 }
 
@@ -516,6 +744,9 @@ function ColumnView({
   canMoveLeft,
   canMoveRight,
   dragDisabled,
+  composing,
+  onComposeDone,
+  openCardId,
   onAddCard,
   onDeleteCard,
   onOpenCard,
@@ -528,6 +759,9 @@ function ColumnView({
   canMoveLeft: boolean;
   canMoveRight: boolean;
   dragDisabled: boolean;
+  composing: boolean;
+  onComposeDone: () => void;
+  openCardId: string | null;
   onAddCard: (columnId: string, title: string) => void;
   onDeleteCard: (cardId: string) => unknown;
   onOpenCard: (cardId: string) => void;
@@ -537,54 +771,56 @@ function ColumnView({
 }) {
   const { setNodeRef } = useDroppable({ id: column.id, data: { type: "column" } });
   const [name, setName] = useState(column.name);
+  const [deleteOpen, setDeleteOpen] = useState(false);
 
   return (
-    <div className="flex w-72 shrink-0 flex-col rounded-xl border border-border bg-surface-muted">
-      <div className="flex items-center gap-1 px-3 pt-3">
+    <section
+      aria-label={column.name}
+      className="flex min-w-[12.5rem] max-w-[22rem] flex-1 shrink-0 flex-col rounded-lg bg-surface-muted"
+    >
+      <div className="flex items-center gap-2 px-3 pt-2.5 pb-1">
+        <StatusDot category={column.category} />
         <InlineTitle
           value={name}
           onChange={setName}
           onCommit={() => name.trim() && name !== column.name && onRename(column.id, name.trim())}
           ariaLabel="Column name"
-          className="text-sm font-medium tracking-normal"
+          className="text-sm font-semibold tracking-normal"
         />
-        <span className="shrink-0 text-xs text-muted-foreground">{column.cards.length}</span>
-        <Button
-          variant="ghost"
-          size="icon-xs"
-          disabled={!canMoveLeft}
-          onClick={() => onMove(column.id, -1)}
-          className="text-muted-foreground"
-          title="Move left"
-          aria-label="Move column left"
-        >
-          <ChevronLeft className="size-3.5" />
-        </Button>
-        <Button
-          variant="ghost"
-          size="icon-xs"
-          disabled={!canMoveRight}
-          onClick={() => onMove(column.id, 1)}
-          className="text-muted-foreground"
-          title="Move right"
-          aria-label="Move column right"
-        >
-          <ChevronRight className="size-3.5" />
-        </Button>
+        <span className="shrink-0 text-xs font-medium text-muted-foreground">{column.cards.length}</span>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="icon-xs" className="size-6 text-muted-foreground" aria-label={`${column.name} column options`}>
+              <MoreHorizontal className="size-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-44">
+            <DropdownMenuItem disabled={!canMoveLeft} onSelect={() => onMove(column.id, -1)}>
+              <ArrowLeft className="size-4" />
+              Move left
+            </DropdownMenuItem>
+            <DropdownMenuItem disabled={!canMoveRight} onSelect={() => onMove(column.id, 1)}>
+              <ArrowRight className="size-4" />
+              Move right
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem variant="destructive" onSelect={() => setDeleteOpen(true)}>
+              <Trash2 className="size-4" />
+              Delete column…
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
         <ConfirmDelete
+          open={deleteOpen}
+          onOpenChange={setDeleteOpen}
           title="Delete this column?"
           description="This permanently deletes the column and all of its cards."
           confirmLabel="Delete column"
           onConfirm={() => onDelete(column.id)}
-          trigger={
-            <Button variant="ghost" size="icon-xs" className="text-muted-foreground hover:text-destructive" title="Delete column" aria-label="Delete column">
-              <X className="size-3.5" />
-            </Button>
-          }
         />
       </div>
 
-      <div ref={setNodeRef} className="flex flex-col gap-2 p-3">
+      <div ref={setNodeRef} className="flex flex-col gap-2 p-2">
         <SortableContext items={column.cards.map((c) => c.id)} strategy={verticalListSortingStrategy}>
           {column.cards.map((card) => (
             <SortableCard
@@ -592,14 +828,15 @@ function ColumnView({
               card={card}
               cardKeyPrefix={cardKeyPrefix}
               disabled={dragDisabled}
+              selected={card.id === openCardId}
               onDelete={onDeleteCard}
               onOpen={onOpenCard}
             />
           ))}
         </SortableContext>
-        <CardComposer onAdd={(title) => onAddCard(column.id, title)} />
+        <CardComposer forceOpen={composing} onClose={onComposeDone} onAdd={(title) => onAddCard(column.id, title)} />
       </div>
-    </div>
+    </section>
   );
 }
 
@@ -607,12 +844,14 @@ function SortableCard({
   card,
   cardKeyPrefix,
   disabled,
+  selected,
   onDelete,
   onOpen,
 }: {
   card: Card;
   cardKeyPrefix: string | null;
   disabled: boolean;
+  selected: boolean;
   onDelete: (id: string) => unknown;
   onOpen: (id: string) => void;
 }) {
@@ -627,8 +866,14 @@ function SortableCard({
     opacity: isDragging ? 0.4 : 1,
   };
   return (
-    <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
-      <CardShell card={card} cardKeyPrefix={cardKeyPrefix} onDelete={() => onDelete(card.id)} onOpen={() => onOpen(card.id)} />
+    <div ref={setNodeRef} style={style} {...attributes} {...listeners} aria-roledescription="draggable card">
+      <CardShell
+        card={card}
+        cardKeyPrefix={cardKeyPrefix}
+        selected={selected}
+        onDelete={() => onDelete(card.id)}
+        onOpen={() => onOpen(card.id)}
+      />
     </div>
   );
 }
@@ -639,148 +884,320 @@ function initials(m: Member) {
   return ((parts[0]?.[0] ?? "") + (parts[1]?.[0] ?? "")).toUpperCase() || base[0]?.toUpperCase();
 }
 
-function dueInfo(iso: string) {
+type DueTone = "overdue" | "soon" | "normal";
+
+function dueInfo(iso: string): { label: string; tone: DueTone } {
   // Due dates are calendar dates stored as UTC midnight — format/compare in UTC
   // so the displayed day doesn't shift with the viewer's timezone.
   const ymd = iso.slice(0, 10);
   const [y, m, day] = ymd.split("-").map(Number);
-  const label = new Date(Date.UTC(y, m - 1, day)).toLocaleDateString(undefined, {
-    month: "short",
-    day: "numeric",
-    timeZone: "UTC",
-  });
-  const overdue = ymd < new Date().toISOString().slice(0, 10);
-  return { label, overdue };
+  const due = Date.UTC(y, m - 1, day);
+  const now = new Date();
+  const today = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+  const days = Math.round((due - today) / 86_400_000);
+  const date = new Date(due).toLocaleDateString(undefined, { month: "short", day: "numeric", timeZone: "UTC" });
+  if (days < 0) return { label: date, tone: "overdue" };
+  if (days === 0) return { label: "Today", tone: "soon" };
+  if (days === 1) return { label: "Tomorrow", tone: "soon" };
+  return { label: date, tone: days <= 3 ? "soon" : "normal" };
+}
+
+const DUE_CHIP: Record<DueTone, string> = {
+  overdue: "bg-destructive/10 text-destructive-ink",
+  soon: "bg-warning/10 text-warning-ink",
+  normal: "text-muted-foreground",
+};
+
+function reviewLabel(review: { round: number; status: string }) {
+  const status = REVIEW_STATUS_LABEL[review.status as ReviewStatus] ?? review.status;
+  return `Round ${review.round} · ${status.toLowerCase()}`;
+}
+
+function LabelPill({ label }: { label: Label }) {
+  return (
+    <span className="inline-flex h-5 max-w-full items-center gap-1.5 rounded-full bg-muted px-2 text-[11px] font-semibold text-foreground/80">
+      <span className="size-1.5 shrink-0 rounded-full" style={{ backgroundColor: label.color }} aria-hidden="true" />
+      <span className="truncate">{label.name}</span>
+    </span>
+  );
+}
+
+function Avatar({ member, sme }: { member: Member; sme?: boolean }) {
+  const name = member.name ?? member.email;
+  return (
+    <span
+      className={cn(
+        "flex size-6 items-center justify-center rounded-full border-2 border-surface text-[10px] font-semibold",
+        sme ? "bg-warning/15 text-warning-ink" : "bg-accent text-accent-foreground",
+      )}
+      title={sme ? `SME: ${name}` : name}
+    >
+      <span aria-hidden="true">{initials(member)}</span>
+      <span className="sr-only">{sme ? `SME: ${name}` : name}</span>
+    </span>
+  );
 }
 
 function CardShell({
   card,
   cardKeyPrefix,
+  selected,
   onDelete,
   onOpen,
   dragging,
 }: {
   card: Card;
   cardKeyPrefix: string | null;
+  selected?: boolean;
   onDelete?: () => unknown;
   onOpen?: () => void;
   dragging?: boolean;
 }) {
   const due = card.dueDate ? dueInfo(card.dueDate) : null;
+  const key = cardKeyPrefix && card.keySeq != null ? `${cardKeyPrefix}-${card.keySeq}` : null;
+  const people = [...card.assignees.slice(0, 3).map((m) => ({ m, sme: false })), ...card.smes.slice(0, 2).map((m) => ({ m, sme: true }))];
+  const hasMeta = due || card.checklist.total > 0 || card.comments > 0 || card.attachments > 0 || people.length > 0;
+
   return (
     <div
       onClick={onOpen}
-      className={`group flex flex-col gap-2 rounded-lg border border-border bg-surface px-3 py-2 text-sm shadow-sm ${
-        dragging ? "rotate-1 shadow-md" : "cursor-pointer active:cursor-grabbing"
-      }`}
+      className={cn(
+        "group flex flex-col gap-2 rounded-lg border bg-surface p-3 text-sm shadow-xs transition-shadow",
+        selected ? "border-accent ring-1 ring-accent" : "border-border hover:shadow-sm",
+        dragging ? "rotate-1 shadow-md" : "cursor-pointer active:cursor-grabbing",
+      )}
     >
+      {(key || onDelete) && (
+        <div className="flex items-center justify-between gap-2">
+          {key ? <span className="font-mono text-[11px] font-medium text-muted-foreground">{key}</span> : <span />}
+          {onDelete && (
+            <ConfirmDelete
+              onConfirm={onDelete}
+              title="Delete this card?"
+              description="This permanently deletes the card and its subtasks, comments, and attachments."
+              confirmLabel="Delete card"
+              trigger={
+                <button
+                  type="button"
+                  onPointerDown={(e) => e.stopPropagation()}
+                  onClick={(e) => e.stopPropagation()}
+                  className="-my-1 -mr-1 flex size-6 shrink-0 items-center justify-center rounded text-muted-foreground opacity-0 hover:bg-destructive/10 hover:text-destructive-ink focus-visible:opacity-100 group-hover:opacity-100"
+                  aria-label={`Delete card ${card.title}`}
+                >
+                  <X className="size-4" />
+                </button>
+              }
+            />
+          )}
+        </div>
+      )}
+
+      {/* The title is the card's keyboard-reachable "open" control — Enter on the
+          outer draggable starts a keyboard drag instead. */}
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          onOpen?.();
+        }}
+        onPointerDown={(e) => e.stopPropagation()}
+        className="-m-0.5 rounded p-0.5 text-left font-semibold leading-5 break-words whitespace-pre-wrap text-foreground outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
+      >
+        {card.title}
+      </button>
+
+      {card.deliverable && (
+        <span className="flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground">
+          <FileCheck2 className="size-3.5 shrink-0 text-accent" aria-hidden="true" />
+          <span className="truncate">
+            {card.deliverable.name}
+            {card.deliverable.review && <> · {reviewLabel(card.deliverable.review)}</>}
+          </span>
+        </span>
+      )}
+
       {card.labels.length > 0 && (
         <div className="flex flex-wrap gap-1">
           {card.labels.map((l) => (
-            <span key={l.id} className="h-2 w-8 rounded-full" style={{ backgroundColor: l.color }} title={l.name} />
+            <LabelPill key={l.id} label={l} />
           ))}
         </div>
       )}
-      <div className="flex items-start justify-between gap-2">
-        <span className="whitespace-pre-wrap break-words">
-          {cardKeyPrefix && card.keySeq != null && (
-            <span className="mr-1.5 font-mono text-xs font-medium text-muted-foreground">
-              {cardKeyPrefix}-{card.keySeq}
+
+      {hasMeta && (
+        <div className="flex items-center gap-2.5 text-xs font-medium text-muted-foreground">
+          {due && (
+            <span className={cn("rounded px-1.5 py-0.5", DUE_CHIP[due.tone])}>
+              <span className="sr-only">Due </span>
+              {due.label}
             </span>
           )}
-          {card.title}
-        </span>
-        {onDelete && (
-          <ConfirmDelete
-            onConfirm={onDelete}
-            title="Delete this card?"
-            description="This permanently deletes the card and its subtasks, comments, and attachments."
-            confirmLabel="Delete card"
-            trigger={
-              <button
-                onPointerDown={(e) => e.stopPropagation()}
-                onClick={(e) => e.stopPropagation()}
-                className="shrink-0 rounded p-0.5 text-foreground/30 opacity-0 hover:bg-destructive/10 hover:text-destructive group-hover:opacity-100"
-                title="Delete card"
-              >
-                <X className="size-3.5" />
-              </button>
-            }
-          />
-        )}
-      </div>
-      {(due ||
-        card.checklist.total > 0 ||
-        card.comments > 0 ||
-        card.attachments > 0 ||
-        card.assignees.length > 0 ||
-        card.smes.length > 0) && (
-        <div className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-1">
-            {due && (
-              <StatusBadge tone={due.overdue ? "danger" : "neutral"}>{due.label}</StatusBadge>
-            )}
-            {card.checklist.total > 0 && (
-              <StatusBadge tone={card.checklist.done === card.checklist.total ? "success" : "neutral"}>
-                <ListChecks className="size-3" />
-                {card.checklist.done}/{card.checklist.total}
-              </StatusBadge>
-            )}
-            {card.comments > 0 && (
-              <StatusBadge tone="neutral">
-                <MessageSquare className="size-3" />
-                {card.comments}
-              </StatusBadge>
-            )}
-            {card.attachments > 0 && (
-              <StatusBadge tone="neutral">
-                <Paperclip className="size-3" />
-                {card.attachments}
-              </StatusBadge>
-            )}
-          </div>
-          <div className="flex items-center gap-1.5">
-            {card.smes.length > 0 && (
-              <div className="flex -space-x-1">
-                {card.smes.slice(0, 3).map((s) => (
-                  <span
-                    key={s.id}
-                    className="flex h-5 w-5 items-center justify-center rounded-full border border-background bg-amber-500 text-[10px] font-medium text-white"
-                    title={`SME: ${s.name ?? s.email}`}
-                  >
-                    {initials(s)}
-                  </span>
-                ))}
-              </div>
-            )}
-            {card.assignees.length > 0 && (
-              <div className="flex -space-x-1">
-                {card.assignees.slice(0, 3).map((a) => (
-                  <span
-                    key={a.id}
-                    className="flex h-5 w-5 items-center justify-center rounded-full border border-background bg-accent text-[10px] font-medium text-accent-foreground"
-                    title={a.name ?? a.email}
-                  >
-                    {initials(a)}
-                  </span>
-                ))}
-              </div>
-            )}
-          </div>
+          {card.checklist.total > 0 && (
+            <span
+              className={cn("inline-flex items-center gap-1", card.checklist.done === card.checklist.total && "text-success-ink")}
+              title="Subtasks done"
+            >
+              <ListChecks className="size-3.5" aria-hidden="true" />
+              {card.checklist.done}/{card.checklist.total}
+              <span className="sr-only"> subtasks done</span>
+            </span>
+          )}
+          {card.comments > 0 && (
+            <span className="inline-flex items-center gap-1" title="Comments">
+              <MessageSquare className="size-3.5" aria-hidden="true" />
+              {card.comments}
+              <span className="sr-only"> comments</span>
+            </span>
+          )}
+          {card.attachments > 0 && (
+            <span className="inline-flex items-center gap-1" title="Attachments">
+              <Paperclip className="size-3.5" aria-hidden="true" />
+              {card.attachments}
+              <span className="sr-only"> attachments</span>
+            </span>
+          )}
+          <span className="flex-1" />
+          {people.length > 0 && (
+            <span className="flex -space-x-1.5">
+              {people.map(({ m, sme }) => (
+                <Avatar key={(sme ? "s" : "a") + m.id} member={m} sme={sme} />
+              ))}
+            </span>
+          )}
         </div>
       )}
     </div>
   );
 }
 
-function CardComposer({ onAdd }: { onAdd: (title: string) => void }) {
+/** List view: every visible card as a row, grouped by column. */
+function ListView({
+  columns,
+  cardKeyPrefix,
+  openCardId,
+  onOpen,
+}: {
+  columns: Column[];
+  cardKeyPrefix: string | null;
+  openCardId: string | null;
+  onOpen: (id: string) => void;
+}) {
+  return (
+    <div className="overflow-x-auto rounded-lg border border-border bg-surface">
+      <table className="w-full min-w-[44rem] border-collapse text-sm">
+        <caption className="sr-only">Cards grouped by column</caption>
+        <thead>
+          <tr className="border-b border-border text-left text-xs font-medium text-muted-foreground">
+            {cardKeyPrefix && <th scope="col" className="w-20 px-4 py-2 font-medium">Key</th>}
+            <th scope="col" className="px-4 py-2 font-medium">Title</th>
+            <th scope="col" className="px-4 py-2 font-medium">Labels</th>
+            <th scope="col" className="w-28 px-4 py-2 font-medium">Due</th>
+            <th scope="col" className="w-28 px-4 py-2 font-medium">People</th>
+          </tr>
+        </thead>
+        {columns.map((col) => (
+          <tbody key={col.id}>
+            <tr className="bg-surface-muted">
+              <th scope="rowgroup" colSpan={cardKeyPrefix ? 5 : 4} className="px-4 py-1.5 text-left text-xs font-semibold">
+                <span className="inline-flex items-center gap-2">
+                  <StatusDot category={col.category} />
+                  {col.name}
+                  <span className="font-medium text-muted-foreground">{col.cards.length}</span>
+                </span>
+              </th>
+            </tr>
+            {col.cards.length === 0 && (
+              <tr>
+                <td colSpan={cardKeyPrefix ? 5 : 4} className="px-4 py-2 text-xs text-muted-foreground">No cards</td>
+              </tr>
+            )}
+            {col.cards.map((card) => {
+              const due = card.dueDate ? dueInfo(card.dueDate) : null;
+              const selected = card.id === openCardId;
+              return (
+                <tr
+                  key={card.id}
+                  onClick={() => onOpen(card.id)}
+                  className={cn(
+                    "cursor-pointer border-t border-border hover:bg-hover",
+                    selected && "bg-accent/10 shadow-[inset_2px_0_0_var(--color-accent)]",
+                  )}
+                >
+                  {cardKeyPrefix && (
+                    <td className="px-4 py-2 font-mono text-xs text-muted-foreground">
+                      {card.keySeq != null ? `${cardKeyPrefix}-${card.keySeq}` : ""}
+                    </td>
+                  )}
+                  <td className="max-w-0 px-4 py-2">
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onOpen(card.id);
+                      }}
+                      className="block w-full truncate rounded text-left font-medium outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                    >
+                      {card.title}
+                    </button>
+                  </td>
+                  <td className="px-4 py-2">
+                    <span className="flex flex-wrap gap-1">
+                      {card.labels.map((l) => (
+                        <LabelPill key={l.id} label={l} />
+                      ))}
+                    </span>
+                  </td>
+                  <td className="px-4 py-2 text-xs font-medium">
+                    {due && <span className={cn("rounded px-1.5 py-0.5", DUE_CHIP[due.tone])}>{due.label}</span>}
+                  </td>
+                  <td className="px-4 py-2">
+                    <span className="flex -space-x-1.5">
+                      {card.assignees.slice(0, 3).map((m) => (
+                        <Avatar key={"a" + m.id} member={m} />
+                      ))}
+                      {card.smes.slice(0, 2).map((m) => (
+                        <Avatar key={"s" + m.id} member={m} sme />
+                      ))}
+                    </span>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        ))}
+      </table>
+    </div>
+  );
+}
+
+function CardComposer({
+  onAdd,
+  forceOpen,
+  onClose,
+}: {
+  onAdd: (title: string) => void;
+  forceOpen?: boolean;
+  onClose?: () => void;
+}) {
   const [value, setValue] = useState("");
-  const [open, setOpen] = useState(false);
+  const [opened, setOpened] = useState(false);
+  const open = opened || !!forceOpen;
+
+  function close() {
+    setValue("");
+    setOpened(false);
+    onClose?.();
+  }
 
   if (!open) {
     return (
-      <button onClick={() => setOpen(true)} className="rounded-lg px-2 py-1.5 text-left text-sm text-foreground/50 hover:bg-hover">
-        + Add a card
+      <button
+        type="button"
+        onClick={() => setOpened(true)}
+        className="flex h-8 items-center gap-1.5 rounded-md px-2 text-left text-sm text-muted-foreground hover:bg-hover hover:text-foreground"
+      >
+        <Plus className="size-4" aria-hidden="true" />
+        Add card
       </button>
     );
   }
@@ -788,14 +1205,14 @@ function CardComposer({ onAdd }: { onAdd: (title: string) => void }) {
   function submit() {
     const title = value.trim();
     if (title) onAdd(title);
-    setValue("");
-    setOpen(false);
+    close();
   }
 
   return (
     <div className="flex flex-col gap-1.5">
       <Textarea
         autoFocus
+        aria-label="New card title"
         value={value}
         onChange={(e) => setValue(e.target.value)}
         onKeyDown={(e) => {
@@ -803,10 +1220,7 @@ function CardComposer({ onAdd }: { onAdd: (title: string) => void }) {
             e.preventDefault();
             submit();
           }
-          if (e.key === "Escape") {
-            setValue("");
-            setOpen(false);
-          }
+          if (e.key === "Escape") close();
         }}
         rows={2}
         placeholder="Card title…"
@@ -814,7 +1228,7 @@ function CardComposer({ onAdd }: { onAdd: (title: string) => void }) {
       />
       <div className="flex gap-2">
         <Button size="xs" onClick={submit}>Add</Button>
-        <Button size="xs" variant="ghost" onClick={() => { setValue(""); setOpen(false); }}>Cancel</Button>
+        <Button size="xs" variant="ghost" onClick={close}>Cancel</Button>
       </div>
     </div>
   );
@@ -826,8 +1240,14 @@ function AddColumn({ onAdd }: { onAdd: (name: string) => void }) {
 
   if (!open) {
     return (
-      <button onClick={() => setOpen(true)} className="w-72 shrink-0 rounded-xl border border-dashed border-border-strong px-3 py-3 text-left text-sm text-foreground/50 hover:border-foreground/40">
-        + Add a column
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        aria-label="Add a column"
+        title="Add a column"
+        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-dashed border-border-strong text-muted-foreground hover:bg-hover hover:text-foreground"
+      >
+        <Plus className="size-4" />
       </button>
     );
   }
@@ -840,9 +1260,10 @@ function AddColumn({ onAdd }: { onAdd: (name: string) => void }) {
   }
 
   return (
-    <div className="flex w-72 shrink-0 flex-col gap-1.5 rounded-xl border border-border p-3">
+    <div className="flex w-60 shrink-0 flex-col gap-1.5 rounded-lg border border-border p-3">
       <Input
         autoFocus
+        aria-label="Column name"
         value={value}
         onChange={(e) => setValue(e.target.value)}
         onKeyDown={(e) => {

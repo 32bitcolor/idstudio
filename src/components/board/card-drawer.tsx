@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { X, Check, MessageSquare, Paperclip, ArrowUp } from "lucide-react";
+import { X, Check, MessageSquare, Paperclip, ArrowUp, ChevronUp, ChevronDown } from "lucide-react";
 import { createWhiteboardForCard } from "@/app/actions/whiteboards";
 import {
   getCardDetail,
@@ -31,7 +31,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { LABEL_PALETTE as PALETTE } from "@/lib/label-colors";
 import { dueMeta, dueToneClass } from "@/lib/due";
 
@@ -66,12 +66,24 @@ export function CardDrawer({
   onPatch,
   onDeleted,
   onNavigate,
+  columns,
+  currentColumnId,
+  onMoveToColumn,
+  position,
+  onStep,
 }: {
   cardId: string;
   onClose: () => void;
   onPatch: (cardId: string, patch: CardFacePatch) => void;
   onDeleted: (cardId: string) => void;
   onNavigate?: (cardId: string) => void;
+  /** The board's columns + this card's, for the Status picker (a non-drag move). */
+  columns?: { id: string; name: string }[];
+  currentColumnId?: string | null;
+  onMoveToColumn?: (columnId: string) => void;
+  /** Where this card sits among the board's visible cards, for previous/next. */
+  position?: { index: number; total: number } | null;
+  onStep?: (dir: -1 | 1) => void;
 }) {
   // Loading is derived, not a separate state: we're "loading" whenever the data
   // we hold isn't for the card currently open. This flips synchronously when
@@ -325,16 +337,43 @@ export function CardDrawer({
   }
 
   const doneCount = subtasks.filter((i) => i.done).length;
+  const canPrev = !!position && position.index > 0;
+  const canNext = !!position && position.index < position.total - 1;
+
+  // J / K step through the board's visible cards, unless the user is typing.
+  useEffect(() => {
+    if (!onStep) return;
+    function onKey(e: KeyboardEvent) {
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      const t = e.target as HTMLElement | null;
+      if (t && (t.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(t.tagName))) return;
+      if (e.key === "j" && canNext) {
+        e.preventDefault();
+        onStep!(1);
+      } else if (e.key === "k" && canPrev) {
+        e.preventDefault();
+        onStep!(-1);
+      }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onStep, canNext, canPrev]);
 
   return (
-    <Dialog open onOpenChange={(v) => !v && onClose()}>
-      <DialogContent
-        className="flex max-h-[85vh] w-full max-w-[calc(100%-2rem)] flex-col gap-0 overflow-hidden bg-surface p-0 shadow-xl sm:max-w-2xl"
+    // Non-modal side panel: the board stays live beside it, so clicking another
+    // card swaps the panel in place instead of closing it (triage without the
+    // open-close-open loop of a modal). Escape or the close button dismisses it.
+    <Sheet open modal={false} onOpenChange={(v) => !v && onClose()}>
+      <SheetContent
+        side="right"
+        showCloseButton={false}
+        className="w-full gap-0 overflow-hidden bg-surface p-0 shadow-xl sm:max-w-xl"
         onOpenAutoFocus={(e) => e.preventDefault()}
+        onInteractOutside={(e) => e.preventDefault()}
       >
-        <DialogHeader className="flex-row items-start justify-between gap-2 space-y-0 border-b border-border px-4 py-3 pr-12">
-          <DialogTitle asChild>
-            <div className="flex-1">
+        <SheetHeader className="flex-row items-start justify-between gap-2 space-y-0 border-b border-border px-4 py-3">
+          <SheetTitle asChild>
+            <div className="min-w-0 flex-1">
               {cardKeyPrefix && keySeq != null && (
                 <button
                   type="button"
@@ -351,12 +390,42 @@ export function CardDrawer({
                 onChange={(e) => setTitle(e.target.value)}
                 onBlur={saveTitle}
                 rows={1}
-                className="min-h-[2rem] w-full resize-none rounded bg-transparent px-1 text-base font-semibold outline-none hover:bg-hover focus:bg-hover"
+                aria-label="Card title"
+                className="min-h-[2rem] w-full resize-none rounded bg-transparent px-1 text-lg leading-snug font-semibold outline-none hover:bg-hover focus:bg-hover"
               />
             </div>
-          </DialogTitle>
-          <DialogDescription className="sr-only">Card details</DialogDescription>
-        </DialogHeader>
+          </SheetTitle>
+          <SheetDescription className="sr-only">Card details</SheetDescription>
+          <div className="flex shrink-0 items-center gap-1">
+            {position && onStep && (
+              <>
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  disabled={!canPrev}
+                  onClick={() => onStep(-1)}
+                  aria-label="Previous card (K)"
+                  title="Previous card (K)"
+                >
+                  <ChevronUp className="size-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  disabled={!canNext}
+                  onClick={() => onStep(1)}
+                  aria-label="Next card (J)"
+                  title="Next card (J)"
+                >
+                  <ChevronDown className="size-4" />
+                </Button>
+              </>
+            )}
+            <Button variant="ghost" size="icon-sm" onClick={onClose} aria-label="Close card">
+              <X className="size-4" />
+            </Button>
+          </div>
+        </SheetHeader>
 
         <div className="flex-1 overflow-y-auto">
         {loading ? (
@@ -398,6 +467,21 @@ export function CardDrawer({
 
             <Section title="Details">
               <div className="grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-2">
+                {!isSubtask && columns && columns.length > 0 && currentColumnId && onMoveToColumn && (
+                  <Field label="Status">
+                    <Select
+                      value={currentColumnId}
+                      onChange={(e) => onMoveToColumn(e.target.value)}
+                      className="h-8 w-full py-1 text-sm"
+                      aria-label="Status (column)"
+                    >
+                      {columns.map((c) => (
+                        <option key={c.id} value={c.id}>{c.name}</option>
+                      ))}
+                    </Select>
+                  </Field>
+                )}
+
                 <Field label="Due date">
                   <div className="flex items-center gap-2">
                     <Input
@@ -449,11 +533,18 @@ export function CardDrawer({
                         return (
                           <button
                             key={l.id}
+                            type="button"
                             onClick={() => toggleLabel(l)}
-                            className={`rounded px-2 py-0.5 text-xs font-medium ${on ? "text-white" : "opacity-50"}`}
-                            style={{ backgroundColor: l.color }}
+                            aria-pressed={on}
+                            className={`inline-flex h-7 items-center gap-1.5 rounded-full border px-2.5 text-xs font-semibold outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 ${
+                              on
+                                ? "border-accent/40 bg-accent/10 text-foreground"
+                                : "border-dashed border-border-strong text-muted-foreground hover:bg-hover hover:text-foreground"
+                            }`}
                           >
+                            <span className="size-2 rounded-full" style={{ backgroundColor: l.color }} aria-hidden="true" />
                             {l.name}
+                            {on && <Check className="size-3" aria-hidden="true" />}
                           </button>
                         );
                       })}
@@ -606,8 +697,8 @@ export function CardDrawer({
           </div>
         )}
         </div>
-      </DialogContent>
-    </Dialog>
+      </SheetContent>
+    </Sheet>
   );
 }
 
