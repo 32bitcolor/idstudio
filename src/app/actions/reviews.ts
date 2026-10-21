@@ -19,7 +19,7 @@ import { notificationsEnabled } from "@/lib/notify";
 import { appUrl } from "@/lib/app-url";
 import { buildSnapshot } from "@/lib/review-snapshot";
 import { notifyReviewDecided, syncRoundOutcome } from "@/lib/review-rounds";
-import { createRoundComment, toCommentDTO, COMMENT_SELECT, type ReviewCommentDTO } from "@/lib/review-comments";
+import { createRoundComment, toCommentDTO, COMMENT_SELECT } from "@/lib/review-comments";
 import { guestExpiry, guestLinkPath, newGuestNonce } from "@/lib/review-guest-token";
 import { extractMentionIds, extractText } from "@/lib/mentions";
 
@@ -525,4 +525,3 @@ export async function deleteReviewComment(commentId: string) {
   revalidatePath(`/reviews/${c.roundId}`);
 }
 
-export type { ReviewCommentDTO };

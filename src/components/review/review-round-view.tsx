@@ -23,8 +23,8 @@ import {
   setReviewCommentStatus,
   setReviewFeedback,
   setReviewStatus,
-  type ReviewCommentDTO,
 } from "@/app/actions/reviews";
+import type { ReviewCommentDTO } from "@/lib/review-comments";
 import { guestAddComment, guestDecide, guestDeleteComment, guestReopen } from "@/app/actions/review-guest";
 import { ReviewerList, type Assignment } from "@/components/review/reviewer-list";
 import { useSetPageTitle } from "@/components/app-shell/breadcrumbs";
