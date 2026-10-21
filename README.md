@@ -91,6 +91,7 @@ review that.
   - a rich-text description with @-mentions
   - status, sprint, due date, **assignees and SMEs**, and workspace-wide **labels**
   - subtasks, comments, file attachments and linked whiteboards
+
   Boards that belong to a project show a strip with the current phase, the next milestone and
   alignment coverage.
 - **Projects**: ADDIE, SAM or custom methodologies.
@@ -132,6 +133,7 @@ review that.
   - review requests, guest invites and decisions
   - intake, and account changes
   - day-before due-date reminders
+
   Every email links back into the app. Admins can turn each category on or off in
   **Settings → Notifications**.
 - **Dashboard**: active projects with phase progress, reviews awaiting you, and upcoming milestones.
