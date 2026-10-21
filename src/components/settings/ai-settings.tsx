@@ -55,7 +55,7 @@ function CopyButton({ text, label = "Copy" }: { text: string; label?: string }) 
 }
 
 function Code({ children }: { children: string }) {
-  return <code className="block overflow-x-auto whitespace-pre rounded-md bg-muted px-3 py-2 font-mono text-xs">{children}</code>;
+  return <code className="block whitespace-pre-wrap break-all rounded-md bg-muted px-3 py-2 font-mono text-xs">{children}</code>;
 }
 
 export function AiSettings({
