@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useSyncExternalStore } from "react";
 import { useEditor, EditorContent } from "@tiptap/react";
 import { generateHTML } from "@tiptap/core";
 import StarterKit from "@tiptap/starter-kit";
@@ -8,6 +8,7 @@ import StarterKit from "@tiptap/starter-kit";
 import { createMention, mentionRenderExtension } from "./mention";
 import type { MentionMember } from "./mention-list";
 import { Button } from "@/components/ui/button";
+import { extractText } from "@/lib/mentions";
 
 const RENDER_EXTENSIONS = [StarterKit, mentionRenderExtension];
 
@@ -59,10 +60,19 @@ export function CommentComposer({
   );
 }
 
+const noopSubscribe = () => () => {};
+
 /** Render a stored comment: TipTap JSON → HTML, with a plain-text fallback for
- *  legacy comments saved before the rich-text upgrade. */
+ *  legacy comments saved before the rich-text upgrade.
+ *
+ *  generateHTML needs a browser DOM, so it can't run during server rendering. The
+ *  server (and the hydration pass) render the doc's plain text; the client then swaps
+ *  in the formatted HTML — identical markup on both sides, so no hydration mismatch
+ *  on server-rendered pages like the review round. */
 export function CommentBody({ body }: { body: string }) {
+  const isClient = useSyncExternalStore(noopSubscribe, () => true, () => false);
   const html = useMemo(() => {
+    if (!isClient) return undefined;
     try {
       const doc = JSON.parse(body);
       if (doc && typeof doc === "object" && doc.type === "doc") return generateHTML(doc, RENDER_EXTENSIONS);
@@ -70,8 +80,9 @@ export function CommentBody({ body }: { body: string }) {
       /* legacy plain text */
     }
     return null;
-  }, [body]);
+  }, [body, isClient]);
 
+  if (html === undefined) return <p className="whitespace-pre-wrap text-sm">{extractText(body)}</p>;
   if (html === null) return <p className="whitespace-pre-wrap text-sm">{body}</p>;
   return <div className="tiptap text-sm" dangerouslySetInnerHTML={{ __html: html }} />;
 }
