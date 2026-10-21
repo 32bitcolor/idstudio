@@ -526,18 +526,28 @@ async function seedProjects(
         data: {
           projectId: project.id, name: d.name, type: d.type, status: d.status, position: delivKeys[i],
           phaseId: d.phase ? phaseByName[d.phase] : undefined,
-          reviewCycles: d.reviews ? {
-            create: d.reviews.map((r) => ({
-              reviewerId: U[r.by],
-              // The lead ID (admin) requests SME/stakeholder reviews; reviews that
-              // land on the admin are requested by another admin (Sofia).
-              requestedById: U[r.by === "admin" ? "sofia" : "admin"],
-              round: r.round, status: r.status, dueDate: r.due, feedback: r.feedback,
-            })),
-          } : undefined,
         },
       });
       delivIdByName[d.name] = deliverable.id;
+      // Each seeded review is its own round (a round needs the deliverable's id, so
+      // these can't be nested in the create above).
+      for (const r of d.reviews ?? []) {
+        const decided = r.status === "approved" || r.status === "changes_requested";
+        const requestedById = U[r.by === "admin" ? "sofia" : "admin"];
+        await prisma.reviewRound.create({
+          data: {
+            deliverableId: deliverable.id, number: r.round, dueDate: r.due, createdById: requestedById,
+            outcome: r.status === "approved" ? "passed" : r.status === "changes_requested" ? "changes_requested" : null,
+            closedAt: decided ? new Date() : null,
+            assignments: {
+              create: {
+                deliverableId: deliverable.id, reviewerId: U[r.by], requestedById,
+                round: r.round, status: r.status, dueDate: r.due, feedback: r.feedback, decidedAt: decided ? new Date() : null,
+              },
+            },
+          },
+        });
+      }
       // Link the storyboard back to its deliverable (unique 1:1).
       if (d.storyboardId) {
         await prisma.storyboard.update({ where: { id: d.storyboardId }, data: { deliverableId: deliverable.id } });

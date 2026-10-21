@@ -21,6 +21,7 @@ import {
   type PhaseStatus,
   type ProjectStatus,
 } from "@/lib/methodology";
+import type { RoundSummary } from "@/components/project/review-rounds";
 import { ProjectContextStrip, type ProjectContext } from "@/components/board/project-context-strip";
 import { useSetPageTitle } from "@/components/app-shell/breadcrumbs";
 import { ChevronUp, ChevronDown, X } from "lucide-react";
@@ -79,15 +80,6 @@ function move<T>(arr: T[], from: number, to: number) {
 }
 
 type Member = { id: string; name: string | null; email: string };
-type ReviewInit = {
-  id: string;
-  round: number;
-  reviewerId: string;
-  status: string;
-  dueDate: string | null;
-  feedback: string | null;
-  reviewer: Member;
-};
 type DeliverableInit = {
   id: string;
   name: string;
@@ -96,7 +88,7 @@ type DeliverableInit = {
   phaseId: string | null;
   card: { id: string; title: string; boardId: string; boardName: string } | null;
   storyboard: { id: string; title: string } | null;
-  reviews: ReviewInit[];
+  rounds: RoundSummary[];
 };
 type MilestoneInit = { id: string; name: string; dueDate: string | null; completedAt: string | null };
 type TimeEntryInit = {

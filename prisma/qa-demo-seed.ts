@@ -5,7 +5,10 @@ import { PrismaClient } from "../src/generated/prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { hash } from "@node-rs/argon2";
 import { S3Client, PutObjectCommand, ListObjectsV2Command, DeleteObjectsCommand } from "@aws-sdk/client-s3";
+import { Prisma } from "../src/generated/prisma/client";
 import { positionsAfter } from "../src/lib/ordering";
+import { buildSnapshot, type StoryboardSnapshot } from "../src/lib/review-snapshot";
+import type { ScreenField } from "../src/lib/review-anchor";
 
 // QA demo seed: fills the admin's workspace with a lived-in L&D team — 10 people, six projects at
 // different stages, boards, sprints, storyboards, reviews, intake, whiteboards and attachments —
@@ -510,6 +513,9 @@ async function milestones(projectId: string, list: [name: string, due: number, d
   }
 }
 
+/** One review round with one reviewer. If the deliverable has a storyboard the round
+ *  freezes it (like the app does); `stage` can rewrite that snapshot to stage what the
+ *  storyboard looked like back then, so round-to-round diffs have something to show. */
 async function review(
   deliverableId: string,
   reviewer: string,
@@ -519,13 +525,78 @@ async function review(
   due: number | null,
   feedback: string | null,
   age: number,
+  stage?: (snap: StoryboardSnapshot) => StoryboardSnapshot,
 ) {
-  await prisma.reviewCycle.create({
-    data: {
-      deliverableId, reviewerId: users[reviewer].id, requestedById: users[requester].id, round, status,
-      dueDate: due === null ? null : day(due), feedback, createdAt: day(-age, 10), updatedAt: day(-Math.max(age - 3, 0), 11),
+  const sb = await prisma.storyboard.findUnique({
+    where: { deliverableId },
+    select: {
+      id: true, title: true,
+      screens: {
+        orderBy: { position: "asc" },
+        select: { id: true, title: true, screenType: true, onScreenText: true, narration: true, visualNotes: true, interactionNotes: true, developerNotes: true },
+      },
     },
   });
+  let snapshot = sb ? buildSnapshot(sb) : null;
+  if (snapshot && stage) snapshot = stage(snapshot);
+  const decided = status === "approved" || status === "changes_requested";
+  const decidedAt = decided ? day(-Math.max(age - 3, 0), 11) : null;
+  return prisma.reviewRound.create({
+    data: {
+      deliverableId, number: round, targetKind: snapshot ? "storyboard" : "none",
+      snapshot: snapshot ?? Prisma.JsonNull, dueDate: due === null ? null : day(due),
+      createdById: users[requester].id, createdAt: day(-age, 10),
+      outcome: status === "approved" ? "passed" : status === "changes_requested" ? "changes_requested" : null,
+      closedAt: decidedAt,
+      assignments: {
+        create: {
+          deliverableId, reviewerId: users[reviewer].id, requestedById: users[requester].id, round, status,
+          dueDate: due === null ? null : day(due), feedback, decidedAt,
+          createdAt: day(-age, 10), updatedAt: day(-Math.max(age - 3, 0), 11),
+        },
+      },
+    },
+    select: { id: true, snapshot: true },
+  });
+}
+
+type SeedThread = {
+  by: string;
+  ago: number;
+  body: string;
+  anchor?: { screen: string; field: ScreenField; quote?: string };
+  status?: "open" | "resolved" | "wont_fix";
+  resolvedBy?: string;
+  note?: string;
+  replies?: { by: string; ago: number; body: string }[];
+};
+
+/** Seed comment threads on a round; screens are found by title in the round's snapshot. */
+async function reviewComments(round: { id: string; snapshot: unknown }, threads: SeedThread[]) {
+  const snap = round.snapshot as StoryboardSnapshot | null;
+  for (const t of threads) {
+    let anchor: object = { kind: "general" };
+    if (t.anchor) {
+      const screen = snap?.screens.find((x) => x.title === t.anchor!.screen);
+      if (!screen) throw new Error(`no screen "${t.anchor.screen}" in round snapshot`);
+      anchor = { kind: "storyboard_field", screenId: screen.id, field: t.anchor.field, ...(t.anchor.quote ? { quote: { exact: t.anchor.quote } } : {}) };
+    }
+    const closed = t.status && t.status !== "open";
+    const parent = await prisma.reviewComment.create({
+      data: {
+        roundId: round.id, authorId: users[t.by].id, body: paras(t.body), anchor, createdAt: day(-t.ago, 14),
+        status: t.status ?? "open",
+        resolvedById: closed ? users[t.resolvedBy ?? "priya"].id : null,
+        resolvedAt: closed ? day(-Math.max(t.ago - 2, 0), 16) : null,
+        resolvedNote: closed ? t.note ?? null : null,
+      },
+    });
+    for (const r of t.replies ?? []) {
+      await prisma.reviewComment.create({
+        data: { roundId: round.id, parentId: parent.id, authorId: users[r.by].id, body: paras(r.body), anchor, createdAt: day(-r.ago, 15) },
+      });
+    }
+  }
 }
 
 async function time(projectId: string, list: [who: string, minutes: number, daysAgo: number, note: string, deliverableId?: string][]) {
@@ -864,9 +935,53 @@ async function main() {
     ["Pilot (40 learners)", 26, false],
     ["Go-live to all staff", 33, false],
   ]);
-  await review(secDel.sb, "marcus", "priya", 1, "changes_requested", -7,
-    "Mostly solid. Screen 6 makes MFA sound unsafe overall; please reframe around unexpected prompts. Use our real SSO page in screenshots, and add number matching. QR section is great.", 12);
-  await review(secDel.sb, "marcus", "priya", 2, "in_review", 1, null, 2);
+  const OLD_MFA_VO = "MFA push notifications can be abused by attackers. To be safe, deny push requests whenever you're unsure, and call IT before approving anything.";
+  const secR1 = await review(secDel.sb, "marcus", "priya", 1, "changes_requested", -7,
+    "Mostly solid. Screen 6 makes MFA sound unsafe overall; please reframe around unexpected prompts. Use our real SSO page in screenshots, and add number matching. QR section is great.", 12,
+    // Round 1 predates the fixes: no number-matching screen, and the old MFA narration.
+    (snap) => ({
+      ...snap,
+      screens: snap.screens
+        .filter((x) => x.title !== "Number matching, explained")
+        .map((x) => (x.title === "Expected push vs. MFA fatigue" ? { ...x, fields: { ...x.fields, narration: paras(OLD_MFA_VO) } } : x)),
+    }));
+  await reviewComments(secR1, [
+    {
+      by: "marcus", ago: 9, anchor: { screen: "Expected push vs. MFA fatigue", field: "narration", quote: "MFA push notifications can be abused by attackers" },
+      body: "This makes MFA sound unsafe in general — it isn't. Unexpected prompts are the problem. People will start ignoring push entirely if we teach this.",
+      status: "resolved", resolvedBy: "priya", note: "Reframed around unexpected prompts in round 2.",
+      replies: [{ by: "priya", ago: 8, body: "Agreed — rewriting around 'a push you didn't start'." }],
+    },
+    {
+      by: "marcus", ago: 9, anchor: { screen: "Report fast, not perfectly", field: "visualNotes" },
+      body: "Use a screenshot of our real mail client with the Report button. A mock will confuse people when they go looking for it.",
+      status: "resolved", resolvedBy: "priya", note: "Swapped to the production UI.",
+    },
+    {
+      by: "marcus", ago: 9, body: "Please add number matching. It's the fix we rolled out in June and it's the single best defense against push fatigue.",
+      status: "resolved", resolvedBy: "priya", note: "Added as screen 7.",
+    },
+    {
+      by: "marcus", ago: 9, anchor: { screen: "Wednesday: the QR code in the break room", field: "interactionNotes" },
+      body: "Love the sticker-over-a-real-QR scenario. Keep it.",
+      status: "wont_fix", resolvedBy: "priya", note: "Nothing to change — keeping as is.",
+    },
+  ]);
+  const secR2 = await review(secDel.sb, "marcus", "priya", 2, "in_review", 1, null, 2);
+  await reviewComments(secR2, [
+    {
+      by: "marcus", ago: 1, anchor: { screen: "Number matching, explained", field: "narration", quote: "If you can't see a number on your own screen" },
+      body: "Good addition. Maybe say \"two-digit number\" so people know exactly what to look for.",
+      replies: [{ by: "priya", ago: 1, body: "Will do — small tweak, I'll update it before sign-off." }],
+    },
+    {
+      by: "hannah", ago: 1, anchor: { screen: "Number matching, explained", field: "visualNotes" },
+      body: "The laptop + phone mock for this screen is in progress — I'll swap it in before sign-off.",
+    },
+    {
+      by: "maya", ago: 0, body: "Marcus — can we get round 2 back by Thursday? Pilot recruiting starts next week.",
+    },
+  ]);
   await review(secDel.aid, "elena", "priya", 1, "approved", -20, "Approved. Clear and accurate. Love that it fits on one card.", 24);
   await review(secDel.quiz, "admin", "priya", 1, "requested", 6, null, 1);
   await time(sec.project.id, [

@@ -99,6 +99,7 @@ export default async function DashboardPage() {
       take: 5,
       select: {
         id: true,
+        roundId: true,
         deliverable: { select: { name: true, project: { select: { id: true, name: true } } } },
       },
     }),
@@ -225,7 +226,7 @@ export default async function DashboardPage() {
                 {myReviews.map((r) => (
                   <Link
                     key={r.id}
-                    href="/my-work"
+                    href={`/reviews/${r.roundId}`}
                     className="group block rounded-xl border border-border bg-surface p-3 transition-colors hover:border-border-strong hover:bg-hover"
                   >
                     <div className="truncate text-sm font-medium">{r.deliverable.name}</div>

@@ -31,6 +31,10 @@ model User {
   comments                Comment[]
   reviewCycles            ReviewCycle[]     @relation("ReviewReviewer")
   requestedReviews        ReviewCycle[]     @relation("ReviewRequester")
+  startedReviewRounds     ReviewRound[]     @relation("ReviewRoundCreator")
+  overriddenReviewRounds  ReviewRound[]     @relation("ReviewRoundOverride")
+  reviewComments          ReviewComment[]   @relation("ReviewCommentAuthor")
+  resolvedReviewComments  ReviewComment[]   @relation("ReviewCommentResolver")
   timeEntries             TimeEntry[]
   groupMemberships        GroupMembership[]
   whiteboards             Whiteboard[]
@@ -259,30 +263,90 @@ model Deliverable {
   phase        Phase?        @relation(fields: [phaseId], references: [id], onDelete: SetNull)
   card         Card?         @relation(fields: [cardId], references: [id], onDelete: SetNull)
   reviewCycles ReviewCycle[]
+  reviewRounds ReviewRound[]
   timeEntries  TimeEntry[]
   storyboard   Storyboard?
 
   @@index([projectId, position])
 }
 
+// One reviewer's assignment and decision within a ReviewRound. (Before review rounds
+// existed this row WAS the round; `round` is kept and mirrors ReviewRound.number so
+// existing queries and history keep working.)
 model ReviewCycle {
   id            String      @id @default(cuid())
   deliverableId String
+  roundId       String
   reviewerId    String
   requestedById String? // who set up the review (null for legacy rows)
   round         Int
   status        String      @default("requested") // requested / in_review / changes_requested / approved
   dueDate       DateTime?
-  feedback      String?
+  feedback      String? // the reviewer's summary that goes with their decision
+  decidedAt     DateTime? // when it last became approved / changes_requested
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
   deliverable   Deliverable @relation(fields: [deliverableId], references: [id], onDelete: Cascade)
+  reviewRound   ReviewRound @relation(fields: [roundId], references: [id], onDelete: Cascade)
   reviewer      User        @relation("ReviewReviewer", fields: [reviewerId], references: [id], onDelete: Cascade)
   requestedBy   User?       @relation("ReviewRequester", fields: [requestedById], references: [id], onDelete: SetNull)
 
+  @@unique([roundId, reviewerId])
   @@index([deliverableId])
   @@index([reviewerId])
   @@index([requestedById])
+}
+
+// One round of review on a deliverable: what was reviewed (frozen), who reviews it,
+// and how it ended. See docs/REVIEW-LINKS.md.
+model ReviewRound {
+  id             String          @id @default(cuid())
+  deliverableId  String
+  number         Int // 1, 2, 3… per deliverable
+  targetKind     String          @default("none") // storyboard / none (file / external_url come with later phases)
+  // Frozen copy of the linked storyboard at round start — see lib/review-snapshot.ts.
+  snapshot       Json?
+  dueDate        DateTime?
+  createdById    String?
+  closedAt       DateTime?
+  // null while open · "passed" (every reviewer approved, or an ADMIN/MANAGER override)
+  // · "changes_requested" (everyone decided, at least one asked for changes)
+  outcome        String?
+  overriddenById String?
+  overriddenAt   DateTime?
+  overrideReason String?
+  createdAt      DateTime        @default(now())
+  deliverable    Deliverable     @relation(fields: [deliverableId], references: [id], onDelete: Cascade)
+  createdBy      User?           @relation("ReviewRoundCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  overriddenBy   User?           @relation("ReviewRoundOverride", fields: [overriddenById], references: [id], onDelete: SetNull)
+  assignments    ReviewCycle[]
+  comments       ReviewComment[]
+
+  @@unique([deliverableId, number])
+}
+
+// A comment on a review round, anchored to what it's about (lib/review-anchor.ts).
+model ReviewComment {
+  id           String          @id @default(cuid())
+  roundId      String
+  parentId     String? // one level of threading
+  authorId     String?
+  body         String // TipTap document, stored as JSON string
+  anchor       Json
+  status       String          @default("open") // open / resolved / wont_fix
+  resolvedById String?
+  resolvedNote String?
+  resolvedAt   DateTime?
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+  round        ReviewRound     @relation(fields: [roundId], references: [id], onDelete: Cascade)
+  parent       ReviewComment?  @relation("ReviewCommentThread", fields: [parentId], references: [id], onDelete: Cascade)
+  replies      ReviewComment[] @relation("ReviewCommentThread")
+  author       User?           @relation("ReviewCommentAuthor", fields: [authorId], references: [id], onDelete: SetNull)
+  resolvedBy   User?           @relation("ReviewCommentResolver", fields: [resolvedById], references: [id], onDelete: SetNull)
+
+  @@index([roundId, status])
+  @@index([parentId])
 }
 
 model TimeEntry {

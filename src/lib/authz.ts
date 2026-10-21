@@ -232,6 +232,40 @@ export async function getReviewForUser(reviewId: string) {
   });
 }
 
+export async function getReviewRoundForUser(roundId: string) {
+  const ctx = await getAccessContext();
+  if (!ctx) return null;
+  return prisma.reviewRound.findFirst({
+    where: { id: roundId, deliverable: { project: { workspace: ownedByUser(ctx.userId), ...projectAccessOR(ctx) } } },
+    select: {
+      id: true,
+      number: true,
+      deliverableId: true,
+      deliverable: { select: { projectId: true, project: { select: { workspaceId: true } } } },
+    },
+  });
+}
+
+export async function getReviewCommentForUser(commentId: string) {
+  const ctx = await getAccessContext();
+  if (!ctx) return null;
+  return prisma.reviewComment.findFirst({
+    where: {
+      id: commentId,
+      round: { deliverable: { project: { workspace: ownedByUser(ctx.userId), ...projectAccessOR(ctx) } } },
+    },
+    select: { id: true, roundId: true, authorId: true, parentId: true },
+  });
+}
+
+/** True when the current user is an ADMIN or MANAGER of the workspace — the roles that
+ *  may override a review round's approval gate. Checked server-side, never trusted
+ *  from the UI. */
+export async function isElevatedInWorkspace(workspaceId: string): Promise<boolean> {
+  const ctx = await getAccessContext();
+  return !!ctx && ctx.elevatedWorkspaceIds.includes(workspaceId);
+}
+
 export async function getTimeEntryForUser(timeEntryId: string) {
   const ctx = await getAccessContext();
   if (!ctx) return null;

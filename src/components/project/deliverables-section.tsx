@@ -29,18 +29,9 @@ import {
   type DeliverableType,
   type DeliverableStatus,
 } from "@/lib/methodology";
-import { ReviewCycles } from "@/components/project/review-cycles";
+import { ReviewRounds, type RoundSummary } from "@/components/project/review-rounds";
 
 type Member = { id: string; name: string | null; email: string };
-type Review = {
-  id: string;
-  round: number;
-  reviewerId: string;
-  status: string;
-  dueDate: string | null;
-  feedback: string | null;
-  reviewer: Member;
-};
 type CardLink = { id: string; title: string; boardId: string; boardName: string };
 type StoryboardLink = { id: string; title: string };
 type Deliverable = {
@@ -51,7 +42,7 @@ type Deliverable = {
   phaseId: string | null;
   card: CardLink | null;
   storyboard: StoryboardLink | null;
-  reviews: Review[];
+  rounds: RoundSummary[];
 };
 type PhaseRef = { id: string; name: string };
 type LinkableCard = { id: string; title: string; boardName: string };
@@ -86,7 +77,7 @@ export function DeliverablesSection({
     const res = await createDeliverable(projectId, name, type);
     if ("deliverable" in res && res.deliverable) {
       const d = res.deliverable;
-      setItems((prev) => [...prev, { id: d.id, name: d.name, type: d.type, status: d.status, phaseId: d.phaseId, card: null, storyboard: null, reviews: [] }]);
+      setItems((prev) => [...prev, { id: d.id, name: d.name, type: d.type, status: d.status, phaseId: d.phaseId, card: null, storyboard: null, rounds: [] }]);
     }
   }
 
@@ -215,7 +206,7 @@ export function DeliverablesSection({
               )}
             </div>
 
-            <ReviewCycles deliverableId={d.id} members={members} initial={d.reviews} />
+            <ReviewRounds deliverableId={d.id} members={members} rounds={d.rounds} />
           </div>
         ))}
       </div>

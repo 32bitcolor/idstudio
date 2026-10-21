@@ -1,6 +1,7 @@
 import "server-only";
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { prisma } from "@/lib/db";
+import { Prisma } from "@/generated/prisma/client";
 import { getObjectBytes, putObjectBytes, buildObjectKey } from "@/lib/storage";
 import { workspaceStatusSeedData } from "@/lib/status";
 
@@ -10,7 +11,7 @@ import { workspaceStatusSeedData } from "@/lib/status";
 // can be restored into the same instance (a copy) or a fresh one (disaster
 // recovery). Media re-uploads to object storage under new keys.
 
-export const BACKUP_FORMAT = 4; // bump when the shape changes
+export const BACKUP_FORMAT = 5; // bump when the shape changes
 
 const WS = "__ws";
 const USER = "__user";
@@ -21,6 +22,7 @@ type Spec = {
   where: (wsId: string) => any; // export filter scoping the table to the workspace
   fks: Record<string, string>; // column -> map key (an entity key, WS, or USER)
   sort?: (rows: any[]) => any[]; // reorder before import, for self-referential fks
+  json?: string[]; // nullable Json columns — Prisma wants DbNull, not null, on create
 };
 
 // A card's column is null when it's a subtask — reach it via its parent's
@@ -64,7 +66,24 @@ const SPECS: Spec[] = [
   { key: "storyboard", model: "storyboard", where: (w) => ({ workspaceId: w }), fks: { workspaceId: WS, deliverableId: "deliverable" } },
   { key: "screen", model: "screen", where: (w) => ({ storyboard: { workspaceId: w } }), fks: { storyboardId: "storyboard" } },
   { key: "whiteboard", model: "whiteboard", where: (w) => ({ workspaceId: w }), fks: { workspaceId: WS, storyboardId: "storyboard", cardId: "card", createdById: USER } },
-  { key: "reviewCycle", model: "reviewCycle", where: (w) => ({ deliverable: { project: { workspaceId: w } } }), fks: { deliverableId: "deliverable", reviewerId: USER, requestedById: USER } },
+  // A round's snapshot and its comments' anchors refer to screens by their ORIGINAL
+  // ids. Both travel inside the backup and only point at each other (never at live
+  // Screen rows), so they stay consistent after a restore without remapping.
+  {
+    key: "reviewRound",
+    model: "reviewRound",
+    where: (w) => ({ deliverable: { project: { workspaceId: w } } }),
+    fks: { deliverableId: "deliverable", createdById: USER, overriddenById: USER },
+    json: ["snapshot"],
+  },
+  { key: "reviewCycle", model: "reviewCycle", where: (w) => ({ deliverable: { project: { workspaceId: w } } }), fks: { deliverableId: "deliverable", roundId: "reviewRound", reviewerId: USER, requestedById: USER } },
+  {
+    key: "reviewComment",
+    model: "reviewComment",
+    where: (w) => ({ round: { deliverable: { project: { workspaceId: w } } } }),
+    fks: { roundId: "reviewRound", parentId: "reviewComment", authorId: USER, resolvedById: USER },
+    sort: (rows) => [...rows].sort((a, b) => (a.parentId ? 1 : 0) - (b.parentId ? 1 : 0)),
+  },
   { key: "timeEntry", model: "timeEntry", where: (w) => ({ project: { workspaceId: w } }), fks: { projectId: "project", deliverableId: "deliverable", userId: USER } },
   { key: "comment", model: "comment", where: (w) => ({ card: cardInWorkspace(w) }), fks: { cardId: "card", authorId: USER } },
   // junctions
@@ -194,12 +213,49 @@ function upgradeLegacyLabels(exp: WorkspaceExport): void {
   });
 }
 
+/** Backups at format ≤4 predate review rounds: each ReviewCycle was its own round.
+ *  Synthesize one ReviewRound per (deliverable, round number) — the same rule as the
+ *  review_rounds migration — and point the cycles at them. Legacy rounds carry no
+ *  snapshot, since what was reviewed back then wasn't recorded. */
+function upgradeLegacyReviews(exp: WorkspaceExport): void {
+  if ((exp.format ?? 0) >= 5) return;
+  const cycles: any[] = exp.data.reviewCycle ?? [];
+  const withStoryboard = new Set(((exp.data.storyboard ?? []) as any[]).map((sb) => sb.deliverableId).filter(Boolean));
+  const rounds = new Map<string, any>();
+  for (const c of [...cycles].sort((a, b) => String(a.createdAt).localeCompare(String(b.createdAt)))) {
+    const key = `${c.deliverableId} ${c.round}`;
+    const decided = c.status === "approved" || c.status === "changes_requested";
+    if (!rounds.has(key)) {
+      rounds.set(key, {
+        id: `legacy-round-${c.id}`,
+        deliverableId: c.deliverableId,
+        number: c.round,
+        targetKind: withStoryboard.has(c.deliverableId) ? "storyboard" : "none",
+        snapshot: null,
+        dueDate: c.dueDate ?? null,
+        createdById: c.requestedById ?? null,
+        createdAt: c.createdAt,
+        outcome: c.status === "approved" ? "passed" : c.status === "changes_requested" ? "changes_requested" : null,
+        closedAt: decided ? c.updatedAt ?? null : null,
+        overriddenById: null,
+        overriddenAt: null,
+        overrideReason: null,
+      });
+    }
+    c.roundId = rounds.get(key).id;
+    c.decidedAt = decided ? c.updatedAt ?? null : null;
+  }
+  exp.data.reviewRound = [...rounds.values()];
+  exp.data.reviewComment = [];
+}
+
 export async function importWorkspace(
   exp: WorkspaceExport,
   media: Record<string, Uint8Array>,
   importerUserId: string,
 ): Promise<{ workspaceId: string; name: string }> {
   upgradeLegacyLabels(exp);
+  upgradeLegacyReviews(exp);
 
   const maps: Record<string, Record<string, string>> = {};
   const userMap: Record<string, string> = {}; // old userId -> new userId
@@ -255,6 +311,7 @@ export async function importWorkspace(
       delete d.id;
       delete d.updatedAt; // let @updatedAt default
       for (const col of Object.keys(spec.fks)) d[col] = remap(spec.fks[col], row[col] ?? null);
+      for (const col of spec.json ?? []) if (d[col] == null) d[col] = Prisma.DbNull;
       const created = await (prisma as any)[spec.model].create({ data: d });
       if (spec.key) maps[spec.key][row.id] = created.id;
     }

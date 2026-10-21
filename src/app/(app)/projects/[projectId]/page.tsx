@@ -42,16 +42,20 @@ export default async function ProjectPage({ params }: { params: Promise<{ projec
             select: { id: true, title: true, column: { select: { board: { select: { id: true, name: true } } } } },
           },
           storyboard: { select: { id: true, title: true } },
-          reviewCycles: {
-            orderBy: { round: "asc" },
+          reviewRounds: {
+            orderBy: { number: "desc" },
             select: {
               id: true,
-              round: true,
-              reviewerId: true,
-              status: true,
+              number: true,
+              outcome: true,
+              overriddenAt: true,
               dueDate: true,
-              feedback: true,
-              reviewer: { select: { id: true, name: true, email: true } },
+              targetKind: true,
+              assignments: {
+                orderBy: { createdAt: "asc" },
+                select: { status: true, reviewer: { select: { id: true, name: true, email: true } } },
+              },
+              _count: { select: { comments: { where: { parentId: null, status: "open" } } } },
             },
           },
         },
@@ -146,14 +150,15 @@ export default async function ProjectPage({ params }: { params: Promise<{ projec
       ? { id: d.card.id, title: d.card.title, boardId: d.card.column.board.id, boardName: d.card.column.board.name }
       : null,
     storyboard: d.storyboard ? { id: d.storyboard.id, title: d.storyboard.title } : null,
-    reviews: d.reviewCycles.map((rc) => ({
-      id: rc.id,
-      round: rc.round,
-      reviewerId: rc.reviewerId,
-      status: rc.status,
-      dueDate: rc.dueDate ? rc.dueDate.toISOString() : null,
-      feedback: rc.feedback,
-      reviewer: rc.reviewer,
+    rounds: d.reviewRounds.map((r) => ({
+      id: r.id,
+      number: r.number,
+      outcome: r.outcome,
+      overridden: !!r.overriddenAt,
+      dueDate: r.dueDate ? r.dueDate.toISOString() : null,
+      openComments: r._count.comments,
+      hasSnapshot: r.targetKind === "storyboard",
+      reviewers: r.assignments.map((a) => ({ id: a.reviewer.id, name: a.reviewer.name ?? a.reviewer.email, status: a.status })),
     })),
   }));
 

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import { Check, MessageSquare, RotateCcw } from "lucide-react";
+import { ArrowRight, Check, MessageSquare, RotateCcw } from "lucide-react";
 import { setReviewStatus, setReviewFeedback } from "@/app/actions/reviews";
 import { dueMeta, dueToneClass } from "@/lib/due";
 import { REVIEW_STATUS_LABEL, type ReviewStatus } from "@/lib/methodology";
@@ -14,6 +14,7 @@ import { StatusBadge } from "@/components/shared/status-badge";
 export type InboxReview = {
   id: string;
   round: number;
+  roundId: string;
   status: string;
   dueIso: string | null;
   feedback: string | null;
@@ -87,9 +88,14 @@ function ReviewItem({
   return (
     <Card className="gap-3 p-4">
       <div className="flex flex-wrap items-start gap-3">
+        <Button asChild size="sm" variant="outline" className="order-last shrink-0">
+          <Link href={`/reviews/${review.roundId}`}>
+            Open review <ArrowRight className="size-4" aria-hidden="true" />
+          </Link>
+        </Button>
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <Link href={review.link.href} className="truncate font-medium hover:underline">
+            <Link href={`/reviews/${review.roundId}`} className="truncate font-medium hover:underline">
               {review.deliverableName}
             </Link>
             <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">

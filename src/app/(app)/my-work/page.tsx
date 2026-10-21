@@ -42,7 +42,7 @@ export default async function MyWorkPage() {
       },
       orderBy: [{ dueDate: "asc" }, { createdAt: "asc" }],
       select: {
-        id: true, round: true, status: true, dueDate: true, feedback: true,
+        id: true, round: true, roundId: true, status: true, dueDate: true, feedback: true,
         requestedBy: { select: { name: true, email: true } },
         deliverable: { select: DELIVERABLE_SELECT },
       },
@@ -96,6 +96,7 @@ export default async function MyWorkPage() {
   const inbox: InboxReview[] = toReview.map((r) => ({
     id: r.id,
     round: r.round,
+    roundId: r.roundId,
     status: r.status,
     dueIso: r.dueDate ? r.dueDate.toISOString() : null,
     feedback: r.feedback,
