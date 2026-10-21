@@ -91,6 +91,14 @@ is the supported path for authoring-tool output, and it's what SMEs already rece
    Migration backfills one round per existing cycle, keeping its `round` number, so history is
    unchanged and nothing is renumbered. New rounds can then carry several reviewers.
 
+   **A round passes only when every reviewer approves** (decided 2026-10-20). "Approve with minor
+   changes" counts as approval. Any "request changes" keeps the round open. **ADMIN and MANAGER
+   users can override** and pass a round anyway, for example when an SME has gone silent. An
+   override requires a reason and records who did it and when; it never rewrites the reviewers'
+   own decisions. The round then shows *"Passed by override — 2 of 3 approved"*, and the email to
+   the requester says the same. MEMBERs don't see the control, and the server action checks the
+   role rather than trusting the UI.
+
 5. **Anchors are versioned JSON with a lenient parser** — the `lib/saved-views.ts` pattern. One
    `anchor Json` column plus a zod union in `lib/review-anchor.ts`:
    `storyboard_field` (screenId, field, optional text-quote with prefix/suffix), `file_point`
@@ -132,11 +140,17 @@ model ReviewRound {
   dueDate       DateTime?
   createdById   String?
   closedAt      DateTime? // set when every assignment is decided, or closed manually
+  // Outcome. "passed" needs every assignment approved — or an ADMIN/MANAGER override.
+  outcome        String?   // null while open / passed / changes_requested
+  overriddenById String?   // set only when an ADMIN/MANAGER passed the round without full approval
+  overriddenAt   DateTime?
+  overrideReason String?   // required with an override
   createdAt     DateTime  @default(now())
 
-  deliverable Deliverable     @relation(fields: [deliverableId], references: [id], onDelete: Cascade)
-  file        ReviewFile?     @relation(fields: [fileId], references: [id], onDelete: SetNull)
-  createdBy   User?           @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  deliverable  Deliverable     @relation(fields: [deliverableId], references: [id], onDelete: Cascade)
+  file         ReviewFile?     @relation(fields: [fileId], references: [id], onDelete: SetNull)
+  createdBy    User?           @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  overriddenBy User?           @relation("ReviewRoundOverride", fields: [overriddenById], references: [id], onDelete: SetNull)
   assignments ReviewCycle[]
   comments    ReviewComment[]
 
@@ -229,7 +243,10 @@ following `20260812221500_workspace_level_labels`:
 - `lib/storage.ts`: `putObjectBytes` takes a fully buffered `Uint8Array`
   (`await file.arrayBuffer()` in the upload route). Fine at 25 MB, **not fine for video**. Review
   files need a streamed multipart upload (`@aws-sdk/lib-storage` `Upload`) and a higher, separate
-  cap (proposed 500 MB). Generalise `buildObjectKey` with a scope the way the content-lifecycle
+  cap: **500 MB** (decided 2026-10-20; revisit once real walkthrough recordings show up).
+  Caddy/Cloudflare limits matter too: Cloudflare's free plan caps a request body at 100 MB, so
+  public uploads over that size need chunking (S3 multipart parts sent as separate requests through
+  the app) rather than one big POST. Generalise `buildObjectKey` with a scope the way the content-lifecycle
   doc proposes (`workspace/{id}/review/{fileId}/…`) — the two docs should share one change.
 - Video playback needs **HTTP Range** support on the download route, which streams through the
   app today. Without it, seeking to a timestamped comment won't work in Safari at all.
@@ -298,9 +315,11 @@ All phases are additive. Each one ships something usable, and it's fine to stop 
 
 1. ~~**Guest identity:** is link-only access acceptable?~~ **Resolved 2026-10-20: yes**, including
    compliance content. The email-code check stays in phase 5.
-2. **Multi-reviewer gating:** does a round need *all* reviewers to approve, or is it per-reviewer
-   (today's behaviour)? Proposal: per-reviewer, with the round showing "2 of 3 approved".
-3. **Video size cap:** 500 MB is a guess. What do the team's walkthrough recordings actually
-   weigh?
-4. **Who sees guest comments?** Proposal: anyone who can see the deliverable's project, which is
-   the existing group visibility. Nothing guest-specific.
+2. ~~**Multi-reviewer gating**~~ **Resolved 2026-10-20:** every reviewer must approve, and
+   ADMIN/MANAGER can override with a recorded reason. See locked decision 4.
+3. ~~**Video size cap**~~ **Resolved 2026-10-20:** start at 500 MB. Mind the 100 MB Cloudflare
+   body limit (see "Code that has to change").
+4. ~~**Who sees guest comments?**~~ **Resolved 2026-10-20:** anyone with access to the
+   deliverable's project, under the existing group visibility rules. Nothing guest-specific.
+
+No open questions remain. Phase 1 is ready to build.
