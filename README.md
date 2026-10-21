@@ -190,6 +190,15 @@ round.
 
 ![Guest review page](docs/screenshots/review-guest.png)
 
+**All feedback**: every comment from every round, grouped by screen, ready to resolve in bulk or
+send to the board. The comment marked SEC-28 is already a card.
+
+![All feedback for a deliverable](docs/screenshots/review-feedback.png)
+
+**Export**: a round as Word or PDF, with each comment and its replies under the field it's about.
+
+![Review round export](docs/screenshots/review-export.png)
+
 **My Work**: everything waiting on you, with decisions right there.
 
 ![My Work](docs/screenshots/my-work.png)

@@ -1,6 +1,5 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { Copy, Link2Off, Mail, MoreHorizontal, RefreshCw, UserPlus, UserRound } from "lucide-react";
 
@@ -111,7 +110,6 @@ export function ReviewerList({
 }
 
 function GuestMenu({ assignmentId, name, revoked }: { assignmentId: string; name: string; revoked: boolean }) {
-  const router = useRouter();
   const [note, setNote] = useState<string | null>(null);
   const [, startTransition] = useTransition();
 
@@ -176,7 +174,6 @@ function GuestMenu({ assignmentId, name, revoked }: { assignmentId: string; name
               startTransition(async () => {
                 const res = await resetGuestLink(assignmentId);
                 if ("url" in res && res.url) say("New link emailed");
-                router.refresh();
               })
             }
           >
@@ -190,7 +187,6 @@ function GuestMenu({ assignmentId, name, revoked }: { assignmentId: string; name
                 onSelect={() =>
                   startTransition(async () => {
                     await revokeGuestLink(assignmentId);
-                    router.refresh();
                   })
                 }
               >
@@ -206,7 +202,6 @@ function GuestMenu({ assignmentId, name, revoked }: { assignmentId: string; name
 
 /** Add a member or a guest to a round that's still open. */
 function AddReviewer({ roundId, members, taken }: { roundId: string; members: MentionMember[]; taken: Set<string> }) {
-  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -220,7 +215,6 @@ function AddReviewer({ roundId, members, taken }: { roundId: string; members: Me
         return;
       }
       setOpen(false);
-      router.refresh();
     });
   }
 

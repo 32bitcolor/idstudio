@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState, useTransition } from "react";
 import {
   Check,
@@ -469,7 +468,6 @@ function Toggle({ active, onClick, children }: { active: boolean; onClick: () =>
 
 /** The current user's own decision on this round. */
 function DecisionBar({ assignment }: { assignment: Assignment }) {
-  const router = useRouter();
   const [summary, setSummary] = useState(assignment.feedback ?? "");
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -479,12 +477,10 @@ function DecisionBar({ assignment }: { assignment: Assignment }) {
     setError(null);
     startTransition(async () => {
       if (summary.trim() !== (assignment.feedback ?? "").trim()) await setReviewFeedback(assignment.id, summary);
+      // The action revalidates this page, which re-renders it with the new decision.
+      // A router.refresh() on top raced that update and could leave it stale.
       const res = await setReviewStatus(assignment.id, status);
-      if (res?.error) {
-        setError(res.error);
-        return;
-      }
-      router.refresh();
+      if (res?.error) setError(res.error);
     });
   }
 
@@ -547,7 +543,6 @@ function GuestDecisionBar({
   assignment: Assignment | null;
   howTo: string;
 }) {
-  const router = useRouter();
   const [summary, setSummary] = useState(assignment?.feedback ?? "");
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -559,7 +554,6 @@ function GuestDecisionBar({
     startTransition(async () => {
       const res = await fn();
       if (res && res.error) setError(res.error);
-      else router.refresh();
     });
   }
 
@@ -617,7 +611,6 @@ function GuestDecisionBar({
 }
 
 function OverrideButton({ roundId, approved, total }: { roundId: string; approved: number; total: number }) {
-  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [reason, setReason] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -632,7 +625,6 @@ function OverrideButton({ roundId, approved, total }: { roundId: string; approve
         return;
       }
       setOpen(false);
-      router.refresh();
     });
   }
 

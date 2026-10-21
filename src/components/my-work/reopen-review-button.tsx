@@ -1,6 +1,5 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { Undo2 } from "lucide-react";
 import { setReviewStatus } from "@/app/actions/reviews";
@@ -9,7 +8,6 @@ import { Button } from "@/components/ui/button";
 // Reopen a resolved review — undo an accidental approval (or a change request),
 // sending it back to "in review" so it returns to the reviewer's queue.
 export function ReopenReviewButton({ reviewId, approved }: { reviewId: string; approved: boolean }) {
-  const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [err, setErr] = useState<string | null>(null);
 
@@ -17,10 +15,9 @@ export function ReopenReviewButton({ reviewId, approved }: { reviewId: string; a
     setErr(null);
     startTransition(async () => {
       const res = await setReviewStatus(reviewId, "in_review");
-      if (res?.error) { setErr(res.error); return; }
-      // Reopening puts the review back in the reviewer's queue — refresh the
-      // header's badge count to reflect that immediately.
-      router.refresh();
+      // Reopening puts the review back in the reviewer's queue; the action revalidates
+      // the root layout, so the header's badge count updates with its response.
+      if (res?.error) setErr(res.error);
     });
   }
 

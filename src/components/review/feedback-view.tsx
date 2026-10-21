@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
 import { Check, CircleSlash, MessageSquare, Quote, SquareKanban, Undo2 } from "lucide-react";
 
@@ -51,7 +50,6 @@ export function FeedbackView({
     { label: "Projects", href: "/projects" },
     { label: project.name, href: `/projects/${project.id}` },
   ]);
-  const router = useRouter();
   const [status, setStatus] = useState<StatusFilter>("open");
   const [reviewer, setReviewer] = useState("");
   const [round, setRound] = useState("");
@@ -101,7 +99,6 @@ export function FeedbackView({
       }
       setSelected(new Set());
       setNote("");
-      router.refresh();
     });
   }
 
@@ -220,10 +217,7 @@ export function FeedbackView({
           deliverableId={deliverable.id}
           commentIds={picked}
           onClose={() => setSending(false)}
-          onSent={() => {
-            setSelected(new Set());
-            router.refresh();
-          }}
+          onSent={() => setSelected(new Set())}
         />
       )}
 
