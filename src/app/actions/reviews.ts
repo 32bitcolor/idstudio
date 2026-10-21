@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { Prisma } from "@/generated/prisma/client";
@@ -386,7 +387,8 @@ export async function setReviewStatus(reviewId: string, status: string) {
   });
   await syncRoundOutcome(r.roundId);
   revalidateReview(r.deliverable.projectId, r.roundId);
-  if (decided) await notifyReviewDecided(reviewId, me.id);
+  // The email goes out after the response, so a slow mail queue never stalls the UI.
+  if (decided) after(() => notifyReviewDecided(reviewId, me.id));
 }
 
 export async function setReviewFeedback(reviewId: string, feedback: string) {

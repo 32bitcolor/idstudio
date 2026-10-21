@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { REVIEW_DECISIONS } from "@/lib/methodology";
@@ -68,7 +69,8 @@ export async function guestDecide(guestId: string, decision: string, summary: st
   await syncRoundOutcome(s.roundId);
   refresh(guestId, s.roundId);
   revalidatePath("/my-work", "layout");
-  await notifyReviewDecided(s.assignmentId, null);
+  // The email goes out after the response, so a slow mail queue never stalls the UI.
+  after(() => notifyReviewDecided(s.assignmentId, null));
 }
 
 /** Take a decision back while the round is still open, to keep commenting. */
