@@ -21,6 +21,7 @@ import { buildSnapshot } from "@/lib/review-snapshot";
 import { notifyReviewDecided, syncRoundOutcome } from "@/lib/review-rounds";
 import { createRoundComment, toCommentDTO, COMMENT_SELECT } from "@/lib/review-comments";
 import { guestExpiry, guestLinkPath, newGuestNonce } from "@/lib/review-guest-token";
+import { deleteObject } from "@/lib/storage";
 import { extractMentionIds, extractText } from "@/lib/mentions";
 
 function fmtDate(d: Date | null): string | null {
@@ -145,10 +146,20 @@ async function sendMemberInvite(
 
 // ── Rounds ────────────────────────────────────────────────────────────────────
 
+/** What a round reviews: the linked storyboard (frozen into a snapshot), or an uploaded
+ *  PDF/image. Without a target, the storyboard if there is one. */
+export type RoundTarget = { kind: "storyboard" } | { kind: "file"; fileId: string };
+
 /** Start the next review round on a deliverable: freeze what's being reviewed (the
- *  linked storyboard, if any), assign members and/or guests, and email each of them.
- *  Guests get a fresh personal link per round; earlier rounds' links go read-only. */
-export async function startReviewRound(deliverableId: string, reviewers: ReviewersInput, dueIso: string | null) {
+ *  linked storyboard, or an uploaded file), assign members and/or guests, and email
+ *  each of them. Guests get a fresh personal link per round; earlier rounds' links go
+ *  read-only. */
+export async function startReviewRound(
+  deliverableId: string,
+  reviewers: ReviewersInput,
+  dueIso: string | null,
+  target?: RoundTarget,
+) {
   const me = await getCurrentUser();
   if (!me) return { error: "Not signed in." };
   const d = await getDeliverableForUser(deliverableId);
@@ -177,7 +188,15 @@ export async function startReviewRound(deliverableId: string, reviewers: Reviewe
       },
     },
   });
-  const snapshot = storyboard ? buildSnapshot(storyboard) : null;
+  let fileId: string | null = null;
+  if (target?.kind === "file") {
+    const file = await prisma.reviewFile.findFirst({ where: { id: target.fileId, deliverableId }, select: { id: true } });
+    if (!file) return { error: "That file isn't attached to this deliverable — upload it again." };
+    fileId = file.id;
+  } else if (target?.kind === "storyboard" && !storyboard) {
+    return { error: "This deliverable has no storyboard to review." };
+  }
+  const snapshot = !fileId && storyboard ? buildSnapshot(storyboard) : null;
   const expiresAt = guestExpiry(dueDate);
 
   // Next number + insert atomically under Serializable isolation, so two concurrent
@@ -196,8 +215,9 @@ export async function startReviewRound(deliverableId: string, reviewers: Reviewe
           data: {
             deliverableId,
             number,
-            targetKind: snapshot ? "storyboard" : "none",
+            targetKind: fileId ? "file" : snapshot ? "storyboard" : "none",
             snapshot: snapshot ?? Prisma.JsonNull,
+            fileId,
             dueDate,
             createdById: me.id,
             assignments: {
@@ -321,10 +341,30 @@ export async function deleteReviewRound(roundId: string) {
   const r = await getReviewRoundForUser(roundId);
   if (!r) return { error: "Review round not found." };
   const guests = await prisma.reviewCycle.findMany({ where: { roundId, guestId: { not: null } }, select: { guestId: true } });
-  await prisma.reviewRound.delete({ where: { id: roundId } });
+  const round = await prisma.reviewRound.delete({ where: { id: roundId }, select: { fileId: true } });
   // Their assignments and comments are gone with the round; the credentials go too.
   await prisma.reviewGuest.deleteMany({ where: { id: { in: guests.map((g) => g.guestId!) } } });
+  if (round.fileId) await deleteFileIfUnused(round.fileId);
   revalidateReview(r.deliverable.projectId);
+}
+
+/** A file no round reviews any more (round deleted, or uploaded then abandoned). */
+async function deleteFileIfUnused(fileId: string) {
+  const file = await prisma.reviewFile.findUnique({
+    where: { id: fileId },
+    select: { storageKey: true, _count: { select: { rounds: true } } },
+  });
+  if (!file || file._count.rounds > 0) return;
+  await prisma.reviewFile.delete({ where: { id: fileId } });
+  await deleteObject(file.storageKey);
+}
+
+/** Throw away an uploaded file that never made it into a round (the designer picked
+ *  another file, or cancelled). Files a round already reviews are kept. */
+export async function discardReviewFile(fileId: string) {
+  const file = await prisma.reviewFile.findUnique({ where: { id: fileId }, select: { deliverableId: true } });
+  if (!file || !(await getDeliverableForUser(file.deliverableId))) return { error: "File not found." };
+  await deleteFileIfUnused(fileId);
 }
 
 // ── One reviewer's assignment ────────────────────────────────────────────────

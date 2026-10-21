@@ -147,6 +147,50 @@ function simplePdf(lines: string[]): Buffer {
   return Buffer.from(out, "latin1");
 }
 
+/** A landscape, slide-per-page PDF that looks like a Storyline "Publish → Print"
+ *  export: a navy title bar, body copy, and a button. For file-review rounds. */
+function slidesPdf(slides: { title: string; body: string[]; button?: string }[]): Buffer {
+  const esc = (t: string) => t.replace(/[\\()]/g, (c) => "\\" + c);
+  const objs: string[] = [
+    "<< /Type /Catalog /Pages 2 0 R >>",
+    "", // pages, filled in below
+    "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>",
+    "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>",
+  ];
+  const kids: number[] = [];
+  slides.forEach((sl, i) => {
+    const ops = [
+      "0.97 0.97 0.98 rg 0 0 792 612 re f",
+      "0.078 0.125 0.227 rg 0 540 792 72 re f",
+      `BT /F2 26 Tf 1 1 1 rg 40 566 Td (${esc(sl.title)}) Tj ET`,
+      `BT /F1 9 Tf 0.6 0.65 0.75 rg 700 566 Td (${i + 1} / ${slides.length}) Tj ET`,
+      "BT /F1 16 Tf 0.12 0.14 0.2 rg 56 480 Td " + sl.body.map((l, k) => (k ? "0 -30 Td " : "") + `(${esc(l)}) Tj`).join(" ") + " ET",
+      ...(sl.button
+        ? [
+            "0.0 0.47 0.45 rg 560 64 180 44 re f",
+            `BT /F2 14 Tf 1 1 1 rg 584 80 Td (${esc(sl.button)}) Tj ET`,
+          ]
+        : []),
+    ].join("\n");
+    objs.push(`<< /Length ${ops.length} >>\nstream\n${ops}\nendstream`);
+    const content = objs.length;
+    objs.push(`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 792 612] /Contents ${content} 0 R /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> >>`);
+    kids.push(objs.length);
+  });
+  objs[1] = `<< /Type /Pages /Kids [${kids.map((k) => `${k} 0 R`).join(" ")}] /Count ${kids.length} >>`;
+  let out = "%PDF-1.4\n";
+  const offsets: number[] = [];
+  objs.forEach((o, n) => {
+    offsets.push(out.length);
+    out += `${n + 1} 0 obj\n${o}\nendobj\n`;
+  });
+  const xref = out.length;
+  out += `xref\n0 ${objs.length + 1}\n0000000000 65535 f \n`;
+  out += offsets.map((o) => String(o).padStart(10, "0") + " 00000 n \n").join("");
+  out += `trailer\n<< /Size ${objs.length + 1} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF\n`;
+  return Buffer.from(out, "latin1");
+}
+
 const FILES: Record<string, { name: string; mime: string; body: () => Buffer }> = {
   mockHome: { name: "phish-sim-landing-mockup.png", mime: "image/png", body: () => mockupPng(960, 600, [37, 99, 235]) },
   mockQuiz: { name: "knowledge-check-layout-v2.png", mime: "image/png", body: () => mockupPng(960, 600, [13, 148, 136]) },
@@ -527,8 +571,25 @@ async function review(
   feedback: string | null,
   age: number,
   stage?: (snap: StoryboardSnapshot) => StoryboardSnapshot,
+  file?: { name: string; mime: string; bytes: Buffer } | { reuse: string },
 ) {
-  const sb = await prisma.storyboard.findUnique({
+  // A file round reviews an uploaded PDF/image (phase 3) instead of the storyboard.
+  let fileId: string | null = null;
+  if (file && "reuse" in file) fileId = file.reuse;
+  else if (file && s3) {
+    const d = await prisma.deliverable.findUniqueOrThrow({ where: { id: deliverableId }, select: { project: { select: { workspaceId: true } } } });
+    const wsId = d.project.workspaceId;
+    const key = `workspace/${wsId}/review/${deliverableId}/${randomUUID()}-${file.name}`;
+    await s3.send(new PutObjectCommand({ Bucket: BUCKET, Key: key, Body: file.bytes, ContentType: file.mime }));
+    const rf = await prisma.reviewFile.create({
+      data: {
+        workspaceId: wsId, deliverableId, fileName: file.name, mimeType: file.mime, sizeBytes: file.bytes.length,
+        storageKey: key, uploadedById: users[requester].id, createdAt: day(-age, 9),
+      },
+    });
+    fileId = rf.id;
+  }
+  const sb = fileId ? null : await prisma.storyboard.findUnique({
     where: { deliverableId },
     select: {
       id: true, title: true,
@@ -544,8 +605,8 @@ async function review(
   const decidedAt = decided ? day(-Math.max(age - 3, 0), 11) : null;
   return prisma.reviewRound.create({
     data: {
-      deliverableId, number: round, targetKind: snapshot ? "storyboard" : "none",
-      snapshot: snapshot ?? Prisma.JsonNull, dueDate: due === null ? null : day(due),
+      deliverableId, number: round, targetKind: fileId ? "file" : snapshot ? "storyboard" : "none",
+      snapshot: snapshot ?? Prisma.JsonNull, fileId, dueDate: due === null ? null : day(due),
       createdById: users[requester].id, createdAt: day(-age, 10),
       outcome: status === "approved" || status === "approved_with_changes" ? "passed" : status === "changes_requested" ? "changes_requested" : null,
       closedAt: decidedAt,
@@ -557,7 +618,7 @@ async function review(
         },
       },
     },
-    select: { id: true, snapshot: true },
+    select: { id: true, snapshot: true, fileId: true },
   });
 }
 
@@ -604,6 +665,8 @@ type SeedThread = {
   ago: number;
   body: string;
   anchor?: { screen: string; field: ScreenField; quote?: string };
+  /** On a file round: a pin (x, y) or an area (+ w, h), as fractions of the page. */
+  pin?: { page: number; x: number; y: number; w?: number; h?: number };
   status?: "open" | "resolved" | "wont_fix";
   resolvedBy?: string;
   note?: string;
@@ -615,7 +678,10 @@ async function reviewComments(round: { id: string; snapshot: unknown }, threads:
   const snap = round.snapshot as StoryboardSnapshot | null;
   for (const t of threads) {
     let anchor: object = { kind: "general" };
-    if (t.anchor) {
+    if (t.pin) {
+      const { page, x, y, w, h } = t.pin;
+      anchor = w != null && h != null ? { kind: "file_region", page, x, y, w, h } : { kind: "file_point", page, x, y };
+    } else if (t.anchor) {
       const screen = snap?.screens.find((x) => x.title === t.anchor!.screen);
       if (!screen) throw new Error(`no screen "${t.anchor.screen}" in round snapshot`);
       anchor = { kind: "storyboard_field", screenId: screen.id, field: t.anchor.field, ...(t.anchor.quote ? { quote: { exact: t.anchor.quote } } : {}) };
@@ -1040,6 +1106,45 @@ async function main() {
     },
   ]);
   await review(secDel.aid, "elena", "priya", 1, "approved", -20, "Approved. Clear and accurate. Love that it fits on one card.", 24);
+
+  // The Storyline simulation is reviewed as a published PDF (phase 3 file review):
+  // round 1 found problems, round 2 is a new export, out with Marcus and the admin.
+  const SIM_SLIDES = (v: 1 | 2) => [
+    { title: "Inbox triage: a Tuesday morning", body: ["Twelve messages arrived overnight.", "Some are real. Some are not.", "Triage them the way you would at work."], button: "Start" },
+    { title: "Message 1 of 12", body: ["From: IT Service Desk <it-support@c0ntoso-help.com>", "Subject: Password expires in 2 hours", v === 1 ? "Click here to keep your password." : "Keep your password: sign in at the link below."], button: "Report phish" },
+    { title: "Message 4 of 12", body: ["From: Dana (Legal) <dana@contoso.com>", "Subject: Updated NDA, please countersign", "Attachment: NDA_v3.pdf"], button: "Looks fine" },
+    { title: v === 1 ? "You got 9 of 12" : "Nice work: 9 of 12", body: ["You reported 4 of 5 phishing messages.", v === 1 ? "You missed: the fake invoice." : "The one you missed: the fake invoice. Here's the tell:", v === 1 ? "" : "the sender's domain is one letter off."], button: "Review answers" },
+  ];
+  const simR1 = await review(secDel.sim, "marcus", "priya", 1, "changes_requested", -9,
+    "The lookalike domain is too obvious on message 1, and the results screen should teach, not just score.", 14, undefined,
+    { name: "inbox-triage-sim-v1.pdf", mime: "application/pdf", bytes: slidesPdf(SIM_SLIDES(1)) });
+  await reviewComments(simR1, [
+    {
+      by: "marcus", ago: 12, pin: { page: 2, x: 0.07, y: 0.17, w: 0.62, h: 0.06 },
+      body: "'c0ntoso' with a zero is too easy. Real ones swap a letter, e.g. contoso-hep.com.",
+      status: "resolved", resolvedBy: "priya", note: "Swapped to contoso-helpdesk.co in v2.",
+    },
+    {
+      by: "marcus", ago: 12, pin: { page: 4, x: 0.3, y: 0.32 },
+      body: "Don't just score them. Show the tell for whatever they missed.",
+      status: "resolved", resolvedBy: "priya", note: "Results now explain the missed message.",
+    },
+  ]);
+  const simFile2 = { name: "inbox-triage-sim-v2.pdf", mime: "application/pdf", bytes: slidesPdf(SIM_SLIDES(2)) };
+  const simR2 = await review(secDel.sim, "marcus", "priya", 2, "in_review", 3, null, 3, undefined, simFile2);
+  await prisma.reviewCycle.create({
+    data: {
+      deliverableId: secDel.sim, roundId: simR2.id, reviewerId: users.admin.id, requestedById: users.priya.id,
+      round: 2, status: "requested", dueDate: day(3), createdAt: day(-3, 10),
+    },
+  });
+  await reviewComments(simR2, [
+    {
+      by: "marcus", ago: 1, pin: { page: 4, x: 0.07, y: 0.12, w: 0.55, h: 0.2 },
+      body: "Much better. Can the 'tell' line be bold? It's the most important sentence in the module.",
+    },
+    { by: "marcus", ago: 1, pin: { page: 1, x: 0, y: 0, w: 1, h: 1 }, body: "Title slide works. No notes." },
+  ]);
   await review(secDel.quiz, "admin", "priya", 1, "requested", 6, null, 1);
   await time(sec.project.id, [
     ["priya", 240, 70, "Analytics + ticket audit"], ["priya", 90, 66, "SME interview w/ Marcus"], ["priya", 180, 58, "Objectives drafting"],

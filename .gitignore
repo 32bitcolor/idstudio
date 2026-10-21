@@ -45,3 +45,4 @@ next-env.d.ts
 
 # self-update agent control dir (runtime state shared with the host updater)
 /update-control
+/public/vendor/

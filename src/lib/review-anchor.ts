@@ -30,10 +30,25 @@ const StoryboardFieldAnchor = z.object({
   quote: Quote.optional(),
 });
 
-export const ReviewAnchor = z.discriminatedUnion("kind", [GeneralAnchor, StoryboardFieldAnchor]);
+// Files (phase 3): a point or a rectangle on a PDF page, or on an image (page 1).
+// Coordinates are 0–1 fractions of the page, so they hold at any zoom or screen size.
+const Frac = z.number().min(0).max(1);
+const Page = z.number().int().min(1).max(10000);
+const FilePointAnchor = z.object({ kind: z.literal("file_point"), page: Page, x: Frac, y: Frac });
+const FileRegionAnchor = z
+  .object({ kind: z.literal("file_region"), page: Page, x: Frac, y: Frac, w: Frac, h: Frac })
+  .refine((a) => a.x + a.w <= 1.0001 && a.y + a.h <= 1.0001 && a.w > 0 && a.h > 0, "Region is off the page.");
+
+export const ReviewAnchor = z.union([GeneralAnchor, StoryboardFieldAnchor, FilePointAnchor, FileRegionAnchor]);
 export type ReviewAnchor = z.infer<typeof ReviewAnchor>;
 
 export const GENERAL_ANCHOR: ReviewAnchor = { kind: "general" };
+
+export type FileAnchor = Extract<ReviewAnchor, { kind: "file_point" | "file_region" }>;
+
+export function isFileAnchor(a: ReviewAnchor): a is FileAnchor {
+  return a.kind === "file_point" || a.kind === "file_region";
+}
 
 /** Read a stored anchor; anything unusable becomes a general comment. */
 export function parseAnchor(raw: unknown): ReviewAnchor {

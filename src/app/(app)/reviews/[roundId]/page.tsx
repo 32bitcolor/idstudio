@@ -22,6 +22,7 @@ export default async function ReviewRoundPage({ params }: { params: Promise<{ ro
       number: true,
       targetKind: true,
       snapshot: true,
+      file: { select: { id: true, fileName: true, mimeType: true } },
       dueDate: true,
       outcome: true,
       closedAt: true,
@@ -57,7 +58,7 @@ export default async function ReviewRoundPage({ params }: { params: Promise<{ ro
     prisma.reviewRound.findFirst({
       where: { deliverableId: access.deliverableId, number: { lt: round.number } },
       orderBy: { number: "desc" },
-      select: { number: true, snapshot: true },
+      select: { number: true, snapshot: true, fileId: true, file: { select: { fileName: true } } },
     }),
     prisma.user.findMany({
       where: { memberships: { some: { workspaceId: round.deliverable.project.workspaceId } } },
@@ -88,6 +89,11 @@ export default async function ReviewRoundPage({ params }: { params: Promise<{ ro
             }
           : null,
         requestedBy: round.createdBy ? round.createdBy.name ?? round.createdBy.email : null,
+        file: round.file ? { url: `/api/review-files/${round.file.id}`, fileName: round.file.fileName, mimeType: round.file.mimeType } : null,
+        previousFile:
+          round.file && previous?.file
+            ? { number: previous.number, fileName: previous.file.fileName, same: previous.fileId === round.file.id }
+            : null,
         hasStoryboardNow: !!round.deliverable.storyboard,
       }}
       deliverable={{ id: round.deliverable.id, name: round.deliverable.name }}

@@ -25,6 +25,7 @@ import {
   setReviewStatus,
 } from "@/app/actions/reviews";
 import type { ReviewCommentDTO } from "@/lib/review-comments";
+import { FileReview, pageDomId, pinDomId, type FilePin, type ReviewFileView } from "@/components/review/file-review";
 import { guestAddComment, guestDecide, guestDeleteComment, guestReopen } from "@/app/actions/review-guest";
 import { ReviewerList, type Assignment } from "@/components/review/reviewer-list";
 import { useSetPageTitle } from "@/components/app-shell/breadcrumbs";
@@ -46,6 +47,7 @@ import {
 } from "@/components/ui/dialog";
 import {
   GENERAL_ANCHOR,
+  isFileAnchor,
   SCREEN_FIELDS,
   SCREEN_FIELD_LABEL,
   parseAnchor,
@@ -79,6 +81,10 @@ type RoundInfo = {
   overridden: { by: string; at: string; reason: string } | null;
   requestedBy: string | null;
   hasStoryboardNow: boolean;
+  /** Set when the round reviews an uploaded PDF or image. */
+  file: ReviewFileView | null;
+  /** The previous round's file, to say whether this is a new version. */
+  previousFile: { number: number; fileName: string; same: boolean } | null;
 };
 
 const SCREEN_TYPE_LABEL: Record<string, string> = {
@@ -170,7 +176,55 @@ export function ReviewRoundView({
     return i === undefined ? "A removed screen" : `${i + 1}. ${snapshot!.screens[i].title}`;
   };
 
-  function jumpTo(a: ReviewAnchor) {
+  // File rounds: number each pinned thread in the order it was left.
+  const isPdf = round.file?.mimeType === "application/pdf";
+  const pins = useMemo<FilePin[]>(() => {
+    const out: FilePin[] = [];
+    for (const t of threads) {
+      const a = parseAnchor(t.anchor);
+      if (!isFileAnchor(a)) continue;
+      out.push({
+        threadId: t.id,
+        number: out.length + 1,
+        anchor: a,
+        open: t.status === "open",
+        label: `Comment ${out.length + 1}${t.author ? ` by ${t.author.name}` : ""}`,
+      });
+    }
+    return out;
+  }, [threads]);
+  const pinNumber = useMemo(() => new Map(pins.map((p) => [p.threadId, p.number])), [pins]);
+
+  /** The jump-to label on a thread, or null for a comment on the whole round. */
+  function labelFor(threadId: string, a: ReviewAnchor): string | null {
+    if (a.kind === "storyboard_field") return `${screenTitle(a.screenId)} · ${SCREEN_FIELD_LABEL[a.field]}`;
+    if (!isFileAnchor(a)) return null;
+    const where = isPdf ? `Page ${a.page}` : "Image";
+    const whole = a.kind === "file_region" && a.w === 1 && a.h === 1;
+    return whole ? where : `${where} · #${pinNumber.get(threadId) ?? "?"}`;
+  }
+
+  const [highlight, setHighlight] = useState<string | null>(null);
+  const [tab, setTab] = useState<Tab>("open");
+  function selectThread(threadId: string) {
+    setHighlight(threadId);
+    // A pin on a resolved thread: show it, even if the panel was on "Open".
+    if (tab === "open" && threads.some((t) => t.id === threadId && t.status !== "open")) setTab("all");
+    requestAnimationFrame(() => document.getElementById(`thread-${threadId}`)?.scrollIntoView({ behavior: "smooth", block: "nearest" }));
+    setTimeout(() => setHighlight((h) => (h === threadId ? null : h)), 1800);
+  }
+
+  function jumpTo(a: ReviewAnchor, threadId?: string) {
+    if (isFileAnchor(a)) {
+      const whole = a.kind === "file_region" && a.w === 1 && a.h === 1;
+      const id = whole || !threadId ? pageDomId(a.page) : pinDomId(threadId);
+      requestAnimationFrame(() => {
+        document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "center" });
+        setFlash(id);
+        setTimeout(() => setFlash((f) => (f === id ? null : f)), 1600);
+      });
+      return;
+    }
     if (a.kind !== "storyboard_field") return;
     if (onlyChanged && diff?.screens[a.screenId]?.kind === "unchanged") setOnlyChanged(false);
     const id = fieldDomId(a.screenId, a.field);
@@ -244,8 +298,38 @@ export function ReviewRoundView({
 
       <div className="flex min-w-0 flex-wrap items-start gap-6">
         {/* ── What's under review ───────────────────────────── */}
-        <section aria-label="Storyboard under review" className="flex min-w-0 flex-[999_1_34rem] flex-col gap-3">
-          {snapshot ? (
+        <section
+          aria-label={round.file ? "File under review" : "Storyboard under review"}
+          className="flex min-w-0 flex-[999_1_34rem] flex-col gap-3"
+        >
+          {round.previousFile && round.file && (
+            <p className="rounded-md bg-info/10 px-3 py-2 text-sm">
+              {round.previousFile.same
+                ? `Same file as round ${round.previousFile.number}.`
+                : `New version — round ${round.previousFile.number} reviewed “${round.previousFile.fileName}”.`}
+            </p>
+          )}
+          {round.file ? (
+            <FileReview
+              file={round.file}
+              pins={pins}
+              canComment={canComment}
+              composingAnchor={composing && isFileAnchor(composing.anchor) ? composing.anchor : null}
+              flash={flash}
+              onCompose={(anchor) => setComposing({ anchor })}
+              onSelectPin={selectThread}
+              composer={
+                composing && (
+                  <Composer
+                    anchor={composing.anchor}
+                    members={mentionMembers}
+                    onCancel={() => setComposing(null)}
+                    onPost={(anchor, body) => post(anchor, body)}
+                  />
+                )
+              }
+            />
+          ) : snapshot ? (
             <>
               <div className="flex flex-wrap items-center gap-2">
                 <h2 className="text-sm font-semibold">
@@ -307,7 +391,10 @@ export function ReviewRoundView({
           viewer={viewer}
           canComment={canComment}
           members={mentionMembers}
-          screenTitle={screenTitle}
+          labelFor={labelFor}
+          highlight={highlight}
+          tab={tab}
+          setTab={setTab}
           onJump={jumpTo}
           onPost={post}
           onUpdate={(c) => setComments((prev) => prev.map((x) => (x.id === c.id ? c : x)))}
@@ -672,11 +759,19 @@ function Composer({
 }) {
   const [error, setError] = useState<string | null>(null);
   const quote = anchor.kind === "storyboard_field" ? anchor.quote?.exact : undefined;
+  const spot = isFileAnchor(anchor)
+    ? anchor.kind === "file_point"
+      ? "Pinned comment"
+      : anchor.w === 1 && anchor.h === 1
+        ? "Comment on the whole page"
+        : "Comment on the marked area"
+    : null;
   return (
     <div className="mt-2 flex flex-col gap-1.5">
       {quote && (
         <blockquote className="border-l-2 border-accent pl-2 text-xs text-muted-foreground">“{quote}”</blockquote>
       )}
+      {spot && <p className="text-xs font-medium text-muted-foreground">{spot}</p>}
       <CommentComposer
         mentionMembers={members}
         buttonLabel={label}
@@ -703,7 +798,10 @@ function CommentsPanel({
   viewer,
   canComment,
   members,
-  screenTitle,
+  labelFor,
+  highlight,
+  tab,
+  setTab,
   onJump,
   onPost,
   onUpdate,
@@ -715,13 +813,16 @@ function CommentsPanel({
   viewer: Viewer;
   canComment: boolean;
   members: MentionMember[] | undefined;
-  screenTitle: (id: string) => string;
-  onJump: (a: ReviewAnchor) => void;
+  labelFor: (threadId: string, a: ReviewAnchor) => string | null;
+  highlight: string | null;
+  tab: Tab;
+  setTab: (t: Tab) => void;
+  onJump: (a: ReviewAnchor, threadId?: string) => void;
   onPost: (anchor: ReviewAnchor, body: string, parentId?: string) => Promise<string | null>;
   onUpdate: (c: ReviewCommentDTO) => void;
   onDelete: (id: string) => void;
 }) {
-  const [tab, setTab] = useState<Tab>("open");
+
   const open = threads.filter((t) => t.status === "open");
   const closed = threads.filter((t) => t.status !== "open");
   const shown = tab === "open" ? open : tab === "closed" ? closed : threads;
@@ -782,7 +883,8 @@ function CommentsPanel({
             viewer={viewer}
             canComment={canComment}
             members={members}
-            screenTitle={screenTitle}
+            label={labelFor(t.id, parseAnchor(t.anchor))}
+            highlighted={highlight === t.id}
             onJump={onJump}
             onReply={(body) => onPost(parseAnchor(t.anchor), body, t.id)}
             onUpdate={onUpdate}
@@ -803,7 +905,8 @@ function Thread({
   viewer,
   canComment,
   members,
-  screenTitle,
+  label,
+  highlighted,
   onJump,
   onReply,
   onUpdate,
@@ -815,8 +918,9 @@ function Thread({
   viewer: Viewer;
   canComment: boolean;
   members: MentionMember[] | undefined;
-  screenTitle: (id: string) => string;
-  onJump: (a: ReviewAnchor) => void;
+  label: string | null;
+  highlighted: boolean;
+  onJump: (a: ReviewAnchor, threadId?: string) => void;
   onReply: (body: string) => Promise<string | null>;
   onUpdate: (c: ReviewCommentDTO) => void;
   onDelete: (id: string) => void;
@@ -853,15 +957,22 @@ function Thread({
     member ? c.author?.id === me.id || viewer.canModerate : canComment && c.author?.id === me.id;
 
   return (
-    <li className={cn("rounded-lg border bg-surface p-3", thread.status === "open" ? "border-border" : "border-border opacity-80")}>
+    <li
+      id={`thread-${thread.id}`}
+      className={cn(
+        "scroll-mt-20 rounded-lg border bg-surface p-3 transition-shadow",
+        thread.status === "open" ? "border-border" : "border-border opacity-80",
+        highlighted && "border-accent shadow-[0_0_0_3px_color-mix(in_srgb,var(--color-accent)_25%,transparent)]",
+      )}
+    >
       <div className="mb-1.5 flex flex-wrap items-center gap-2 text-xs">
-        {anchor.kind === "storyboard_field" ? (
+        {label ? (
           <button
             type="button"
-            onClick={() => onJump(anchor)}
+            onClick={() => onJump(anchor, thread.id)}
             className="font-medium text-accent underline-offset-2 outline-none hover:underline focus-visible:ring-[3px] focus-visible:ring-ring/50"
           >
-            {screenTitle(anchor.screenId)} · {SCREEN_FIELD_LABEL[anchor.field]}
+            {label}
           </button>
         ) : (
           <span className="font-medium text-muted-foreground">Whole round</span>

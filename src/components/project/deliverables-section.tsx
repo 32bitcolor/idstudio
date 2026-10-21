@@ -206,7 +206,7 @@ export function DeliverablesSection({
               )}
             </div>
 
-            <ReviewRounds deliverableId={d.id} members={members} rounds={d.rounds} />
+            <ReviewRounds deliverableId={d.id} members={members} rounds={d.rounds} storyboard={d.storyboard} />
           </div>
         ))}
       </div>

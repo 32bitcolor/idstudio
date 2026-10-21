@@ -32,6 +32,7 @@ model User {
   reviewCycles            ReviewCycle[]     @relation("ReviewReviewer")
   requestedReviews        ReviewCycle[]     @relation("ReviewRequester")
   startedReviewRounds     ReviewRound[]     @relation("ReviewRoundCreator")
+  uploadedReviewFiles     ReviewFile[]
   overriddenReviewRounds  ReviewRound[]     @relation("ReviewRoundOverride")
   reviewComments          ReviewComment[]   @relation("ReviewCommentAuthor")
   resolvedReviewComments  ReviewComment[]   @relation("ReviewCommentResolver")
@@ -62,6 +63,7 @@ model Workspace {
   sprints              Sprint[]
   labels               Label[]
   savedViews           SavedView[]
+  reviewFiles          ReviewFile[]
 }
 
 // Workspace/team-level, time-boxed grouping of work — independent of a project's
@@ -264,6 +266,7 @@ model Deliverable {
   card         Card?         @relation(fields: [cardId], references: [id], onDelete: SetNull)
   reviewCycles ReviewCycle[]
   reviewRounds ReviewRound[]
+  reviewFiles  ReviewFile[]
   timeEntries  TimeEntry[]
   storyboard   Storyboard?
 
@@ -306,9 +309,10 @@ model ReviewRound {
   id             String          @id @default(cuid())
   deliverableId  String
   number         Int // 1, 2, 3… per deliverable
-  targetKind     String          @default("none") // storyboard / none (file / external_url come with later phases)
+  targetKind     String          @default("none") // storyboard / file / none (external_url comes in phase 5)
   // Frozen copy of the linked storyboard at round start — see lib/review-snapshot.ts.
   snapshot       Json?
+  fileId         String? // targetKind = file: the PDF/image under review (immutable)
   dueDate        DateTime?
   createdById    String?
   closedAt       DateTime?
@@ -322,6 +326,7 @@ model ReviewRound {
   deliverable    Deliverable     @relation(fields: [deliverableId], references: [id], onDelete: Cascade)
   createdBy      User?           @relation("ReviewRoundCreator", fields: [createdById], references: [id], onDelete: SetNull)
   overriddenBy   User?           @relation("ReviewRoundOverride", fields: [overriddenById], references: [id], onDelete: SetNull)
+  file           ReviewFile?     @relation(fields: [fileId], references: [id], onDelete: SetNull)
   assignments    ReviewCycle[]
   comments       ReviewComment[]
 
@@ -359,6 +364,27 @@ model ReviewComment {
 // link is "<id>.<HMAC(SESSION_SECRET, id:nonce)>" (lib/review-guest.ts): only the nonce
 // is stored, so a database dump can't be replayed, yet the app can re-send the link.
 // Rotating the nonce kills the old link.
+// A file under review: a PDF (e.g. a Storyline/Rise export) or an image. Immutable — a new
+// version is a new upload on the next round. Not an Attachment: those belong to cards.
+// Uploaded for one deliverable, whose access rules gate reading it.
+model ReviewFile {
+  id            String        @id @default(cuid())
+  workspaceId   String
+  deliverableId String
+  fileName      String
+  mimeType      String // application/pdf, image/png, image/jpeg, image/webp, image/gif
+  sizeBytes     Int
+  storageKey    String        @unique
+  uploadedById  String?
+  createdAt     DateTime      @default(now())
+  workspace     Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  deliverable   Deliverable   @relation(fields: [deliverableId], references: [id], onDelete: Cascade)
+  uploadedBy    User?         @relation(fields: [uploadedById], references: [id], onDelete: SetNull)
+  rounds        ReviewRound[]
+
+  @@index([deliverableId])
+}
+
 model ReviewGuest {
   id         String          @id @default(cuid())
   name       String

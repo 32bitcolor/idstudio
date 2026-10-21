@@ -51,6 +51,7 @@ export default async function ProjectPage({ params }: { params: Promise<{ projec
               overriddenAt: true,
               dueDate: true,
               targetKind: true,
+              file: { select: { id: true, fileName: true, mimeType: true } },
               assignments: {
                 orderBy: { createdAt: "asc" },
                 select: {
@@ -163,6 +164,7 @@ export default async function ProjectPage({ params }: { params: Promise<{ projec
       dueDate: r.dueDate ? r.dueDate.toISOString() : null,
       openComments: r._count.comments,
       hasSnapshot: r.targetKind === "storyboard",
+      file: r.file,
       reviewers: r.assignments.map((a) => ({
         id: a.reviewer?.id ?? a.id,
         name: a.reviewer ? a.reviewer.name ?? a.reviewer.email : a.guest?.name ?? "Guest",

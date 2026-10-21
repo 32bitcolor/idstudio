@@ -7,21 +7,19 @@ import {
   GetObjectCommand,
   DeleteObjectCommand,
 } from "@aws-sdk/client-s3";
-import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import { Upload } from "@aws-sdk/lib-storage";
+import { Readable } from "node:stream";
 
-// S3-compatible object storage (MinIO). Browsers upload/download directly via
-// presigned URLs so file bytes never pass through the Next.js server.
-//
-// Two endpoints because the app and the browser may reach MinIO differently:
-//   S3_ENDPOINT         internal host the app uses (e.g. http://minio:9000 in Docker)
-//   S3_PUBLIC_ENDPOINT  host the browser uses to hit presigned URLs (defaults to S3_ENDPOINT)
+// S3-compatible object storage (MinIO). Every byte goes THROUGH the app, on the app's
+// own HTTPS origin: MinIO's endpoint isn't reachable over the public tunnel, and is
+// plain HTTP on the LAN (mixed content). S3_ENDPOINT is the host the app uses
+// (http://minio:9000 under Compose).
 
 const BUCKET = process.env.S3_BUCKET ?? "idstudio";
 const REGION = process.env.S3_REGION ?? "us-east-1";
 const ACCESS = process.env.S3_ACCESS_KEY ?? "";
 const SECRET = process.env.S3_SECRET_KEY ?? "";
 const INTERNAL_ENDPOINT = process.env.S3_ENDPOINT ?? "http://localhost:9000";
-const PUBLIC_ENDPOINT = process.env.S3_PUBLIC_ENDPOINT ?? INTERNAL_ENDPOINT;
 
 export const MAX_UPLOAD_BYTES = 25 * 1024 * 1024; // 25 MB
 
@@ -35,7 +33,6 @@ function makeClient(endpoint: string) {
 }
 
 const serverClient = makeClient(INTERNAL_ENDPOINT);
-const presignClient = makeClient(PUBLIC_ENDPOINT);
 
 let bucketReady: Promise<void> | null = null;
 function ensureBucket() {
@@ -60,30 +57,42 @@ export function buildObjectKey(workspaceId: string, cardId: string, fileName: st
   return `workspace/${workspaceId}/card/${cardId}/${crypto.randomUUID()}-${safe}`;
 }
 
-export async function presignUpload(key: string, contentType: string): Promise<string> {
+/** Object keys for files under review: workspace/{id}/review/{deliverableId}/{uuid}-{name}. */
+export function buildReviewObjectKey(workspaceId: string, deliverableId: string, fileName: string): string {
+  const safe = fileName.replace(/[^a-zA-Z0-9._-]/g, "_").slice(0, 120) || "file";
+  return `workspace/${workspaceId}/review/${deliverableId}/${crypto.randomUUID()}-${safe}`;
+}
+
+/** Stream a request body to storage as a multipart upload — never buffered whole in
+ *  memory, so it scales to the large files phase-3 review (and later video) needs. */
+export async function putObjectStream(key: string, body: ReadableStream<Uint8Array>, contentType: string): Promise<void> {
   await ensureBucket();
-  return getSignedUrl(
-    presignClient,
-    new PutObjectCommand({ Bucket: BUCKET, Key: key, ContentType: contentType }),
-    { expiresIn: 300 },
-  );
+  await new Upload({
+    client: serverClient,
+    params: { Bucket: BUCKET, Key: key, Body: Readable.fromWeb(body as never), ContentType: contentType },
+    queueSize: 2,
+    partSize: 8 * 1024 * 1024,
+  }).done();
 }
 
-export async function presignDownload(key: string, fileName: string): Promise<string> {
-  return getSignedUrl(
-    presignClient,
-    new GetObjectCommand({
-      Bucket: BUCKET,
-      Key: key,
-      ResponseContentDisposition: `attachment; filename="${encodeURIComponent(fileName)}"`,
-    }),
-    { expiresIn: 300 },
-  );
-}
-
-/** Inline (no forced download) presigned view URL — used for image blocks. */
-export async function presignView(key: string, expiresIn = 3600): Promise<string> {
-  return getSignedUrl(presignClient, new GetObjectCommand({ Bucket: BUCKET, Key: key }), { expiresIn });
+/** Stream an object, optionally a byte range ("bytes=0-1023"). Null if absent. */
+export async function getObjectStream(
+  key: string,
+  range?: string | null,
+): Promise<{ body: ReadableStream; contentLength: number; contentRange: string | null } | null> {
+  try {
+    const res = await serverClient.send(new GetObjectCommand({ Bucket: BUCKET, Key: key, Range: range ?? undefined }));
+    if (!res.Body) return null;
+    return {
+      body: res.Body.transformToWebStream(),
+      contentLength: res.ContentLength ?? 0,
+      contentRange: res.ContentRange ?? null,
+    };
+  } catch (e) {
+    // A Range past the end is the caller's error, not a missing object.
+    if ((e as { name?: string }).name === "InvalidRange") throw e;
+    return null;
+  }
 }
 
 export async function deleteObject(key: string): Promise<void> {

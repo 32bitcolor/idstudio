@@ -2,7 +2,7 @@ import "server-only";
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { prisma } from "@/lib/db";
 import { Prisma } from "@/generated/prisma/client";
-import { getObjectBytes, putObjectBytes, buildObjectKey } from "@/lib/storage";
+import { getObjectBytes, putObjectBytes, buildObjectKey, buildReviewObjectKey } from "@/lib/storage";
 import { workspaceStatusSeedData } from "@/lib/status";
 import { newGuestNonce } from "@/lib/review-guest-token";
 
@@ -12,7 +12,7 @@ import { newGuestNonce } from "@/lib/review-guest-token";
 // can be restored into the same instance (a copy) or a fresh one (disaster
 // recovery). Media re-uploads to object storage under new keys.
 
-export const BACKUP_FORMAT = 6; // bump when the shape changes
+export const BACKUP_FORMAT = 7; // bump when the shape changes
 
 const WS = "__ws";
 const USER = "__user";
@@ -26,6 +26,9 @@ type Spec = {
   json?: string[]; // nullable Json columns — Prisma wants DbNull, not null, on create
   omit?: string[]; // columns never written to a backup file (credentials)
   fill?: () => Record<string, any>; // replacement values for omitted columns on import
+  // Last word on a row before it's created (e.g. re-upload its bytes under a new key).
+  // Return false to skip the row.
+  prepare?: (d: any, row: any, media: Record<string, Uint8Array>) => Promise<boolean>;
 };
 
 // A card's column is null when it's a subtask — reach it via its parent's
@@ -72,11 +75,26 @@ const SPECS: Spec[] = [
   // A round's snapshot and its comments' anchors refer to screens by their ORIGINAL
   // ids. Both travel inside the backup and only point at each other (never at live
   // Screen rows), so they stay consistent after a restore without remapping.
+  // Files under review travel with their bytes (in the zip's media/, keyed by row id,
+  // like attachments) and are re-uploaded under the new workspace's keys.
+  {
+    key: "reviewFile",
+    model: "reviewFile",
+    where: (w) => ({ workspaceId: w }),
+    fks: { workspaceId: WS, deliverableId: "deliverable", uploadedById: USER },
+    prepare: async (d, row, media) => {
+      const bytes = media[row.id];
+      if (!bytes || !d.deliverableId) return false;
+      d.storageKey = buildReviewObjectKey(d.workspaceId, d.deliverableId, d.fileName);
+      await putObjectBytes(d.storageKey, bytes, d.mimeType);
+      return true;
+    },
+  },
   {
     key: "reviewRound",
     model: "reviewRound",
     where: (w) => ({ deliverable: { project: { workspaceId: w } } }),
-    fks: { deliverableId: "deliverable", createdById: USER, overriddenById: USER },
+    fks: { deliverableId: "deliverable", createdById: USER, overriddenById: USER, fileId: "reviewFile" },
     json: ["snapshot"],
   },
   // Guest reviewers travel without their link nonce, and get a fresh one on restore:
@@ -158,9 +176,10 @@ export async function exportWorkspace(workspaceId: string): Promise<{
   const attachments = await prisma.attachment.findMany({ where: { workspaceId } });
   data.attachment = attachments;
 
-  // media bytes for each attachment (best-effort — a missing object is skipped)
+  // media bytes for each attachment and review file (best-effort — a missing object
+  // is skipped). Ids are cuids, unique across both tables.
   const media: Record<string, Uint8Array> = {};
-  for (const a of attachments) {
+  for (const a of [...attachments, ...(data.reviewFile ?? [])]) {
     const bytes = await getObjectBytes(a.storageKey);
     if (bytes) media[a.id] = bytes;
   }
@@ -333,6 +352,7 @@ export async function importWorkspace(
       for (const col of Object.keys(spec.fks)) d[col] = remap(spec.fks[col], row[col] ?? null);
       for (const col of spec.json ?? []) if (d[col] == null) d[col] = Prisma.DbNull;
       if (spec.fill) Object.assign(d, spec.fill());
+      if (spec.prepare && !(await spec.prepare(d, row, media))) continue;
       const created = await (prisma as any)[spec.model].create({ data: d });
       if (spec.key) maps[spec.key][row.id] = created.id;
     }

@@ -3,8 +3,8 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import { ArrowRight, MessageSquare, Plus, ShieldCheck, UserRound, X } from "lucide-react";
-import { startReviewRound } from "@/app/actions/reviews";
+import { ArrowRight, FileText, Image as ImageIcon, MessageSquare, Plus, ShieldCheck, Upload, UserRound, X } from "lucide-react";
+import { discardReviewFile, startReviewRound, type RoundTarget } from "@/app/actions/reviews";
 import { REVIEW_STATUS_LABEL, isApproval, type ReviewStatus } from "@/lib/methodology";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,9 +20,16 @@ export type RoundSummary = {
   dueDate: string | null;
   openComments: number;
   hasSnapshot: boolean;
+  file: ReviewFileInfo | null;
   reviewers: { id: string; name: string; status: string; guest: Guest | null }[];
 };
 type Guest = { name: string; email: string };
+export type ReviewFileInfo = { id: string; fileName: string; mimeType: string };
+
+export function FileGlyph({ mimeType, className }: { mimeType: string; className?: string }) {
+  const Icon = mimeType === "application/pdf" ? FileText : ImageIcon;
+  return <Icon className={cn("size-3.5 shrink-0", className)} aria-hidden="true" />;
+}
 
 export function roundTone(outcome: string | null): StatusTone {
   if (outcome === "passed") return "success";
@@ -49,10 +56,12 @@ export function ReviewRounds({
   deliverableId,
   members,
   rounds,
+  storyboard,
 }: {
   deliverableId: string;
   members: Member[];
   rounds: RoundSummary[];
+  storyboard: { id: string; title: string } | null;
 }) {
   const [starting, setStarting] = useState(false);
   const latest = rounds[0];
@@ -73,6 +82,12 @@ export function ReviewRounds({
                   )}
                 >
                   <span className="font-semibold">Round {r.number}</span>
+                  {r.file && (
+                    <span className="inline-flex max-w-48 items-center gap-1 truncate text-xs text-muted-foreground">
+                      <FileGlyph mimeType={r.file.mimeType} />
+                      <span className="truncate">{r.file.fileName}</span>
+                    </span>
+                  )}
                   <StatusBadge tone={roundTone(r.outcome)}>
                     {r.overridden && <ShieldCheck className="size-3" aria-hidden="true" />}
                     {roundLabel(r.outcome, r.overridden)}
@@ -113,6 +128,8 @@ export function ReviewRounds({
           nextNumber={(latest?.number ?? 0) + 1}
           previousReviewers={latest?.reviewers.filter((r) => !r.guest).map((r) => r.id) ?? []}
           previousGuests={latest?.reviewers.flatMap((r) => (r.guest ? [r.guest] : [])) ?? []}
+          storyboard={storyboard}
+          previousFile={latest?.file ?? null}
           onDone={() => setStarting(false)}
         />
       ) : (
@@ -135,6 +152,8 @@ function StartRoundForm({
   nextNumber,
   previousReviewers,
   previousGuests,
+  storyboard,
+  previousFile,
   onDone,
 }: {
   deliverableId: string;
@@ -142,6 +161,8 @@ function StartRoundForm({
   nextNumber: number;
   previousReviewers: string[];
   previousGuests: Guest[];
+  storyboard: { id: string; title: string } | null;
+  previousFile: ReviewFileInfo | null;
   onDone: () => void;
 }) {
   const router = useRouter();
@@ -149,8 +170,17 @@ function StartRoundForm({
   const [picked, setPicked] = useState<Set<string>>(new Set(previousReviewers));
   const [guests, setGuests] = useState<Guest[]>(previousGuests);
   const [due, setDue] = useState("");
+  // What's under review: the storyboard by default; a file when there's no storyboard,
+  // or when the last round reviewed one.
+  const [kind, setKind] = useState<"storyboard" | "file" | "none">(storyboard && !previousFile ? "storyboard" : "file");
+  const [file, setFile] = useState<ReviewFileInfo | null>(previousFile);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+
+  function cancel() {
+    if (file && file.id !== previousFile?.id) void discardReviewFile(file.id);
+    onDone();
+  }
 
   function toggle(id: string) {
     setPicked((prev) => {
@@ -163,11 +193,17 @@ function StartRoundForm({
 
   function submit() {
     setError(null);
+    let target: RoundTarget | undefined;
+    if (kind === "file") {
+      if (!file) return setError("Upload the file to review, or choose another option.");
+      target = { kind: "file", fileId: file.id };
+    } else if (kind === "storyboard") target = { kind: "storyboard" };
     startTransition(async () => {
       const res = await startReviewRound(
         deliverableId,
         { memberIds: [...picked], guests },
         due ? new Date(due).toISOString() : null,
+        target,
       );
       if (res && "error" in res && res.error) {
         setError(res.error);
@@ -183,6 +219,32 @@ function StartRoundForm({
   return (
     <fieldset className="flex flex-col gap-3 rounded-md border border-border p-3">
       <legend className="px-1 text-sm font-semibold">Start round {nextNumber}</legend>
+      <div role="radiogroup" aria-label="What's being reviewed" className="flex flex-col gap-1.5">
+        <span className="text-xs font-medium text-muted-foreground">What&apos;s being reviewed</span>
+        <div className="flex flex-wrap gap-1.5">
+          {storyboard && (
+            <TargetChoice on={kind === "storyboard"} onClick={() => setKind("storyboard")}>
+              Storyboard: {storyboard.title}
+            </TargetChoice>
+          )}
+          <TargetChoice on={kind === "file"} onClick={() => setKind("file")}>A PDF or image</TargetChoice>
+          <TargetChoice on={kind === "none"} onClick={() => setKind("none")}>Nothing to pin to — general feedback</TargetChoice>
+        </div>
+        {kind === "storyboard" && (
+          <p className="text-xs text-muted-foreground">A copy is frozen when the round starts, so you can keep editing.</p>
+        )}
+        {kind === "file" && (
+          <FilePicker
+            deliverableId={deliverableId}
+            file={file}
+            previousFile={previousFile}
+            onChange={(f) => {
+              if (file && file.id !== previousFile?.id && file.id !== f?.id) void discardReviewFile(file.id);
+              setFile(f);
+            }}
+          />
+        )}
+      </div>
       <div className="flex flex-col gap-1.5">
         <span className="text-xs font-medium text-muted-foreground">
           Reviewers — the round passes when all of them approve
@@ -217,7 +279,7 @@ function StartRoundForm({
         <Button size="sm" onClick={submit} disabled={pending || count === 0}>
           {pending ? "Starting…" : `Start round ${nextNumber}`}
         </Button>
-        <Button size="sm" variant="ghost" onClick={onDone}>Cancel</Button>
+        <Button size="sm" variant="ghost" onClick={cancel}>Cancel</Button>
       </div>
     </fieldset>
   );
@@ -289,6 +351,146 @@ export function GuestList({ guests, onChange }: { guests: Guest[]; onChange: (g:
           <Plus className="size-3.5" aria-hidden="true" /> Add guest
         </Button>
       </div>
+      {error && <p role="alert" className="text-xs text-destructive-ink">{error}</p>}
+    </div>
+  );
+}
+
+function TargetChoice({ on, onClick, children }: { on: boolean; onClick: () => void; children: React.ReactNode }) {
+  return (
+    <button
+      type="button"
+      role="radio"
+      aria-checked={on}
+      onClick={onClick}
+      className={cn(
+        "h-7 max-w-full truncate rounded-full border px-2.5 text-xs font-medium outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50",
+        on ? "border-accent/40 bg-accent/10 text-foreground" : "border-dashed border-border-strong text-muted-foreground hover:bg-hover",
+      )}
+    >
+      {children}
+    </button>
+  );
+}
+
+const ACCEPT = "application/pdf,image/png,image/jpeg,image/webp,image/gif";
+const MAX_BYTES = 95 * 1024 * 1024;
+
+function fmtSize(n: number) {
+  return n >= 1024 * 1024 ? `${(n / 1024 / 1024).toFixed(1)} MB` : `${Math.max(1, Math.round(n / 1024))} KB`;
+}
+
+/** Upload the file a round will review. Streams the raw bytes to the server (no
+ *  multipart), with progress. Offers last round's file again for a re-review. */
+function FilePicker({
+  deliverableId,
+  file,
+  previousFile,
+  onChange,
+}: {
+  deliverableId: string;
+  file: ReviewFileInfo | null;
+  previousFile: ReviewFileInfo | null;
+  onChange: (f: ReviewFileInfo | null) => void;
+}) {
+  const [progress, setProgress] = useState<number | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [dragging, setDragging] = useState(false);
+
+  function upload(f: File) {
+    setError(null);
+    if (f.size > MAX_BYTES) return setError("Files can be up to 95 MB.");
+    const xhr = new XMLHttpRequest();
+    xhr.open("PUT", `/api/review-files?deliverableId=${encodeURIComponent(deliverableId)}&name=${encodeURIComponent(f.name)}`);
+    xhr.upload.onprogress = (e) => e.lengthComputable && setProgress(e.loaded / e.total);
+    xhr.onload = () => {
+      setProgress(null);
+      let body: { file?: ReviewFileInfo; error?: string } = {};
+      try {
+        body = JSON.parse(xhr.responseText);
+      } catch {}
+      if (xhr.status === 200 && body.file) onChange(body.file);
+      else setError(body.error ?? (xhr.status === 413 ? "Files can be up to 95 MB." : "Upload failed — please try again."));
+    };
+    xhr.onerror = () => {
+      setProgress(null);
+      setError("Upload failed — check your connection and try again.");
+    };
+    setProgress(0);
+    xhr.send(f);
+  }
+
+  if (file) {
+    return (
+      <div className="flex flex-wrap items-center gap-2 text-sm">
+        <span className="inline-flex min-w-0 items-center gap-1.5 rounded-md border border-border bg-surface px-2.5 py-1.5">
+          <FileGlyph mimeType={file.mimeType} className="text-muted-foreground" />
+          <span className="truncate font-medium">{file.fileName}</span>
+          {file.id === previousFile?.id && <span className="text-xs text-muted-foreground">(same as last round)</span>}
+        </span>
+        <Button size="xs" variant="ghost" type="button" onClick={() => onChange(null)}>
+          Choose a different file
+        </Button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-1.5">
+      <label
+        onDragOver={(e) => {
+          e.preventDefault();
+          setDragging(true);
+        }}
+        onDragLeave={() => setDragging(false)}
+        onDrop={(e) => {
+          e.preventDefault();
+          setDragging(false);
+          const f = e.dataTransfer.files[0];
+          if (f) upload(f);
+        }}
+        className={cn(
+          "relative flex cursor-pointer flex-col items-center gap-1 rounded-md border border-dashed px-4 py-5 text-center text-sm focus-within:ring-[3px] focus-within:ring-ring/50",
+          dragging ? "border-accent bg-accent/5" : "border-border-strong hover:bg-hover",
+        )}
+      >
+        <Upload className="size-5 text-muted-foreground" aria-hidden="true" />
+        {progress != null ? (
+          <span className="w-full max-w-60">
+            <span className="mb-1 block text-xs text-muted-foreground">Uploading… {Math.round(progress * 100)}%</span>
+            <span className="block h-1.5 overflow-hidden rounded-full bg-muted" role="progressbar" aria-valuenow={Math.round(progress * 100)} aria-valuemin={0} aria-valuemax={100}>
+              <span className="block h-full bg-accent transition-[width]" style={{ width: `${progress * 100}%` }} />
+            </span>
+          </span>
+        ) : (
+          <>
+            <span>
+              <span className="font-medium text-foreground">Choose a file</span> or drop it here
+            </span>
+            <span className="text-xs text-muted-foreground">PDF, PNG, JPEG, WebP or GIF · up to {fmtSize(MAX_BYTES)}</span>
+          </>
+        )}
+        <input
+          type="file"
+          accept={ACCEPT}
+          className="sr-only"
+          disabled={progress != null}
+          onChange={(e) => {
+            const f = e.target.files?.[0];
+            if (f) upload(f);
+            e.target.value = "";
+          }}
+        />
+      </label>
+      {previousFile && (
+        <button
+          type="button"
+          onClick={() => onChange(previousFile)}
+          className="w-fit text-xs font-medium text-accent hover:underline"
+        >
+          Use the same file as last round ({previousFile.fileName})
+        </button>
+      )}
       {error && <p role="alert" className="text-xs text-destructive-ink">{error}</p>}
     </div>
   );

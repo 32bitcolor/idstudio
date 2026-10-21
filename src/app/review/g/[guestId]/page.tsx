@@ -25,6 +25,7 @@ export default async function GuestReviewPage({ params }: { params: Promise<{ gu
       id: true,
       number: true,
       snapshot: true,
+      file: { select: { id: true, fileName: true, mimeType: true } },
       dueDate: true,
       outcome: true,
       overriddenAt: true,
@@ -55,7 +56,7 @@ export default async function GuestReviewPage({ params }: { params: Promise<{ gu
   const previous = await prisma.reviewRound.findFirst({
     where: { deliverableId: s.deliverableId, number: { lt: round.number } },
     orderBy: { number: "desc" },
-    select: { number: true, snapshot: true },
+    select: { number: true, snapshot: true, fileId: true, file: { select: { fileName: true } } },
   });
   const snapshot = parseSnapshot(round.snapshot);
   const prevSnapshot = previous ? parseSnapshot(previous.snapshot) : null;
@@ -82,6 +83,11 @@ export default async function GuestReviewPage({ params }: { params: Promise<{ gu
         // Who overrode, and why, is the team's business; the guest just sees the outcome.
         overridden: null,
         requestedBy: round.createdBy ? memberName(round.createdBy, "guest") : null,
+        file: round.file ? { url: `/review/g/${s.guestId}/file`, fileName: round.file.fileName, mimeType: round.file.mimeType } : null,
+        previousFile:
+          round.file && previous?.file
+            ? { number: previous.number, fileName: previous.file.fileName, same: previous.fileId === round.file.id }
+            : null,
         hasStoryboardNow: false,
       }}
       deliverable={{ id: round.deliverable.id, name: round.deliverable.name }}

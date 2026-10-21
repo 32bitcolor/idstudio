@@ -113,18 +113,13 @@ docker compose build      # rebuild app/worker/migrate images
 docker compose up -d      # migrate service applies any new migrations on the way up
 ```
 
-## Attachments (MinIO)
+## Attachments and review files (MinIO)
 
-Card attachments upload/download **directly from the browser** to MinIO via presigned
-URLs, so `S3_PUBLIC_ENDPOINT` must be a hostname the browser can reach:
-
-- **Simplest:** publish MinIO's API port and set `S3_PUBLIC_ENDPOINT=http://<VM-host>:9000`
-  (the compose file already maps `9000:9000`). Open that port on your firewall if needed.
-- **Cleaner (TLS):** add a DNS name like `files.your-domain`, give it a Caddy site block that
-  reverse-proxies to `minio:9000`, and set `S3_PUBLIC_ENDPOINT=https://files.your-domain`.
-
-`S3_ENDPOINT` stays `http://minio:9000` (the app's internal path). If uploads fail in the
-browser with a CORS error, configure MinIO's CORS to allow your app's origin.
+Uploads and downloads stream **through the app**, on the app's own HTTPS origin, so MinIO
+never needs to be reachable from a browser. Don't publish it. `S3_ENDPOINT` stays
+`http://minio:9000`, the app's internal path. Card attachments are capped at 25 MB and
+review files (PDFs and images) at 95 MB, just under Cloudflare's 100 MB request-body
+limit on free plans.
 
 ## 8. Backups (do this before you rely on it)
 
