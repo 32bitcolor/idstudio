@@ -14,7 +14,7 @@ export default async function SprintBoardPage({ params }: { params: Promise<{ sp
 
   const sprint = await prisma.sprint.findFirst({
     where: { id: sprintId, workspaceId: wsId },
-    select: { id: true, name: true, goal: true, status: true },
+    select: { id: true, name: true, goal: true, status: true, startDate: true, endDate: true },
   });
   if (!sprint) notFound();
 
@@ -22,7 +22,7 @@ export default async function SprintBoardPage({ params }: { params: Promise<{ sp
     prisma.workspaceStatus.findMany({
       where: { workspaceId: wsId },
       orderBy: { position: "asc" },
-      select: { id: true, name: true },
+      select: { id: true, name: true, category: true },
     }),
     // Top-level cards in this sprint whose home board the user can see (respects
     // group visibility). Standalone-board cards are included — they just have no project.
@@ -40,6 +40,7 @@ export default async function SprintBoardPage({ params }: { params: Promise<{ sp
         statusId: true,
         dueDate: true,
         assignees: { select: { user: { select: { id: true, name: true, email: true } } } },
+        smes: { select: { user: { select: { id: true, name: true, email: true } } } },
         labels: { select: { label: { select: { id: true, name: true, color: true } } } },
         column: {
           select: {
@@ -66,8 +67,31 @@ export default async function SprintBoardPage({ params }: { params: Promise<{ sp
     cardKeyPrefix: c.column!.board.cardKeyPrefix,
     project: c.column!.board.project,
     assignees: c.assignees.map((a) => a.user),
+    smes: c.smes.map((s) => s.user),
     labels: c.labels.map((l) => l.label),
   }));
 
-  return <SprintBoard sprint={sprint} statuses={statuses} initialCards={items} />;
+  const progress = sprintProgress(sprint);
+
+  return (
+    <SprintBoard
+      sprint={{
+        ...sprint,
+        progress,
+        startDate: sprint.startDate ? sprint.startDate.toISOString() : null,
+        endDate: sprint.endDate ? sprint.endDate.toISOString() : null,
+      }}
+      statuses={statuses.map((s) => ({ ...s, category: s.category as "todo" | "active" | "done" }))}
+      initialCards={items}
+    />
+  );
+}
+
+/** "day N of M" for an active sprint with dates; null otherwise. */
+function sprintProgress(sprint: { status: string; startDate: Date | null; endDate: Date | null }): string | null {
+  if (sprint.status !== "active" || !sprint.startDate || !sprint.endDate) return null;
+  const day = 86_400_000;
+  const total = Math.max(1, Math.round((sprint.endDate.getTime() - sprint.startDate.getTime()) / day) + 1);
+  const elapsed = Math.min(total, Math.max(1, Math.floor((Date.now() - sprint.startDate.getTime()) / day) + 1));
+  return `day ${elapsed} of ${total}`;
 }

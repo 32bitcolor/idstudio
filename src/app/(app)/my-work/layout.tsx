@@ -10,7 +10,6 @@ export default async function MyWorkLayout({ children }: { children: React.React
   return (
     <PageContainer>
       <PageHeader
-        eyebrow={membership.workspace.name}
         title="My Work"
         description="Your reviews, action items, milestones, and review history."
       />

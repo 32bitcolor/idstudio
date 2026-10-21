@@ -116,18 +116,17 @@ export default async function DashboardPage() {
   return (
     <PageContainer>
       <PageHeader
-        eyebrow={membership.workspace.name}
         title={`Welcome back, ${user.name ?? user.email.split("@")[0]}`}
         description="Here's what's happening across your workspace."
         actions={<StatusBadge tone={isAdmin || isManager ? "info" : "neutral"}>{membership.role}</StatusBadge>}
       />
 
-      <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {stats.map((s) => (
           <Link
             key={s.label}
             href={s.href}
-            className="group rounded-xl border border-border bg-surface p-5 transition-all hover:-translate-y-0.5 hover:border-border-strong hover:shadow-sm"
+            className="group rounded-xl border border-border bg-surface p-5 transition-colors hover:border-border-strong hover:shadow-sm"
           >
             <div className="flex items-start justify-between">
               <div className="flex size-10 items-center justify-center rounded-lg" style={tint(s.tint)}>
@@ -135,13 +134,13 @@ export default async function DashboardPage() {
               </div>
               <ArrowUpRight className="size-4 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
             </div>
-            <div className="mt-3 text-3xl font-semibold tabular-nums">{s.value}</div>
+            <div className="mt-3 text-2xl font-semibold tabular-nums">{s.value}</div>
             <div className="text-sm text-muted-foreground">{s.label}</div>
           </Link>
         ))}
       </div>
 
-      <div className="mt-10 grid gap-8 lg:grid-cols-3">
+      <div className="mt-10 grid gap-8 lg:grid-cols-3 [&>*]:min-w-0">
         <section className="lg:col-span-2">
           <SectionHeader
             action={
@@ -177,10 +176,10 @@ export default async function DashboardPage() {
                   <Link
                     key={p.id}
                     href={`/projects/${p.id}`}
-                    className="group block rounded-xl border border-border bg-surface p-4 transition-all hover:-translate-y-0.5 hover:border-border-strong hover:shadow-sm"
+                    className="group block rounded-xl border border-border bg-surface p-4 transition-colors hover:border-border-strong hover:shadow-sm"
                   >
                     <div className="flex items-center justify-between gap-3">
-                      <span className="truncate font-medium">{p.name}</span>
+                      <span className="min-w-0 truncate font-medium">{p.name}</span>
                       <div className="flex shrink-0 items-center gap-2">
                         <StatusBadge tone="neutral">{p.methodology}</StatusBadge>
                         <StatusBadge tone={projectTone(p.status)}>
@@ -285,7 +284,7 @@ export default async function DashboardPage() {
             <Link
               key={m.key}
               href={m.href}
-              className="group flex items-start gap-3 rounded-xl border border-border bg-surface p-4 transition-all hover:-translate-y-0.5 hover:border-border-strong hover:shadow-sm"
+              className="group flex items-start gap-3 rounded-xl border border-border bg-surface p-4 transition-colors hover:border-border-strong hover:shadow-sm"
             >
               <div className="flex size-9 shrink-0 items-center justify-center rounded-lg" style={tint("--color-accent")}>
                 <m.icon className="size-4.5" />

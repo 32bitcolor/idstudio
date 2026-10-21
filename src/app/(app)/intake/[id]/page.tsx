@@ -22,7 +22,7 @@ export default async function IntakeRequestPage({ params }: { params: Promise<{ 
 
   return (
     <PageContainer size="wide">
-      <PageHeader eyebrow={membership.workspace.name} title={request.title} />
+      <PageHeader title={request.title} />
       <div className="mt-6">
         <RequestDetail
           request={{ ...request, targetDate: request.targetDate?.toISOString() ?? null }}

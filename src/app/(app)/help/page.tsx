@@ -10,7 +10,7 @@ export default function HelpIndex() {
         <div className="mb-4 flex size-11 items-center justify-center rounded-xl bg-accent/12 text-accent">
           <LifeBuoy className="size-6" />
         </div>
-        <h1 className="text-3xl font-semibold tracking-tight">Help &amp; guides</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">Help &amp; guides</h1>
         <p className="mt-2 max-w-xl text-lg text-muted-foreground">
           Everything you need to run your instructional-design process in IDStudio — start here, then
           dive into the module that fits what you&rsquo;re working on.

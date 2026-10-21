@@ -37,7 +37,6 @@ export default async function SprintsPage() {
   return (
     <PageContainer>
       <PageHeader
-        eyebrow={membership.workspace.name}
         title="Sprints"
         description="Plan time-boxed sprints across projects, then open the board to run them."
       />

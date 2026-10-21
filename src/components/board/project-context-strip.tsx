@@ -17,17 +17,18 @@ export type ProjectContext = {
   objectives: { total: number; taught: number; assessed: number; gaps: number };
 };
 
-/** A project board's learning-design context: phase, next milestone, alignment. */
-export function ProjectContextStrip({ context }: { context: ProjectContext }) {
+/** A project's learning-design context: phase, next milestone, alignment. On the
+ *  project page itself (`onProjectPage`) each item jumps to its section instead. */
+export function ProjectContextStrip({ context, onProjectPage }: { context: ProjectContext; onProjectPage?: boolean }) {
   const { phase, milestone, objectives } = context;
-  const href = `/projects/${context.projectId}`;
+  const base = onProjectPage ? "" : `/projects/${context.projectId}`;
   const due = milestone ? dueMeta(milestone.dueDate) : null;
   const pct = phase?.day && phase.of ? Math.round((phase.day / phase.of) * 100) : null;
   const gaps = objectives.gaps;
 
   return (
     <div className="grid grid-cols-1 gap-px overflow-hidden rounded-lg border border-border bg-border sm:grid-cols-3">
-      <Item href={href} icon={<Layers className="size-4" />} label="Phase">
+      <Item href={`${base}#phases`} icon={<Layers className="size-4" />} label="Phase">
         {phase ? (
           <>
             <span className="truncate font-semibold">
@@ -49,7 +50,7 @@ export function ProjectContextStrip({ context }: { context: ProjectContext }) {
         )}
       </Item>
 
-      <Item href={href} icon={<CalendarClock className="size-4" />} label="Next milestone">
+      <Item href={`${base}#milestones`} icon={<CalendarClock className="size-4" />} label="Next milestone">
         {milestone && due ? (
           <span className="truncate">
             <span className="font-semibold">{milestone.name}</span>{" "}
@@ -60,7 +61,7 @@ export function ProjectContextStrip({ context }: { context: ProjectContext }) {
         )}
       </Item>
 
-      <Item href={href} icon={<Target className="size-4" />} label="Alignment">
+      <Item href={`${base}#alignment`} icon={<Target className="size-4" />} label="Alignment">
         {objectives.total === 0 ? (
           <span className="text-muted-foreground">No objectives yet</span>
         ) : (

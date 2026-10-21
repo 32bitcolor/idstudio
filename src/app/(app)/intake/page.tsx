@@ -53,7 +53,6 @@ export default async function IntakePage() {
   return (
     <PageContainer>
       <PageHeader
-        eyebrow={membership.workspace.name}
         title="Intake"
         description="Stakeholder requests, triaged and scored by impact vs. effort."
       />

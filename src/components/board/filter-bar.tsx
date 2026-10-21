@@ -196,7 +196,7 @@ function summarize(names: string[]): string | null {
 }
 
 /** A filter trigger: dashed and quiet when unset, solid and showing its value when set. */
-function FilterChip({
+export function FilterChip({
   icon,
   label,
   current,

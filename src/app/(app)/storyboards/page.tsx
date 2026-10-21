@@ -1,18 +1,16 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Film, Plus } from "lucide-react";
+import { Film } from "lucide-react";
 
 import { prisma } from "@/lib/db";
 import { getActiveMembership } from "@/lib/dal";
 import { storyboardVisibilityWhere } from "@/lib/authz";
-import { createStoryboard } from "@/app/actions/storyboards";
 import { STORYBOARD_STATUS_LABEL, type StoryboardStatus } from "@/lib/storyboard";
 import { PageContainer, PageHeader } from "@/components/shared/page";
+import { CreateButton } from "@/components/app-shell/quick-create";
 import { EmptyState } from "@/components/shared/empty-state";
 import { StatusBadge, type StatusTone } from "@/components/shared/status-badge";
 import { Card } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
 
 export const metadata = { title: "Storyboards · IDStudio" };
 
@@ -41,17 +39,10 @@ export default async function StoryboardsPage() {
   return (
     <PageContainer>
       <PageHeader
-        eyebrow={membership.workspace.name}
         title="Storyboards"
         description="Screen-by-screen course design, ready for SME review."
+        actions={<CreateButton kind="storyboard" />}
       />
-
-      <form action={createStoryboard} className="mt-6 flex flex-wrap gap-2">
-        <Input name="title" required maxLength={180} placeholder="New storyboard title…" className="w-72" />
-        <Button type="submit">
-          <Plus className="size-4" /> Create storyboard
-        </Button>
-      </form>
 
       {storyboards.length === 0 ? (
         <EmptyState

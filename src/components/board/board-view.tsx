@@ -77,6 +77,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { REVIEW_STATUS_LABEL, type ReviewStatus } from "@/lib/methodology";
+import { AvatarStack, DueChip, LabelPill, StatusDot, type StatusCategory } from "@/components/shared/work-item";
 import { cn } from "@/lib/utils";
 
 type Label = { id: string; name: string; color: string };
@@ -96,7 +97,6 @@ type Card = {
   attachments: number;
   deliverable: { name: string; review: { round: number; status: string } | null } | null;
 };
-type StatusCategory = "todo" | "active" | "done" | null;
 type Column = { id: string; name: string; position: string; category: StatusCategory; cards: Card[] };
 type ViewMode = "board" | "list";
 
@@ -726,21 +726,6 @@ function PrefixDialog({
   );
 }
 
-const CATEGORY_DOT: Record<string, string> = {
-  todo: "bg-muted-foreground/60",
-  active: "bg-info",
-  done: "bg-success",
-};
-
-function StatusDot({ category }: { category: StatusCategory }) {
-  return (
-    <span
-      className={cn("size-2 shrink-0 rounded-full", category ? CATEGORY_DOT[category] : "bg-border-strong")}
-      aria-hidden="true"
-    />
-  );
-}
-
 function ColumnView({
   column,
   cardKeyPrefix,
@@ -881,64 +866,9 @@ function SortableCard({
   );
 }
 
-function initials(m: Member) {
-  const base = m.name?.trim() || m.email;
-  const parts = base.split(/[\s@.]+/).filter(Boolean);
-  return ((parts[0]?.[0] ?? "") + (parts[1]?.[0] ?? "")).toUpperCase() || base[0]?.toUpperCase();
-}
-
-type DueTone = "overdue" | "soon" | "normal";
-
-function dueInfo(iso: string): { label: string; tone: DueTone } {
-  // Due dates are calendar dates stored as UTC midnight — format/compare in UTC
-  // so the displayed day doesn't shift with the viewer's timezone.
-  const ymd = iso.slice(0, 10);
-  const [y, m, day] = ymd.split("-").map(Number);
-  const due = Date.UTC(y, m - 1, day);
-  const now = new Date();
-  const today = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
-  const days = Math.round((due - today) / 86_400_000);
-  const date = new Date(due).toLocaleDateString(undefined, { month: "short", day: "numeric", timeZone: "UTC" });
-  if (days < 0) return { label: date, tone: "overdue" };
-  if (days === 0) return { label: "Today", tone: "soon" };
-  if (days === 1) return { label: "Tomorrow", tone: "soon" };
-  return { label: date, tone: days <= 3 ? "soon" : "normal" };
-}
-
-const DUE_CHIP: Record<DueTone, string> = {
-  overdue: "bg-destructive/10 text-destructive-ink",
-  soon: "bg-warning/10 text-warning-ink",
-  normal: "text-muted-foreground",
-};
-
 function reviewLabel(review: { round: number; status: string }) {
   const status = REVIEW_STATUS_LABEL[review.status as ReviewStatus] ?? review.status;
   return `Round ${review.round} · ${status.toLowerCase()}`;
-}
-
-function LabelPill({ label }: { label: Label }) {
-  return (
-    <span className="inline-flex h-5 max-w-full items-center gap-1.5 rounded-full bg-muted px-2 text-[11px] font-semibold text-foreground/80">
-      <span className="size-1.5 shrink-0 rounded-full" style={{ backgroundColor: label.color }} aria-hidden="true" />
-      <span className="truncate">{label.name}</span>
-    </span>
-  );
-}
-
-function Avatar({ member, sme }: { member: Member; sme?: boolean }) {
-  const name = member.name ?? member.email;
-  return (
-    <span
-      className={cn(
-        "flex size-6 items-center justify-center rounded-full border-2 border-surface text-[10px] font-semibold",
-        sme ? "bg-warning/15 text-warning-ink" : "bg-accent text-accent-foreground",
-      )}
-      title={sme ? `SME: ${name}` : name}
-    >
-      <span aria-hidden="true">{initials(member)}</span>
-      <span className="sr-only">{sme ? `SME: ${name}` : name}</span>
-    </span>
-  );
 }
 
 function CardShell({
@@ -956,10 +886,9 @@ function CardShell({
   onOpen?: () => void;
   dragging?: boolean;
 }) {
-  const due = card.dueDate ? dueInfo(card.dueDate) : null;
   const key = cardKeyPrefix && card.keySeq != null ? `${cardKeyPrefix}-${card.keySeq}` : null;
-  const people = [...card.assignees.slice(0, 3).map((m) => ({ m, sme: false })), ...card.smes.slice(0, 2).map((m) => ({ m, sme: true }))];
-  const hasMeta = due || card.checklist.total > 0 || card.comments > 0 || card.attachments > 0 || people.length > 0;
+  const hasPeople = card.assignees.length > 0 || card.smes.length > 0;
+  const hasMeta = card.dueDate || card.checklist.total > 0 || card.comments > 0 || card.attachments > 0 || hasPeople;
 
   return (
     <div
@@ -1029,12 +958,7 @@ function CardShell({
 
       {hasMeta && (
         <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1.5 text-xs font-medium text-muted-foreground">
-          {due && (
-            <span className={cn("rounded px-1.5 py-0.5 whitespace-nowrap", DUE_CHIP[due.tone])}>
-              <span className="sr-only">Due </span>
-              {due.label}
-            </span>
-          )}
+          {card.dueDate && <DueChip iso={card.dueDate} />}
           {card.checklist.total > 0 && (
             <span
               className={cn("inline-flex items-center gap-1", card.checklist.done === card.checklist.total && "text-success-ink")}
@@ -1059,11 +983,9 @@ function CardShell({
               <span className="sr-only"> attachments</span>
             </span>
           )}
-          {people.length > 0 && (
-            <span className="ml-auto flex shrink-0 -space-x-1.5">
-              {people.map(({ m, sme }) => (
-                <Avatar key={(sme ? "s" : "a") + m.id} member={m} sme={sme} />
-              ))}
+          {hasPeople && (
+            <span className="ml-auto">
+              <AvatarStack assignees={card.assignees} smes={card.smes} />
             </span>
           )}
         </div>
@@ -1114,7 +1036,6 @@ function ListView({
               </tr>
             )}
             {col.cards.map((card) => {
-              const due = card.dueDate ? dueInfo(card.dueDate) : null;
               const selected = card.id === openCardId;
               return (
                 <tr
@@ -1150,17 +1071,10 @@ function ListView({
                     </span>
                   </td>
                   <td className="px-4 py-2 text-xs font-medium">
-                    {due && <span className={cn("rounded px-1.5 py-0.5", DUE_CHIP[due.tone])}>{due.label}</span>}
+                    {card.dueDate && <DueChip iso={card.dueDate} />}
                   </td>
                   <td className="px-4 py-2">
-                    <span className="flex -space-x-1.5">
-                      {card.assignees.slice(0, 3).map((m) => (
-                        <Avatar key={"a" + m.id} member={m} />
-                      ))}
-                      {card.smes.slice(0, 2).map((m) => (
-                        <Avatar key={"s" + m.id} member={m} sme />
-                      ))}
-                    </span>
+                    <AvatarStack assignees={card.assignees} smes={card.smes} />
                   </td>
                 </tr>
               );

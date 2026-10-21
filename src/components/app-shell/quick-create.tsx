@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import { Plus, Columns3, FolderKanban, Film, Shapes, type LucideIcon } from "lucide-react";
 
 import { createBoard } from "@/app/actions/boards";
@@ -15,10 +16,13 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 
+export type CreateKind = "board" | "project" | "storyboard" | "whiteboard";
+
 type Kind = {
-  key: string;
+  key: CreateKind;
   label: string;
   icon: LucideIcon;
   field: string;
@@ -34,6 +38,7 @@ const KINDS: Kind[] = [
   { key: "whiteboard", label: "Whiteboard", icon: Shapes, field: "title", placeholder: "Whiteboard title…", action: createWhiteboard },
 ];
 
+/** The header's "+ New" menu: pick a kind, then the shared create dialog. */
 export function QuickCreate() {
   const [active, setActive] = React.useState<Kind | null>(null);
 
@@ -54,40 +59,83 @@ export function QuickCreate() {
         </DropdownMenuContent>
       </DropdownMenu>
 
-      <Dialog open={!!active} onOpenChange={(v) => !v && setActive(null)}>
-        <DialogContent showCloseButton={false} className="top-1/3 max-w-sm rounded-xl bg-surface p-5 shadow-2xl">
-          {active && (
-            <>
-              <DialogTitle className="mb-3 flex items-center gap-2 text-sm font-medium">
-                <active.icon className="size-4 text-accent" /> New {active.label.toLowerCase()}
-              </DialogTitle>
-              <DialogDescription className="sr-only">
-                Create a new {active.label.toLowerCase()} and jump straight to it.
-              </DialogDescription>
-              <form action={active.action} className="flex flex-col gap-3">
-                <Input name={active.field} required autoFocus maxLength={200} placeholder={active.placeholder} />
-                {active.key === "board" && (
-                  <Input
-                    name="cardKeyPrefix"
-                    maxLength={8}
-                    placeholder="Card prefix (optional, e.g. WP)"
-                    className="uppercase placeholder:normal-case"
-                  />
-                )}
-                {active.key === "project" && (
-                  <input type="hidden" name="methodology" value="ADDIE" />
-                )}
-                <div className="flex justify-end gap-2">
-                  <Button type="button" variant="ghost" onClick={() => setActive(null)}>
-                    Cancel
-                  </Button>
-                  <Button type="submit">Create</Button>
-                </div>
-              </form>
-            </>
-          )}
-        </DialogContent>
-      </Dialog>
+      <CreateDialog kind={active} onClose={() => setActive(null)} />
     </>
+  );
+}
+
+/** A page-header primary action ("New project", …) opening the same create dialog —
+ *  replaces the inline create forms that used to sit at the top of each list page. */
+export function CreateButton({ kind }: { kind: CreateKind }) {
+  const [open, setOpen] = React.useState(false);
+  const k = KINDS.find((x) => x.key === kind)!;
+  return (
+    <>
+      <Button size="sm" onClick={() => setOpen(true)}>
+        <Plus className="size-4" aria-hidden="true" />
+        New {k.label.toLowerCase()}
+      </Button>
+      <CreateDialog kind={open ? k : null} onClose={() => setOpen(false)} />
+    </>
+  );
+}
+
+function CreateDialog({ kind, onClose }: { kind: Kind | null; onClose: () => void }) {
+  return (
+    <Dialog open={!!kind} onOpenChange={(v) => !v && onClose()}>
+      <DialogContent showCloseButton={false} className="top-1/3 max-w-sm rounded-xl bg-surface p-5 shadow-2xl">
+        {kind && (
+          <>
+            <DialogTitle className="mb-3 flex items-center gap-2 text-sm font-medium">
+              <kind.icon className="size-4 text-accent" aria-hidden="true" /> New {kind.label.toLowerCase()}
+            </DialogTitle>
+            <DialogDescription className="sr-only">
+              Create a new {kind.label.toLowerCase()} and jump straight to it.
+            </DialogDescription>
+            <form action={kind.action} className="flex flex-col gap-3">
+              <Input
+                name={kind.field}
+                required
+                autoFocus
+                maxLength={200}
+                placeholder={kind.placeholder}
+                aria-label={`${kind.label} name`}
+              />
+              {kind.key === "board" && (
+                <Input
+                  name="cardKeyPrefix"
+                  maxLength={8}
+                  placeholder="Card prefix (optional, e.g. WP)"
+                  aria-label="Card prefix (optional)"
+                  className="uppercase placeholder:normal-case"
+                />
+              )}
+              {kind.key === "project" && (
+                <div className="flex flex-col gap-1.5">
+                  <Select name="methodology" defaultValue="ADDIE" aria-label="Methodology">
+                    <option value="ADDIE">ADDIE</option>
+                    <option value="SAM">SAM</option>
+                    <option value="CUSTOM">Custom (start empty)</option>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    Not sure?{" "}
+                    <Link href="/help/addie-sam" onClick={onClose} className="font-medium text-foreground underline underline-offset-2">
+                      Compare ADDIE &amp; SAM
+                    </Link>{" "}
+                    — IDStudio seeds the matching phases.
+                  </p>
+                </div>
+              )}
+              <div className="flex justify-end gap-2">
+                <Button type="button" variant="ghost" onClick={onClose}>
+                  Cancel
+                </Button>
+                <Button type="submit">Create</Button>
+              </div>
+            </form>
+          </>
+        )}
+      </DialogContent>
+    </Dialog>
   );
 }

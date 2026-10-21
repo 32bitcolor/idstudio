@@ -21,6 +21,7 @@ import {
   type PhaseStatus,
   type ProjectStatus,
 } from "@/lib/methodology";
+import { ProjectContextStrip, type ProjectContext } from "@/components/board/project-context-strip";
 import { useSetPageTitle } from "@/components/app-shell/breadcrumbs";
 import { ChevronUp, ChevronDown, X } from "lucide-react";
 import { PageContainer, PageHeader, SectionHeader } from "@/components/shared/page";
@@ -119,6 +120,7 @@ export function ProjectView({
   initialMilestones,
   initialTimeEntries,
   members,
+  context,
 }: {
   project: ProjectMeta;
   initialBoards: { id: string; name: string; columnCount: number }[];
@@ -131,6 +133,7 @@ export function ProjectView({
   initialMilestones: MilestoneInit[];
   initialTimeEntries: TimeEntryInit[];
   members: Member[];
+  context: ProjectContext;
 }) {
   const [name, setName] = useState(project.name);
   const [description, setDescription] = useState(project.description ?? "");
@@ -198,46 +201,45 @@ export function ProjectView({
             ariaLabel="Project name"
           />
         }
-        actions={<StatusBadge tone="neutral">{project.methodology}</StatusBadge>}
+        actions={
+          <>
+            <StatusBadge tone="neutral">{project.methodology}</StatusBadge>
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={sprintsEnabled}
+                onChange={(e) => {
+                  const next = e.target.checked;
+                  setSprintsEnabled(next);
+                  startTransition(() => void setProjectSprintsEnabled(project.id, next));
+                }}
+                className="size-4 rounded border-border-strong accent-accent"
+              />
+              <span className="text-muted-foreground">Sprint planning</span>
+            </label>
+            <span className="inline-flex w-36">
+              <Select
+                value={status}
+                aria-label="Project status"
+                className="h-8 py-1"
+                onChange={(e) => {
+                  setStatus(e.target.value);
+                  startTransition(() => void setProjectStatus(project.id, e.target.value));
+                }}
+              >
+                {PROJECT_STATUSES.map((s) => (
+                  <option key={s} value={s}>
+                    {PROJECT_STATUS_LABEL[s as ProjectStatus]}
+                  </option>
+                ))}
+              </Select>
+            </span>
+          </>
+        }
       />
 
-      <div className="mt-4 flex flex-wrap items-center gap-3">
-        <label className="flex items-center gap-2 text-sm">
-          <span className="text-muted-foreground">Status</span>
-          <span className="inline-flex w-40">
-            <Select
-              value={status}
-              onChange={(e) => {
-                setStatus(e.target.value);
-                startTransition(() => void setProjectStatus(project.id, e.target.value));
-              }}
-            >
-              {PROJECT_STATUSES.map((s) => (
-                <option key={s} value={s}>
-                  {PROJECT_STATUS_LABEL[s as ProjectStatus]}
-                </option>
-              ))}
-            </Select>
-          </span>
-        </label>
-        {phases.length > 0 && (
-          <span className="text-sm text-muted-foreground">
-            {done}/{phases.length} phases done
-          </span>
-        )}
-        <label className="flex items-center gap-2 text-sm">
-          <input
-            type="checkbox"
-            checked={sprintsEnabled}
-            onChange={(e) => {
-              const next = e.target.checked;
-              setSprintsEnabled(next);
-              startTransition(() => void setProjectSprintsEnabled(project.id, next));
-            }}
-            className="size-4 rounded border-border-strong accent-accent"
-          />
-          <span className="text-muted-foreground">Sprint planning</span>
-        </label>
+      <div className="mt-4">
+        <ProjectContextStrip context={context} onProjectPage />
       </div>
 
       <Textarea
@@ -249,8 +251,10 @@ export function ProjectView({
         className="mt-4 resize-none"
       />
 
-      <section className="mt-8">
-        <SectionHeader>Phases</SectionHeader>
+      <section id="phases" className="mt-8 scroll-mt-20">
+        <SectionHeader>
+          Phases{phases.length > 0 && <span className="ml-1 font-normal normal-case tracking-normal">· {done}/{phases.length} done</span>}
+        </SectionHeader>
         <div className="flex flex-col gap-2">
           {phases.length === 0 && (
             <p className="text-sm text-muted-foreground">No phases yet. Add the first one below.</p>
@@ -325,6 +329,7 @@ export function ProjectView({
 
       <BoardsSection projectId={project.id} initial={initialBoards} available={availableBoards} />
 
+      <div id="alignment" className="scroll-mt-20" />
       <AlignmentSection
         projectId={project.id}
         initialObjectives={initialObjectives}
@@ -339,6 +344,7 @@ export function ProjectView({
         initial={initialDeliverables}
       />
 
+      <div id="milestones" className="scroll-mt-20" />
       <MilestonesSection projectId={project.id} initial={initialMilestones} />
 
       <TimeTracking

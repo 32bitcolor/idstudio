@@ -1,8 +1,7 @@
 "use client";
 
 import { useMemo, useState, type ReactNode } from "react";
-import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
+import { FolderKanban, Tag, User, X } from "lucide-react";
 import {
   DndContext,
   DragOverlay,
@@ -20,11 +19,22 @@ import { setCardStatus } from "@/app/actions/boards";
 import { useSetPageTitle } from "@/components/app-shell/breadcrumbs";
 import { CardDrawer, type CardFacePatch } from "@/components/board/card-drawer";
 import { AddCardsDialog } from "@/components/sprint/add-cards-dialog";
-import { Select } from "@/components/ui/select";
 import { SavedViewsMenu } from "@/components/shared/saved-views-menu";
+import { FilterChip } from "@/components/board/filter-bar";
+import { StatusBadge, type StatusTone } from "@/components/shared/status-badge";
+import { AvatarStack, DueChip, LabelPill, StatusDot, type StatusCategory } from "@/components/shared/work-item";
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { cn } from "@/lib/utils";
 import type { SavedViewDTO } from "@/app/actions/saved-views";
 import type { SprintFilters } from "@/lib/saved-views";
-import { dueMeta, dueToneClass } from "@/lib/due";
 
 type Person = { id: string; name: string | null; email: string };
 export type SprintCard = {
@@ -37,9 +47,10 @@ export type SprintCard = {
   cardKeyPrefix: string | null;
   project: { id: string; name: string } | null;
   assignees: Person[];
+  smes?: Person[];
   labels: LabelT[];
 };
-type StatusT = { id: string; name: string };
+type StatusT = { id: string; name: string; category?: StatusCategory };
 type LabelT = { id: string; name: string; color: string };
 
 const NO_STATUS = "__none__";
@@ -52,7 +63,16 @@ export function SprintBoard({
   statuses,
   initialCards,
 }: {
-  sprint: { id: string; name: string; goal: string | null; status: string };
+  sprint: {
+    id: string;
+    name: string;
+    goal: string | null;
+    status: string;
+    startDate?: string | null;
+    endDate?: string | null;
+    /** "day N of M" for an active sprint — computed on the server (render stays pure). */
+    progress?: string | null;
+  };
   statuses: StatusT[];
   initialCards: SprintCard[];
 }) {
@@ -184,53 +204,88 @@ export function SprintBoard({
     if (card) changeStatus(card, overId);
   }
 
-  return (
-    <div className="flex h-full min-h-screen min-w-0 flex-col">
-      <header className="px-6 py-5">
-        <Link href="/sprints" className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground hover:underline">
-          <ArrowLeft className="size-3" /> Sprints
-        </Link>
-        <h1 className="mt-1 text-xl font-semibold tracking-tight">{sprint.name}</h1>
-        {sprint.goal && <p className="mt-0.5 text-sm text-muted-foreground">{sprint.goal}</p>}
+  const filtersActive = !!(projectFilter || assigneeFilter || labelFilter);
+  const navIds = columns.flatMap((col) => cardsFor(col.id).map((c) => c.id));
+  const navIndex = openCardId ? navIds.indexOf(openCardId) : -1;
+  const openCard = openCardId ? cards.find((c) => c.id === openCardId) ?? null : null;
 
-        <div className="mt-3 flex flex-wrap items-center gap-2">
-          <Select value={projectFilter} onChange={(e) => { setActiveViewId(null); setProjectFilter(e.target.value); }} className="h-8 w-auto py-1 text-xs">
-            <option value="">All projects</option>
-            {projects.list.map(([id, name]) => (
-              <option key={id} value={id}>{name}</option>
-            ))}
-            {projects.hasNone && <option value={NO_PROJECT}>No project</option>}
-          </Select>
-          <Select value={assigneeFilter} onChange={(e) => { setActiveViewId(null); setAssigneeFilter(e.target.value); }} className="h-8 w-auto py-1 text-xs">
-            <option value="">All assignees</option>
-            {people.list.map((p) => (
-              <option key={p.id} value={p.id}>{p.name ?? p.email}</option>
-            ))}
-            {people.hasUnassigned && <option value={UNASSIGNED}>Unassigned</option>}
-          </Select>
-          <Select value={labelFilter} onChange={(e) => { setActiveViewId(null); setLabelFilter(e.target.value); }} className="h-8 w-auto py-1 text-xs">
-            <option value="">All labels</option>
-            {labels.list.map((l) => (
-              <option key={l.id} value={l.id}>{l.name}</option>
-            ))}
-            {labels.hasNone && <option value={NO_LABEL}>No label</option>}
-          </Select>
-          <SavedViewsMenu
-            scope="sprint"
-            currentFilters={currentFilters}
-            filtersActive={!!(projectFilter || assigneeFilter || labelFilter)}
-            activeViewId={activeViewId}
-            onApply={applyView}
-          />
-          <span className="text-xs text-muted-foreground">{visible.length} of {cards.length} cards</span>
-          <div className="ml-auto">
-            <AddCardsDialog sprintId={sprint.id} onAdded={(card) => setCards((cs) => [card, ...cs])} />
+  const projectName = (id: string) =>
+    id === NO_PROJECT ? "No project" : projects.list.find(([pid]) => pid === id)?.[1] ?? null;
+  const personName = (id: string) =>
+    id === UNASSIGNED ? "Unassigned" : (() => {
+      const p = people.list.find((x) => x.id === id);
+      return p ? p.name ?? p.email : null;
+    })();
+  const labelName = (id: string) => (id === NO_LABEL ? "No label" : labels.list.find((l) => l.id === id)?.name ?? null);
+
+  return (
+    <div className="flex h-full min-h-screen min-w-0 flex-col gap-4 px-6 pt-5 pb-10">
+      <header className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-[12rem] flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <h1 className="text-2xl font-semibold tracking-tight">{sprint.name}</h1>
+            <StatusBadge tone={SPRINT_TONE[sprint.status] ?? "neutral"}>{SPRINT_LABEL[sprint.status] ?? sprint.status}</StatusBadge>
           </div>
+          <SprintMeta goal={sprint.goal} startDate={sprint.startDate ?? null} endDate={sprint.endDate ?? null} progress={sprint.progress ?? null} />
         </div>
+        <AddCardsDialog sprintId={sprint.id} onAdded={(card) => setCards((cs) => [card, ...cs])} />
       </header>
 
+      <div className="flex flex-wrap items-center gap-2">
+        <SingleSelectChip
+          icon={<FolderKanban className="size-3.5" />}
+          label="Project"
+          value={projectFilter}
+          current={projectFilter ? projectName(projectFilter) : null}
+          options={[
+            ...projects.list.map(([id, name]) => ({ id, name })),
+            ...(projects.hasNone ? [{ id: NO_PROJECT, name: "No project" }] : []),
+          ]}
+          onChange={(v) => { setActiveViewId(null); setProjectFilter(v); }}
+        />
+        <SingleSelectChip
+          icon={<User className="size-3.5" />}
+          label="Assignee"
+          value={assigneeFilter}
+          current={assigneeFilter ? personName(assigneeFilter) : null}
+          options={[
+            ...people.list.map((p) => ({ id: p.id, name: p.name ?? p.email })),
+            ...(people.hasUnassigned ? [{ id: UNASSIGNED, name: "Unassigned" }] : []),
+          ]}
+          onChange={(v) => { setActiveViewId(null); setAssigneeFilter(v); }}
+        />
+        <SingleSelectChip
+          icon={<Tag className="size-3.5" />}
+          label="Label"
+          value={labelFilter}
+          current={labelFilter ? labelName(labelFilter) : null}
+          options={[
+            ...labels.list.map((l) => ({ id: l.id, name: l.name, color: l.color })),
+            ...(labels.hasNone ? [{ id: NO_LABEL, name: "No label" }] : []),
+          ]}
+          onChange={(v) => { setActiveViewId(null); setLabelFilter(v); }}
+        />
+        {filtersActive && (
+          <>
+            <Button variant="ghost" size="sm" onClick={() => applyView(null)} className="h-8 text-muted-foreground">
+              <X className="size-3.5" aria-hidden="true" />
+              Clear
+            </Button>
+            <span className="text-xs text-muted-foreground" aria-live="polite">{visible.length} of {cards.length} cards</span>
+          </>
+        )}
+        <span className="flex-1" />
+        <SavedViewsMenu
+          scope="sprint"
+          currentFilters={currentFilters}
+          filtersActive={filtersActive}
+          activeViewId={activeViewId}
+          onApply={applyView}
+        />
+      </div>
+
       {cards.length === 0 && (
-        <p className="mx-6 mb-3 rounded-lg border border-dashed border-border px-3 py-2 text-sm text-muted-foreground">
+        <p className="rounded-lg border border-dashed border-border px-3 py-2 text-sm text-muted-foreground">
           No cards assigned yet. Open any board, click a card, and set its{" "}
           <span className="font-medium text-foreground">Sprint</span> field to this sprint — it&rsquo;ll appear here.
         </p>
@@ -238,32 +293,28 @@ export function SprintBoard({
 
       {columns.length > 0 && (
         <DndContext sensors={sensors} collisionDetection={pointerWithin} onDragStart={onDragStart} onDragEnd={onDragEnd}>
-          <div className="flex flex-1 gap-3 overflow-x-auto px-6 pb-6">
+          {/* `relative`: keeps the cards' sr-only text from widening the page (see board-view). */}
+          <div className="relative -mx-6 flex min-w-0 flex-1 items-start gap-3 overflow-x-auto px-6 pb-2">
             {columns.map((col) => (
-              <StatusColumn key={col.id} id={col.id} name={col.name} droppable={col.droppable} count={cardsFor(col.id).length}>
+              <StatusColumn
+                key={col.id}
+                id={col.id}
+                name={col.name}
+                category={statuses.find((s) => s.id === col.id)?.category ?? null}
+                droppable={col.droppable}
+                count={cardsFor(col.id).length}
+              >
                 {cardsFor(col.id).map((c) => (
-                  <SprintCardCell
-                    key={c.id}
-                    card={c}
-                    statuses={statuses}
-                    hasStatus={statusIds.has(c.statusId ?? "")}
-                    onOpen={() => setOpenCardId(c.id)}
-                    onChangeStatus={(statusId) => changeStatus(c, statusId)}
-                  />
+                  <SprintCardCell key={c.id} card={c} selected={c.id === openCardId} onOpen={() => setOpenCardId(c.id)} />
                 ))}
-                {cardsFor(col.id).length === 0 && <p className="px-1.5 py-2 text-xs text-muted-foreground">—</p>}
+                {cardsFor(col.id).length === 0 && <p className="px-1.5 py-2 text-xs text-muted-foreground">No cards</p>}
               </StatusColumn>
             ))}
           </div>
 
           <DragOverlay>
             {activeCard ? (
-              <div className="w-64 rounded-lg border border-border bg-surface px-3 py-2 text-sm shadow-lg">
-                {activeCard.cardKeyPrefix && activeCard.keySeq != null && (
-                  <span className="mr-1.5 font-mono text-xs font-medium text-muted-foreground">
-                    {activeCard.cardKeyPrefix}-{activeCard.keySeq}
-                  </span>
-                )}
+              <div className="w-64 rotate-1 rounded-lg border border-border bg-surface p-3 text-sm font-semibold shadow-lg">
                 {activeCard.title}
               </div>
             ) : null}
@@ -278,117 +329,182 @@ export function SprintBoard({
           onPatch={handleCardPatch}
           onDeleted={handleCardDeleted}
           onNavigate={(id) => setOpenCardId(id)}
+          // The sprint board moves cards by canonical status rather than board column,
+          // so the panel's Status picker lists statuses (the non-drag move, WCAG 2.5.7).
+          columns={statuses.map((s) => ({ id: s.id, name: s.name }))}
+          currentColumnId={openCard && statusIds.has(openCard.statusId ?? "") ? openCard.statusId : null}
+          onMoveToColumn={(statusId) => openCard && changeStatus(openCard, statusId)}
+          position={navIndex >= 0 ? { index: navIndex, total: navIds.length } : null}
+          onStep={(dir) => {
+            const next = navIds[navIndex + dir];
+            if (next) setOpenCardId(next);
+          }}
         />
       )}
     </div>
   );
 }
 
+const SPRINT_LABEL: Record<string, string> = { planned: "Planned", active: "Active", completed: "Completed" };
+const SPRINT_TONE: Record<string, StatusTone> = { planned: "neutral", active: "info", completed: "success" };
+
+function SprintMeta({
+  goal,
+  startDate,
+  endDate,
+  progress,
+}: {
+  goal: string | null;
+  startDate: string | null;
+  endDate: string | null;
+  progress: string | null;
+}) {
+  const fmt = (iso: string) =>
+    new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric", timeZone: "UTC" });
+  return (
+    <p className="mt-1 flex flex-wrap gap-x-2 text-sm text-muted-foreground">
+      {startDate && endDate && (
+        <span>
+          {fmt(startDate)} – {fmt(endDate)}
+          {progress && <> · {progress}</>}
+        </span>
+      )}
+      {goal && <span className="text-foreground/80">{startDate && endDate ? "· " : ""}{goal}</span>}
+    </p>
+  );
+}
+
+/** A filter chip with a single-choice menu ("" = no filter). */
+function SingleSelectChip({
+  icon,
+  label,
+  value,
+  current,
+  options,
+  onChange,
+}: {
+  icon: ReactNode;
+  label: string;
+  value: string;
+  current: string | null;
+  options: { id: string; name: string; color?: string }[];
+  onChange: (v: string) => void;
+}) {
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <FilterChip icon={icon} label={label} current={current} disabled={options.length === 0} />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start" className="max-h-72 w-56 overflow-y-auto">
+        <DropdownMenuRadioGroup value={value} onValueChange={onChange}>
+          <DropdownMenuRadioItem value="">Any {label.toLowerCase()}</DropdownMenuRadioItem>
+          <DropdownMenuSeparator />
+          {options.map((o) => (
+            <DropdownMenuRadioItem key={o.id} value={o.id}>
+              {o.color && <span className="size-2.5 shrink-0 rounded-full" style={{ backgroundColor: o.color }} aria-hidden="true" />}
+              <span className="truncate">{o.name}</span>
+            </DropdownMenuRadioItem>
+          ))}
+        </DropdownMenuRadioGroup>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
 function StatusColumn({
   id,
   name,
+  category,
   droppable,
   count,
   children,
 }: {
   id: string;
   name: string;
+  category: StatusCategory;
   droppable: boolean;
   count: number;
   children: ReactNode;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id, disabled: !droppable });
   return (
-    <div
+    <section
+      aria-label={name}
       ref={droppable ? setNodeRef : undefined}
-      className={`flex w-72 shrink-0 flex-col rounded-xl p-2 transition-colors ${isOver ? "bg-accent/10 ring-1 ring-accent/40" : "bg-muted/40"}`}
+      className={cn(
+        "flex min-w-[12.5rem] max-w-[22rem] flex-1 shrink-0 flex-col gap-2 rounded-lg p-2 transition-colors",
+        isOver ? "bg-accent/10 ring-1 ring-accent/40" : "bg-surface-muted",
+      )}
     >
-      <div className="flex items-center justify-between px-1.5 py-1 text-sm font-medium">
-        <span>{name}</span>
-        <span className="text-xs text-muted-foreground">{count}</span>
+      <div className="flex items-center gap-2 px-1.5 py-1">
+        <StatusDot category={category} />
+        <h2 className="flex-1 text-sm font-semibold">{name}</h2>
+        <span className="text-xs font-medium text-muted-foreground">{count}</span>
       </div>
-      <div className="flex min-h-2 flex-col gap-2">{children}</div>
-    </div>
+      {children}
+    </section>
   );
 }
 
 function SprintCardCell({
   card,
-  statuses,
-  hasStatus,
+  selected,
   onOpen,
-  onChangeStatus,
 }: {
   card: SprintCard;
-  statuses: StatusT[];
-  hasStatus: boolean;
+  selected: boolean;
   onOpen: () => void;
-  onChangeStatus: (statusId: string) => void;
 }) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id: card.id });
-  const due = card.dueDate ? dueMeta(card.dueDate) : null;
+  const key = card.cardKeyPrefix && card.keySeq != null ? `${card.cardKeyPrefix}-${card.keySeq}` : null;
+  const hasPeople = card.assignees.length > 0 || (card.smes?.length ?? 0) > 0;
   return (
     <div
       ref={setNodeRef}
       {...listeners}
       {...attributes}
-      className={`rounded-lg border border-border bg-surface px-3 py-2 text-sm shadow-sm ${isDragging ? "opacity-40" : "cursor-grab active:cursor-grabbing"}`}
+      aria-roledescription="draggable card"
+      onClick={onOpen}
+      className={cn(
+        "relative flex flex-col gap-2 rounded-lg border bg-surface p-3 text-sm shadow-xs",
+        selected ? "border-accent ring-1 ring-accent" : "border-border hover:shadow-sm",
+        isDragging ? "opacity-40" : "cursor-pointer active:cursor-grabbing",
+      )}
     >
-      <button type="button" onClick={onOpen} className="block w-full text-left hover:underline">
-        {card.cardKeyPrefix && card.keySeq != null && (
-          <span className="mr-1.5 font-mono text-xs font-medium text-muted-foreground">
-            {card.cardKeyPrefix}-{card.keySeq}
-          </span>
-        )}
+      {(key || card.project) && (
+        <div className="flex min-w-0 items-center gap-2 text-[11px] text-muted-foreground">
+          {key && <span className="shrink-0 font-mono font-medium">{key}</span>}
+          {card.project && <span className="truncate" title={`Project: ${card.project.name}`}>{card.project.name}</span>}
+        </div>
+      )}
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          onOpen();
+        }}
+        onPointerDown={(e) => e.stopPropagation()}
+        className="-m-0.5 rounded p-0.5 text-left font-semibold leading-5 break-words outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
+      >
         {card.title}
       </button>
       {card.labels.length > 0 && (
-        <div className="mt-1.5 flex flex-wrap gap-1">
+        <div className="flex flex-wrap gap-1">
           {card.labels.map((l) => (
-            <span
-              key={l.id}
-              className="rounded px-1.5 py-0.5 text-[10px] font-medium text-white"
-              style={{ backgroundColor: l.color }}
-            >
-              {l.name}
-            </span>
+            <LabelPill key={l.id} label={l} />
           ))}
         </div>
       )}
-      <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-        {card.project && (
-          <span className="truncate rounded bg-muted px-1.5 py-0.5 text-[11px] text-muted-foreground" title={`Project: ${card.project.name}`}>
-            {card.project.name}
-          </span>
-        )}
-        {due && <span className={`text-[11px] ${dueToneClass[due.tone]}`}>{due.label}</span>}
-        {card.assignees.length > 0 && (
-          <span className="ml-auto flex -space-x-1.5">
-            {card.assignees.slice(0, 3).map((a) => (
-              <span
-                key={a.id}
-                className="flex size-5 items-center justify-center rounded-full bg-muted text-[10px] font-medium ring-1 ring-surface"
-                title={a.name ?? a.email}
-              >
-                {(a.name ?? a.email).charAt(0).toUpperCase()}
-              </span>
-            ))}
-          </span>
-        )}
-      </div>
-      {/* stop pointer events reaching the drag sensor so the dropdown opens cleanly */}
-      <Select
-        value={hasStatus ? card.statusId! : ""}
-        onPointerDown={(e) => e.stopPropagation()}
-        onChange={(e) => e.target.value && onChangeStatus(e.target.value)}
-        className="mt-2 h-7 w-full py-0.5 text-xs"
-        aria-label="Card status"
-      >
-        {!hasStatus && <option value="">No status</option>}
-        {statuses.map((s) => (
-          <option key={s.id} value={s.id}>{s.name}</option>
-        ))}
-      </Select>
+      {(card.dueDate || hasPeople) && (
+        <div className="flex flex-wrap items-center gap-2 text-xs font-medium text-muted-foreground">
+          {card.dueDate && <DueChip iso={card.dueDate} />}
+          {hasPeople && (
+            <span className="ml-auto">
+              <AvatarStack assignees={card.assignees} smes={card.smes ?? []} />
+            </span>
+          )}
+        </div>
+      )}
     </div>
   );
 }

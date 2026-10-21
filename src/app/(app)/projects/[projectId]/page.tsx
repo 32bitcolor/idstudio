@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { getProjectForUser, boardVisibilityWhere } from "@/lib/authz";
 import { ProjectView } from "@/components/project/project-view";
+import { loadProjectContext } from "@/lib/project-context";
 
 export const metadata = { title: "Project · IDStudio" };
 
@@ -181,6 +182,7 @@ export default async function ProjectPage({ params }: { params: Promise<{ projec
 
   return (
     <ProjectView
+      context={await loadProjectContext(project.id)}
       project={{
         id: project.id,
         name: project.name,

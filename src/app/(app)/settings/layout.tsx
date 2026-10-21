@@ -12,7 +12,6 @@ export default async function SettingsLayout({ children }: { children: React.Rea
   return (
     <PageContainer>
       <PageHeader
-        eyebrow={membership.workspace.name}
         title="Settings"
         description="Manage your account, workspace members, and groups."
       />

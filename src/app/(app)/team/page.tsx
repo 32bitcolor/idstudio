@@ -81,7 +81,6 @@ export default async function TeamPage() {
   return (
     <PageContainer>
       <PageHeader
-        eyebrow={membership.workspace.name}
         title="Team"
         description="What everyone's working on, at a glance."
       />

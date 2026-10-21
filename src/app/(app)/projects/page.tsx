@@ -1,19 +1,16 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { FolderKanban, Plus } from "lucide-react";
+import { FolderKanban } from "lucide-react";
 
 import { prisma } from "@/lib/db";
 import { getActiveMembership } from "@/lib/dal";
 import { projectVisibilityWhere } from "@/lib/authz";
-import { createProject } from "@/app/actions/projects";
 import { PROJECT_STATUS_LABEL, type ProjectStatus } from "@/lib/methodology";
 import { PageContainer, PageHeader } from "@/components/shared/page";
+import { CreateButton } from "@/components/app-shell/quick-create";
 import { EmptyState } from "@/components/shared/empty-state";
 import { StatusBadge, type StatusTone } from "@/components/shared/status-badge";
 import { Card } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { Select } from "@/components/ui/select";
 
 export const metadata = { title: "Projects · IDStudio" };
 
@@ -42,34 +39,10 @@ export default async function ProjectsPage() {
   return (
     <PageContainer>
       <PageHeader
-        eyebrow={membership.workspace.name}
         title="Projects"
         description="ADDIE/SAM projects — phases, deliverables, SME reviews, and time."
+        actions={<CreateButton kind="project" />}
       />
-
-      <form action={createProject} className="mt-6 flex flex-wrap items-center gap-2">
-        <Input name="name" required maxLength={140} placeholder="New project name…" className="w-64" />
-        <div className="w-44">
-          <Select name="methodology" defaultValue="ADDIE" aria-label="Methodology">
-            <option value="ADDIE">ADDIE</option>
-            <option value="SAM">SAM</option>
-            <option value="CUSTOM">Custom (start empty)</option>
-          </Select>
-        </div>
-        <Button type="submit">
-          <Plus className="size-4" /> Create project
-        </Button>
-      </form>
-      <p className="mt-2 text-xs text-muted-foreground">
-        Not sure which to pick?{" "}
-        <Link
-          href="/help/addie-sam"
-          className="font-medium text-accent underline underline-offset-2 hover:no-underline"
-        >
-          Compare ADDIE &amp; SAM
-        </Link>{" "}
-        — IDStudio seeds the matching phases for you.
-      </p>
 
       {projects.length === 0 ? (
         <EmptyState

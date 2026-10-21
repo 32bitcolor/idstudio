@@ -1,16 +1,14 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Columns3, Plus } from "lucide-react";
+import { Columns3 } from "lucide-react";
 
 import { prisma } from "@/lib/db";
 import { getActiveMembership } from "@/lib/dal";
 import { boardVisibilityWhere } from "@/lib/authz";
-import { createBoard } from "@/app/actions/boards";
 import { PageContainer, PageHeader } from "@/components/shared/page";
+import { CreateButton } from "@/components/app-shell/quick-create";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Card } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
 
 export const metadata = { title: "Boards · IDStudio" };
 
@@ -32,23 +30,10 @@ export default async function BoardsPage() {
   return (
     <PageContainer>
       <PageHeader
-        eyebrow={membership.workspace.name}
         title="Boards"
         description="Kanban boards for your production pipeline."
+        actions={<CreateButton kind="board" />}
       />
-
-      <form action={createBoard} className="mt-6 flex flex-wrap gap-2">
-        <Input name="name" required maxLength={120} placeholder="New board name…" className="w-72" />
-        <Input
-          name="cardKeyPrefix"
-          maxLength={8}
-          placeholder="Card prefix (optional, e.g. WP)"
-          className="w-56 uppercase placeholder:normal-case"
-        />
-        <Button type="submit">
-          <Plus className="size-4" /> Create board
-        </Button>
-      </form>
 
       {boards.length === 0 ? (
         <EmptyState

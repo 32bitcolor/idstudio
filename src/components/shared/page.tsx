@@ -2,7 +2,9 @@ import * as React from "react";
 
 import { cn } from "@/lib/utils";
 
-/** One consistent content column for every page in the app shell. */
+/** One consistent content column for every page in the app shell. Left-aligned on
+ *  the same edge and top padding as the full-width boards, so titles don't jump
+ *  around as you move between pages; the width cap only keeps lines readable. */
 export function PageContainer({
   size = "default",
   className,
@@ -12,8 +14,8 @@ export function PageContainer({
   className?: string;
   children: React.ReactNode;
 }) {
-  const width = size === "full" ? "" : size === "wide" ? "max-w-6xl" : "max-w-5xl";
-  return <div className={cn("mx-auto w-full px-4 py-8 sm:px-6", width, className)}>{children}</div>;
+  const width = size === "full" ? "" : size === "wide" ? "max-w-7xl" : "max-w-6xl";
+  return <div className={cn("w-full px-6 pt-5 pb-10", width, className)}>{children}</div>;
 }
 
 /** Page title block with optional eyebrow, description, and right-aligned actions. */
@@ -37,13 +39,13 @@ export function PageHeader({
           <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{eyebrow}</p>
         ) : null}
         {typeof title === "string" ? (
-          <h1 className="truncate text-3xl font-semibold tracking-tight">{title}</h1>
+          <h1 className="truncate text-2xl font-semibold tracking-tight">{title}</h1>
         ) : (
           title
         )}
         {description ? <p className="mt-1 text-sm text-muted-foreground">{description}</p> : null}
       </div>
-      {actions ? <div className="flex shrink-0 items-center gap-2">{actions}</div> : null}
+      {actions ? <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div> : null}
     </div>
   );
 }
