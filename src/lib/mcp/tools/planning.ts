@@ -1,0 +1,221 @@
+import "server-only";
+import { z } from "zod";
+import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { prisma } from "@/lib/db";
+import { boardVisibilityWhere, getIntakeRequestForUser } from "@/lib/authz";
+import { INTAKE_STATUSES, priorityScore, quadrantLabel, ticketLabel } from "@/lib/intake";
+import { SPRINT_STATUSES } from "@/lib/sprint";
+import { approveIntakeRequest, assignIntakeRequest, rejectIntakeRequest, scoreIntakeRequest } from "@/app/actions/intake";
+import { createSprint, renameSprint, setSprintDates, setSprintStatus } from "@/app/actions/sprints";
+import { check, day, link, parseDate, principal, tool, ToolError } from "@/lib/mcp/util";
+import { resolveMember, resolveSprint } from "@/lib/mcp/tools/cards";
+import { cardHref } from "@/lib/mcp/tools/workspace";
+
+// Intake (requests from stakeholders) and sprints: the planning side of the workspace.
+
+async function resolveIntake(ref: string) {
+  const m = /^REQ-?(\d+)$/i.exec(ref.trim());
+  const row = m
+    ? await prisma.intakeRequest.findFirst({ where: { workspaceId: principal().workspaceId, number: Number(m[1]) }, select: { id: true } })
+    : { id: ref.trim() };
+  const req = row && (await getIntakeRequestForUser(row.id));
+  if (!req) throw new ToolError(`No intake request ${ref}.`);
+  return req.id;
+}
+
+async function loadIntake(id: string) {
+  const r = await prisma.intakeRequest.findUniqueOrThrow({
+    where: { id },
+    select: {
+      id: true,
+      number: true,
+      title: true,
+      description: true,
+      requesterName: true,
+      requesterEmail: true,
+      targetAudience: true,
+      targetDate: true,
+      impactScore: true,
+      effortScore: true,
+      status: true,
+      rejectionReason: true,
+      createdAt: true,
+      assignedTo: { select: { id: true, name: true, email: true } },
+      convertedProject: { select: { id: true, name: true } },
+    },
+  });
+  return {
+    id: r.id,
+    ticket: ticketLabel(r.number),
+    title: r.title,
+    status: r.status,
+    description: r.description,
+    requester: { name: r.requesterName, email: r.requesterEmail },
+    targetAudience: r.targetAudience,
+    targetDate: day(r.targetDate),
+    impact: r.impactScore,
+    effort: r.effortScore,
+    priority: r.impactScore && r.effortScore ? priorityScore(r.impactScore, r.effortScore) : null,
+    quadrant: quadrantLabel(r.impactScore, r.effortScore),
+    assignedTo: r.assignedTo,
+    rejectionReason: r.rejectionReason,
+    project: r.convertedProject ? { ...r.convertedProject, url: link(`/projects/${r.convertedProject.id}`) } : null,
+    submitted: day(r.createdAt),
+    url: link("/intake"),
+  };
+}
+
+export function registerPlanningTools(server: McpServer) {
+  tool(
+    server,
+    "list_intake",
+    {
+      title: "List intake requests",
+      description: "Training requests submitted through the intake form, newest first, with triage scores and status.",
+      input: { status: z.enum(INTAKE_STATUSES).optional() },
+      kind: "read",
+    },
+    async ({ status }) => {
+      const rows = await prisma.intakeRequest.findMany({
+        where: { workspaceId: principal().workspaceId, ...(status ? { status } : {}) },
+        orderBy: { createdAt: "desc" },
+        take: 200,
+        select: { id: true },
+      });
+      return Promise.all(rows.map((r) => loadIntake(r.id).then(({ description, ...rest }) => ({ ...rest, description: description.slice(0, 300) }))));
+    },
+  );
+
+  tool(
+    server,
+    "get_intake",
+    { title: "Get an intake request", description: "One intake request in full (by id or ticket such as REQ-4).", input: { request: z.string().min(1) }, kind: "read" },
+    async ({ request }) => loadIntake(await resolveIntake(request)),
+  );
+
+  tool(
+    server,
+    "triage_intake",
+    {
+      title: "Triage an intake request",
+      description:
+        "Score (impact and effort, 1–5), assign (member id, email or name; empty string unassigns), approve (creates a project from it), or reject (with a reason) an intake request. Admins only.",
+      input: {
+        request: z.string().min(1).describe("Request id or ticket such as REQ-4"),
+        impact: z.number().int().min(1).max(5).optional(),
+        effort: z.number().int().min(1).max(5).optional(),
+        assign_to: z.string().optional(),
+        decision: z.enum(["approve", "reject"]).optional(),
+        rejection_reason: z.string().max(500).optional(),
+      },
+      kind: "write",
+    },
+    async (a) => {
+      const id = await resolveIntake(a.request);
+      if (a.impact != null || a.effort != null) {
+        const cur = await prisma.intakeRequest.findUniqueOrThrow({ where: { id }, select: { impactScore: true, effortScore: true } });
+        const impact = a.impact ?? cur.impactScore;
+        const effort = a.effort ?? cur.effortScore;
+        if (impact == null || effort == null) throw new ToolError("Give both impact and effort the first time.");
+        check(await scoreIntakeRequest(id, impact, effort));
+      }
+      if (a.assign_to !== undefined) check(await assignIntakeRequest(id, a.assign_to ? (await resolveMember(a.assign_to)).id : null));
+      if (a.decision === "approve") check(await approveIntakeRequest(id));
+      if (a.decision === "reject") check(await rejectIntakeRequest(id, a.rejection_reason ?? ""));
+      return loadIntake(id);
+    },
+  );
+
+  tool(
+    server,
+    "get_sprint",
+    {
+      title: "Get a sprint",
+      description: "A sprint's goal, dates and every card in it across all boards, grouped by status. sprint = name, id, or 'active'.",
+      input: { sprint: z.string().min(1).default("active") },
+      kind: "read",
+    },
+    async ({ sprint }) => {
+      const s = await resolveSprint(sprint);
+      const full = await prisma.sprint.findUniqueOrThrow({ where: { id: s.id }, select: { id: true, name: true, goal: true, status: true, startDate: true, endDate: true } });
+      const cards = await prisma.card.findMany({
+        where: { sprintId: s.id, column: { board: { workspaceId: principal().workspaceId, ...(await boardVisibilityWhere()) } } },
+        orderBy: { position: "asc" },
+        select: {
+          id: true,
+          title: true,
+          keySeq: true,
+          dueDate: true,
+          status: { select: { name: true } },
+          column: { select: { board: { select: { id: true, name: true, cardKeyPrefix: true } } } },
+          assignees: { select: { user: { select: { name: true, email: true } } } },
+        },
+      });
+      const byStatus: Record<string, unknown[]> = {};
+      for (const c of cards) {
+        const k = c.status?.name ?? "No status";
+        (byStatus[k] ??= []).push({
+          id: c.id,
+          key: c.column?.board.cardKeyPrefix && c.keySeq ? `${c.column.board.cardKeyPrefix}-${c.keySeq}` : null,
+          title: c.title,
+          board: c.column?.board.name,
+          due: day(c.dueDate),
+          assignees: c.assignees.map((x) => x.user.name ?? x.user.email),
+          url: cardHref(c.column!.board.id, c.id),
+        });
+      }
+      return { ...full, startDate: day(full.startDate), endDate: day(full.endDate), url: link("/sprints"), cardsByStatus: byStatus };
+    },
+  );
+
+  tool(
+    server,
+    "create_sprint",
+    {
+      title: "Create a sprint",
+      description: "A new planned sprint with an optional goal and dates. Add cards to it with update_card (sprint).",
+      input: { name: z.string().min(1).max(120), goal: z.string().max(500).optional(), start: z.string().optional(), end: z.string().optional() },
+      kind: "write",
+    },
+    async ({ name, goal, start, end }) => {
+      const { sprint } = check(await createSprint(name, goal));
+      if (!sprint) throw new ToolError("Couldn't create the sprint.");
+      if (start || end) check(await setSprintDates(sprint.id, parseDate(start), parseDate(end)));
+      return { id: sprint.id, name, url: link("/sprints") };
+    },
+  );
+
+  tool(
+    server,
+    "update_sprint",
+    {
+      title: "Update a sprint",
+      description: "Rename a sprint, change its status (planned / active / completed), or its dates.",
+      input: {
+        sprint: z.string().min(1).describe("Sprint name, id, or 'active'"),
+        name: z.string().min(1).max(120).optional(),
+        status: z.enum(SPRINT_STATUSES).optional(),
+        start: z.string().optional(),
+        end: z.string().optional(),
+      },
+      kind: "write",
+      idempotent: true,
+    },
+    async (a) => {
+      const s = await resolveSprint(a.sprint);
+      if (a.name) check(await renameSprint(s.id, a.name));
+      if (a.status) check(await setSprintStatus(s.id, a.status));
+      if (a.start !== undefined || a.end !== undefined) {
+        const cur = await prisma.sprint.findUniqueOrThrow({ where: { id: s.id }, select: { startDate: true, endDate: true } });
+        check(
+          await setSprintDates(
+            s.id,
+            a.start !== undefined ? parseDate(a.start) : (cur.startDate?.toISOString() ?? null),
+            a.end !== undefined ? parseDate(a.end) : (cur.endDate?.toISOString() ?? null),
+          ),
+        );
+      }
+      return { ok: true, sprint: s.id };
+    },
+  );
+}

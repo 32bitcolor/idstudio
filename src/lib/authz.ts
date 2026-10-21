@@ -2,6 +2,7 @@ import "server-only";
 import { cache } from "react";
 import { prisma } from "@/lib/db";
 import { getCurrentUser } from "@/lib/dal";
+import { currentPrincipal } from "@/lib/principal";
 import { Prisma, Role } from "@/generated/prisma/client";
 
 // Resource-level authorization. A user may touch a board/column/card/project/etc.
@@ -9,7 +10,12 @@ import { Prisma, Role } from "@/generated/prisma/client";
 // pass the group-access check below. Each helper returns the resource (with the ids
 // needed for revalidation) or null if absent/forbidden.
 
-const ownedByUser = (userId: string) => ({ members: { some: { userId } } });
+// An MCP token is issued for one workspace: through it, only that workspace counts as
+// the user's, even if they belong to others.
+const ownedByUser = (ctx: { userId: string; workspaceId: string | null }) => ({
+  members: { some: { userId: ctx.userId } },
+  ...(ctx.workspaceId ? { id: ctx.workspaceId } : {}),
+});
 
 // Per-request access context, memoized for the render pass: which workspaces the
 // user has blanket ("see everything") visibility into — ADMIN and MANAGER alike —
@@ -17,12 +23,17 @@ const ownedByUser = (userId: string) => ({ members: { some: { userId } } });
 const getAccessContext = cache(async () => {
   const user = await getCurrentUser();
   if (!user) return null;
+  const workspaceId = currentPrincipal()?.workspaceId ?? null;
   const [memberships, groups] = await Promise.all([
-    prisma.membership.findMany({ where: { userId: user.id }, select: { workspaceId: true, role: true } }),
+    prisma.membership.findMany({
+      where: { userId: user.id, ...(workspaceId ? { workspaceId } : {}) },
+      select: { workspaceId: true, role: true },
+    }),
     prisma.groupMembership.findMany({ where: { userId: user.id }, select: { groupId: true } }),
   ]);
   return {
     userId: user.id,
+    workspaceId,
     elevatedWorkspaceIds: memberships
       .filter((m) => m.role === Role.ADMIN || m.role === Role.MANAGER)
       .map((m) => m.workspaceId),
@@ -97,7 +108,7 @@ export async function getBoardForUser(boardId: string) {
   const ctx = await getAccessContext();
   if (!ctx) return null;
   return prisma.board.findFirst({
-    where: { id: boardId, workspace: ownedByUser(ctx.userId), ...boardAccessOR(ctx) },
+    where: { id: boardId, workspace: ownedByUser(ctx), ...boardAccessOR(ctx) },
     select: { id: true, name: true, workspaceId: true, cardKeyPrefix: true },
   });
 }
@@ -111,7 +122,7 @@ export async function resolveCardKey(prefix: string, keySeq: number) {
   const board = await prisma.board.findFirst({
     where: {
       cardKeyPrefix: { equals: prefix, mode: "insensitive" },
-      workspace: ownedByUser(ctx.userId),
+      workspace: ownedByUser(ctx),
       ...boardAccessOR(ctx),
     },
     select: { id: true },
@@ -135,7 +146,7 @@ export async function getColumnForUser(columnId: string) {
   const ctx = await getAccessContext();
   if (!ctx) return null;
   return prisma.column.findFirst({
-    where: { id: columnId, board: { workspace: ownedByUser(ctx.userId), ...boardAccessOR(ctx) } },
+    where: { id: columnId, board: { workspace: ownedByUser(ctx), ...boardAccessOR(ctx) } },
     select: { id: true, boardId: true, statusId: true },
   });
 }
@@ -150,8 +161,8 @@ export async function getCardForUser(cardId: string) {
     where: {
       id: cardId,
       OR: [
-        { column: { board: { workspace: ownedByUser(ctx.userId), ...boardAccessOR(ctx) } } },
-        { parentCard: { column: { board: { workspace: ownedByUser(ctx.userId), ...boardAccessOR(ctx) } } } },
+        { column: { board: { workspace: ownedByUser(ctx), ...boardAccessOR(ctx) } } },
+        { parentCard: { column: { board: { workspace: ownedByUser(ctx), ...boardAccessOR(ctx) } } } },
       ],
     },
     select: {
@@ -173,7 +184,7 @@ export async function getProjectForUser(projectId: string) {
   const ctx = await getAccessContext();
   if (!ctx) return null;
   return prisma.project.findFirst({
-    where: { id: projectId, workspace: ownedByUser(ctx.userId), ...projectAccessOR(ctx) },
+    where: { id: projectId, workspace: ownedByUser(ctx), ...projectAccessOR(ctx) },
     select: { id: true, name: true, workspaceId: true },
   });
 }
@@ -182,7 +193,7 @@ export async function getPhaseForUser(phaseId: string) {
   const ctx = await getAccessContext();
   if (!ctx) return null;
   return prisma.phase.findFirst({
-    where: { id: phaseId, project: { workspace: ownedByUser(ctx.userId), ...projectAccessOR(ctx) } },
+    where: { id: phaseId, project: { workspace: ownedByUser(ctx), ...projectAccessOR(ctx) } },
     select: { id: true, projectId: true },
   });
 }
@@ -195,7 +206,7 @@ export async function getIntakeRequestForUser(requestId: string) {
   const ctx = await getAccessContext();
   if (!ctx) return null;
   return prisma.intakeRequest.findFirst({
-    where: { id: requestId, workspace: ownedByUser(ctx.userId) },
+    where: { id: requestId, workspace: ownedByUser(ctx) },
     include: { workspace: { select: { name: true } } },
   });
 }
@@ -209,7 +220,7 @@ export async function getDeliverableForUser(deliverableId: string) {
   const ctx = await getAccessContext();
   if (!ctx) return null;
   return prisma.deliverable.findFirst({
-    where: { id: deliverableId, project: { workspace: ownedByUser(ctx.userId), ...projectAccessOR(ctx) } },
+    where: { id: deliverableId, project: { workspace: ownedByUser(ctx), ...projectAccessOR(ctx) } },
     select: { id: true, projectId: true },
   });
 }
@@ -218,7 +229,7 @@ export async function getMilestoneForUser(milestoneId: string) {
   const ctx = await getAccessContext();
   if (!ctx) return null;
   return prisma.milestone.findFirst({
-    where: { id: milestoneId, project: { workspace: ownedByUser(ctx.userId), ...projectAccessOR(ctx) } },
+    where: { id: milestoneId, project: { workspace: ownedByUser(ctx), ...projectAccessOR(ctx) } },
     select: { id: true, projectId: true },
   });
 }
@@ -227,7 +238,7 @@ export async function getReviewForUser(reviewId: string) {
   const ctx = await getAccessContext();
   if (!ctx) return null;
   return prisma.reviewCycle.findFirst({
-    where: { id: reviewId, deliverable: { project: { workspace: ownedByUser(ctx.userId), ...projectAccessOR(ctx) } } },
+    where: { id: reviewId, deliverable: { project: { workspace: ownedByUser(ctx), ...projectAccessOR(ctx) } } },
     select: {
       id: true,
       roundId: true,
@@ -242,7 +253,7 @@ export async function getReviewRoundForUser(roundId: string) {
   const ctx = await getAccessContext();
   if (!ctx) return null;
   return prisma.reviewRound.findFirst({
-    where: { id: roundId, deliverable: { project: { workspace: ownedByUser(ctx.userId), ...projectAccessOR(ctx) } } },
+    where: { id: roundId, deliverable: { project: { workspace: ownedByUser(ctx), ...projectAccessOR(ctx) } } },
     select: {
       id: true,
       number: true,
@@ -258,7 +269,7 @@ export async function getReviewCommentForUser(commentId: string) {
   return prisma.reviewComment.findFirst({
     where: {
       id: commentId,
-      round: { deliverable: { project: { workspace: ownedByUser(ctx.userId), ...projectAccessOR(ctx) } } },
+      round: { deliverable: { project: { workspace: ownedByUser(ctx), ...projectAccessOR(ctx) } } },
     },
     select: { id: true, roundId: true, authorId: true, parentId: true },
   });
@@ -276,7 +287,7 @@ export async function getTimeEntryForUser(timeEntryId: string) {
   const ctx = await getAccessContext();
   if (!ctx) return null;
   return prisma.timeEntry.findFirst({
-    where: { id: timeEntryId, project: { workspace: ownedByUser(ctx.userId), ...projectAccessOR(ctx) } },
+    where: { id: timeEntryId, project: { workspace: ownedByUser(ctx), ...projectAccessOR(ctx) } },
     select: { id: true, projectId: true },
   });
 }
@@ -285,7 +296,7 @@ export async function getObjectiveForUser(objectiveId: string) {
   const ctx = await getAccessContext();
   if (!ctx) return null;
   return prisma.learningObjective.findFirst({
-    where: { id: objectiveId, project: { workspace: ownedByUser(ctx.userId), ...projectAccessOR(ctx) } },
+    where: { id: objectiveId, project: { workspace: ownedByUser(ctx), ...projectAccessOR(ctx) } },
     select: { id: true, projectId: true },
   });
 }
@@ -294,7 +305,7 @@ export async function getAssessmentItemForUser(itemId: string) {
   const ctx = await getAccessContext();
   if (!ctx) return null;
   return prisma.assessmentItem.findFirst({
-    where: { id: itemId, project: { workspace: ownedByUser(ctx.userId), ...projectAccessOR(ctx) } },
+    where: { id: itemId, project: { workspace: ownedByUser(ctx), ...projectAccessOR(ctx) } },
     select: { id: true, projectId: true },
   });
 }
@@ -305,7 +316,7 @@ export async function getStoryboardForUser(storyboardId: string) {
   const ctx = await getAccessContext();
   if (!ctx) return null;
   return prisma.storyboard.findFirst({
-    where: { id: storyboardId, workspace: ownedByUser(ctx.userId), ...storyboardAccessOR(ctx) },
+    where: { id: storyboardId, workspace: ownedByUser(ctx), ...storyboardAccessOR(ctx) },
     select: { id: true, workspaceId: true },
   });
 }
@@ -314,7 +325,7 @@ export async function getScreenForUser(screenId: string) {
   const ctx = await getAccessContext();
   if (!ctx) return null;
   return prisma.screen.findFirst({
-    where: { id: screenId, storyboard: { workspace: ownedByUser(ctx.userId), ...storyboardAccessOR(ctx) } },
+    where: { id: screenId, storyboard: { workspace: ownedByUser(ctx), ...storyboardAccessOR(ctx) } },
     select: { id: true, storyboardId: true },
   });
 }
@@ -325,7 +336,7 @@ export async function getWhiteboardForUser(whiteboardId: string) {
   const ctx = await getAccessContext();
   if (!ctx) return null;
   return prisma.whiteboard.findFirst({
-    where: { id: whiteboardId, workspace: ownedByUser(ctx.userId), ...whiteboardAccessOR(ctx) },
+    where: { id: whiteboardId, workspace: ownedByUser(ctx), ...whiteboardAccessOR(ctx) },
     select: { id: true, workspaceId: true },
   });
 }

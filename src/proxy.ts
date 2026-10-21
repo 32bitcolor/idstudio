@@ -18,7 +18,10 @@ export default async function proxy(req: NextRequest) {
   const isPublic = isAuthPage || PUBLIC_PREFIXES.some((p) => pathname.startsWith(p));
 
   if (!session && !isPublic && pathname !== "/") {
-    return NextResponse.redirect(new URL("/login", req.url));
+    const login = new URL("/login", req.url);
+    // Come back here after signing in (the OAuth consent page relies on it).
+    if (req.method === "GET") login.searchParams.set("next", pathname + req.nextUrl.search);
+    return NextResponse.redirect(login);
   }
 
   // Only bounce a logged-in session away from /login and /signup — a Member

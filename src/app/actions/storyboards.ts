@@ -21,18 +21,23 @@ function storyboardPath(storyboardId: string) {
 // ── Storyboards ──────────────────────────────────────────────────────────────
 
 export async function createStoryboard(formData: FormData): Promise<void> {
+  const res = await createStoryboardNamed(String(formData.get("title") ?? ""));
+  if (res.storyboard) redirect(storyboardPath(res.storyboard.id));
+  if (res.error === "Not signed in.") redirect("/login");
+}
+
+/** A standalone storyboard in the active workspace. */
+export async function createStoryboardNamed(title: string) {
   const membership = await getActiveMembership();
-  if (!membership) redirect("/login");
-
-  const title = Title.safeParse(formData.get("title"));
-  if (!title.success) return;
-
+  if (!membership) return { error: "Not signed in." };
+  const parsed = Title.safeParse(title);
+  if (!parsed.success) return { error: "Title is required." };
   const storyboard = await prisma.storyboard.create({
-    data: { workspaceId: membership.workspaceId, title: title.data },
-    select: { id: true },
+    data: { workspaceId: membership.workspaceId, title: parsed.data },
+    select: { id: true, title: true },
   });
-
-  redirect(storyboardPath(storyboard.id));
+  revalidatePath("/storyboards");
+  return { storyboard };
 }
 
 export async function renameStoryboard(storyboardId: string, title: string) {

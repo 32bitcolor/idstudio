@@ -6,6 +6,7 @@ import { sendMail } from "../src/lib/mailer";
 import { enqueueEmail } from "../src/lib/queues";
 import { runDueReminders } from "../src/lib/reminders";
 import { sweepReviewFiles } from "../src/lib/review-file-sweep";
+import { sweepOAuth } from "../src/lib/oauth-sweep";
 import { S3Client } from "@aws-sdk/client-s3";
 
 // Background job runner. Phase 5 registers real LearnUpon sync jobs here; for
@@ -90,7 +91,9 @@ const maintenanceWorker = new Worker(
   async () => {
     const r = await sweepReviewFiles(prisma, s3, process.env.S3_BUCKET ?? "idstudio");
     console.log(`[worker] review-file sweep: ${r.unusedFiles} unused upload(s), ${r.orphanedObjects} orphaned object(s) removed`);
-    return r;
+    const o = await sweepOAuth(prisma);
+    console.log(`[worker] MCP credential sweep: ${o.codes} code(s), ${o.tokens} token(s), ${o.clients} unused client(s) removed`);
+    return { ...r, oauth: o };
   },
   { connection },
 );

@@ -93,7 +93,14 @@ export async function login(_prev: AuthState, formData: FormData): Promise<AuthS
   }
 
   await createSession(user.id);
-  redirect("/dashboard");
+  redirect(safeNext(formData.get("next")) ?? "/dashboard");
+}
+
+/** A same-site path to go to after signing in; anything else is ignored, so the
+ *  parameter can't send someone to another site. */
+function safeNext(raw: FormDataEntryValue | null): string | null {
+  if (typeof raw !== "string" || !raw.startsWith("/") || raw.startsWith("//") || raw.startsWith("/\\")) return null;
+  return raw.length <= 2000 ? raw : null;
 }
 
 export async function logout(): Promise<void> {

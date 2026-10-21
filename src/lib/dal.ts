@@ -3,6 +3,7 @@ import { cache } from "react";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { getSession } from "@/lib/session";
+import { currentPrincipal } from "@/lib/principal";
 import { Role } from "@/generated/prisma/client";
 
 // Data Access Layer — every protected read/mutation resolves identity through here.
@@ -34,6 +35,8 @@ export const getActiveMembership = cache(async () => {
       include: { workspace: true },
     });
     if (pinned) return pinned;
+    // An MCP token never falls back to another workspace.
+    if (currentPrincipal()) return null;
   }
   return prisma.membership.findFirst({
     where: { userId: user.id },

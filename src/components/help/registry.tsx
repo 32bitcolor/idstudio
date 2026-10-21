@@ -12,6 +12,7 @@ import {
   Bell,
   Users,
   Palette,
+  Bot,
   type LucideIcon,
 } from "lucide-react";
 
@@ -28,6 +29,7 @@ import MyWork from "@/components/help/topics/my-work";
 import Notifications from "@/components/help/topics/notifications";
 import MembersAccess from "@/components/help/topics/members-access";
 import AccountThemes from "@/components/help/topics/account-themes";
+import AiMcp from "@/components/help/topics/ai-mcp";
 
 export type HelpGroup = "Start here" | "Methodology" | "Modules";
 
@@ -129,6 +131,14 @@ export const HELP_TOPICS: HelpTopic[] = [
     icon: Bell,
     group: "Modules",
     Body: Notifications,
+  },
+  {
+    slug: "ai-mcp",
+    title: "AI assistants (MCP)",
+    summary: "Connect Claude and other assistants to your workspace.",
+    icon: Bot,
+    group: "Modules",
+    Body: AiMcp,
   },
   {
     slug: "members-access",

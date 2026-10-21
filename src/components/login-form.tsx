@@ -8,11 +8,13 @@ import type { AuthState } from "@/lib/form-state";
 const inputClass =
   "w-full rounded-md border border-border-strong bg-transparent px-3 py-2 text-sm outline-none focus:border-foreground/60";
 
-export function LoginForm() {
+/** `next`: a same-site path to return to after signing in (e.g. an OAuth consent page). */
+export function LoginForm({ next }: { next?: string }) {
   const [state, action, pending] = useActionState<AuthState, FormData>(login, undefined);
 
   return (
     <form action={action} className="flex flex-col gap-4">
+      {next && <input type="hidden" name="next" value={next} />}
       <label className="flex flex-col gap-1.5">
         <span className="text-sm font-medium">Email</span>
         <input name="email" type="email" className={inputClass} placeholder="you@example.com" autoComplete="email" />

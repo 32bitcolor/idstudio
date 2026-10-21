@@ -1,6 +1,7 @@
 import "server-only";
 import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
+import { currentPrincipal } from "@/lib/principal";
 
 export const SESSION_COOKIE = "idstudio_session";
 const MAX_AGE_SECONDS = 60 * 60 * 24 * 7; // 7 days
@@ -49,6 +50,9 @@ export async function createSession(userId: string, activeWorkspaceId?: string):
 }
 
 export async function getSession(): Promise<SessionPayload | null> {
+  // An MCP request acts as its token's user, in its token's workspace.
+  const principal = currentPrincipal();
+  if (principal) return { userId: principal.userId, activeWorkspaceId: principal.workspaceId };
   const cookieStore = await cookies();
   return decrypt(cookieStore.get(SESSION_COOKIE)?.value);
 }

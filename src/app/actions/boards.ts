@@ -28,15 +28,23 @@ function boardPath(boardId: string) {
 // ── Boards ───────────────────────────────────────────────────────────────────
 
 export async function createBoard(formData: FormData): Promise<void> {
-  const membership = await getActiveMembership();
-  if (!membership) redirect("/login");
+  const prefix = formData.get("cardKeyPrefix");
+  const res = await createBoardNamed(String(formData.get("name") ?? ""), typeof prefix === "string" ? prefix : null);
+  if (res.board) redirect(boardPath(res.board.id));
+  if (res.error === "Not signed in.") redirect("/login");
+  // An empty name is a no-op: the input is `required`.
+}
 
-  const parsed = Name.safeParse(formData.get("name"));
-  if (!parsed.success) return; // the input is `required`; empty names are a no-op
+/** A standalone board in the active workspace, with the default columns. */
+export async function createBoardNamed(name: string, rawPrefix?: string | null) {
+  const membership = await getActiveMembership();
+  if (!membership) return { error: "Not signed in." };
+
+  const parsed = Name.safeParse(name);
+  if (!parsed.success) return { error: "Board name is required." };
 
   // The prefix is optional — boards created without one just never label cards.
-  const rawPrefix = formData.get("cardKeyPrefix");
-  const prefixParsed = typeof rawPrefix === "string" && rawPrefix.trim() ? CardKeyPrefix.safeParse(rawPrefix) : null;
+  const prefixParsed = rawPrefix && rawPrefix.trim() ? CardKeyPrefix.safeParse(rawPrefix) : null;
   let cardKeyPrefix: string | null = prefixParsed?.success ? prefixParsed.data : null;
   if (cardKeyPrefix) {
     const taken = await prisma.board.findFirst({
@@ -44,8 +52,7 @@ export async function createBoard(formData: FormData): Promise<void> {
       select: { id: true },
     });
     // Another board already claimed it — the board still gets created, just
-    // without a prefix (the raw create form has no field-error UI to explain
-    // why; the board header's prefix editor does, so they can retry there).
+    // without a prefix (the board header's prefix editor explains why on retry).
     if (taken) cardKeyPrefix = null;
   }
 
@@ -67,10 +74,10 @@ export async function createBoard(formData: FormData): Promise<void> {
         })),
       },
     },
-    select: { id: true },
+    select: { id: true, name: true, cardKeyPrefix: true },
   });
-
-  redirect(boardPath(board.id));
+  revalidatePath("/boards");
+  return { board };
 }
 
 /** Attach an existing board to a project, or detach it (projectId = null). */

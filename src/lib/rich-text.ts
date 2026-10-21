@@ -10,6 +10,8 @@ export type Run = {
   underline?: boolean;
   strike?: boolean;
   code?: boolean;
+  /** A link's target. */
+  href?: string;
   /** A line break inside the block (Shift+Enter in the editor). */
   br?: boolean;
 };
@@ -27,7 +29,7 @@ type Node = {
   type?: string;
   text?: string;
   attrs?: Record<string, unknown>;
-  marks?: { type?: string }[];
+  marks?: { type?: string; attrs?: Record<string, unknown> }[];
   content?: Node[];
 };
 
@@ -36,7 +38,9 @@ function inline(nodes: Node[] | undefined): Run[] {
   for (const n of nodes ?? []) {
     if (n.type === "text" && typeof n.text === "string") {
       const marks = new Set((n.marks ?? []).map((m) => m.type));
+      const link = n.marks?.find((m) => m.type === "link")?.attrs?.href;
       runs.push({
+        href: typeof link === "string" ? link : undefined,
         text: n.text,
         bold: marks.has("bold") || undefined,
         italic: marks.has("italic") || undefined,

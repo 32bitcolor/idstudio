@@ -42,6 +42,8 @@ model User {
   submittedIntakeRequests IntakeRequest[]   @relation("IntakeRequester")
   assignedIntakeRequests  IntakeRequest[]   @relation("IntakeAssignee")
   savedViews              SavedView[]
+  apiTokens               ApiToken[]
+  oauthCodes              OAuthCode[]
 }
 
 model Workspace {
@@ -64,6 +66,7 @@ model Workspace {
   labels               Label[]
   savedViews           SavedView[]
   reviewFiles          ReviewFile[]
+  apiTokens            ApiToken[]
 }
 
 // Workspace/team-level, time-boxed grouping of work — independent of a project's
@@ -753,4 +756,62 @@ model WhiteboardGroup {
 
   @@id([whiteboardId, groupId])
   @@index([groupId])
+}
+
+// ── MCP access (docs/MCP.md) ─────────────────────────────────────────────────
+// One row per credential an AI client holds: a personal access token pasted into a
+// client, or an OAuth connection (Claude.ai, Claude Desktop…). Either way it acts as
+// one user in one workspace, with "read" or "read write" scope. Secrets are stored as
+// SHA-256 hashes only; the plaintext is shown once (personal) or handed to the client
+// (OAuth) and never kept.
+model ApiToken {
+  id               String       @id @default(cuid())
+  userId           String
+  workspaceId      String
+  name             String // "Claude Code on my laptop" · the OAuth client's name
+  kind             String       @default("personal") // personal / oauth
+  clientId         String? // OAuth connections: the registered client
+  scope            String // "read" or "read write"
+  tokenHash        String       @unique // sha256 of the access token
+  prefix           String // first characters of a personal token, to recognise it in the list
+  refreshHash      String?      @unique // OAuth: sha256 of the current refresh token (rotated on use)
+  refreshExpiresAt DateTime?
+  expiresAt        DateTime? // null = never (personal tokens only)
+  lastUsedAt       DateTime?
+  revokedAt        DateTime?
+  createdAt        DateTime     @default(now())
+  user             User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workspace        Workspace    @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  client           OAuthClient? @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@index([userId, workspaceId])
+}
+
+// An OAuth client that registered itself (RFC 7591 dynamic client registration).
+// Public clients only (PKCE, no secret), as the MCP authorization spec expects.
+model OAuthClient {
+  id           String      @id // the client_id handed out at registration
+  name         String
+  redirectUris String[]
+  createdAt    DateTime    @default(now())
+  tokens       ApiToken[]
+  codes        OAuthCode[]
+}
+
+// A one-time authorization code, valid for ten minutes.
+model OAuthCode {
+  id            String      @id @default(cuid())
+  codeHash      String      @unique
+  clientId      String
+  userId        String
+  workspaceId   String
+  scope         String
+  redirectUri   String
+  codeChallenge String // PKCE S256
+  resource      String?
+  expiresAt     DateTime
+  usedAt        DateTime?
+  createdAt     DateTime    @default(now())
+  client        OAuthClient @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
 }

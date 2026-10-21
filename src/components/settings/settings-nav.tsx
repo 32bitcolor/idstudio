@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 
 const TABS = [
   { href: "/settings/account", label: "Account", adminOnly: false },
+  { href: "/settings/ai", label: "AI & MCP", adminOnly: false },
   { href: "/settings/members", label: "Members", adminOnly: true },
   { href: "/settings/groups", label: "Groups", adminOnly: true },
   { href: "/settings/labels", label: "Labels", adminOnly: true },
