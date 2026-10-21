@@ -15,7 +15,7 @@ type Result = { created: number; skipped: number; card: { id: string; boardId: s
  *  loads the boards on mount. */
 export function SendToBoardDialog({
   deliverableId,
-  commentIds,
+  commentIds: initialIds,
   onClose,
   onSent,
 }: {
@@ -24,6 +24,8 @@ export function SendToBoardDialog({
   onClose: () => void;
   onSent: (r: Result) => void;
 }) {
+  // Fixed when the dialog opens: the caller may clear its selection once the cards exist.
+  const [commentIds] = useState(initialIds);
   const [boards, setBoards] = useState<BoardTarget[] | null>(null);
   const [boardId, setBoardId] = useState("");
   const [columnId, setColumnId] = useState("");
