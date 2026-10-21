@@ -86,7 +86,7 @@ review that.
   convert to a project** or reject with a reason. Requesters are emailed automatically.
 - **Boards**: Kanban with drag-and-drop, plus a **list view**. Each board has its own **card
   keys** (`SEC-7`, with short links), and filters by label, assignee and due date can be saved as
-  shared **views**. Cards open in a **side panel**, so you keep the board in sight:
+  personal **views**. Cards open in a **side panel**, so you keep the board in sight:
   - press `J`/`K` to step between cards
   - a rich-text description with @-mentions
   - status, sprint, due date, **assignees and SMEs**, and workspace-wide **labels**
