@@ -5,6 +5,7 @@ import { Check, History, RotateCcw } from "lucide-react";
 import { prisma } from "@/lib/db";
 import { requireUser, getActiveMembership } from "@/lib/dal";
 import { projectVisibilityWhere } from "@/lib/authz";
+import { REVIEW_STATUS_LABEL, isApproval, type ReviewStatus } from "@/lib/methodology";
 import { EmptyState } from "@/components/shared/empty-state";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { Card } from "@/components/ui/card";
@@ -14,7 +15,7 @@ import { ReopenReviewButton } from "@/components/my-work/reopen-review-button";
 export const metadata = { title: "Review History · IDStudio" };
 
 // Resolved review outcomes surface here (kept off the active Overview tab).
-const RESOLVED = ["approved", "changes_requested"] as const;
+const RESOLVED = ["approved", "approved_with_changes", "changes_requested"] as const;
 const fmtDate = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric" });
 
 export default async function ReviewHistoryPage() {
@@ -34,6 +35,7 @@ export default async function ReviewHistoryPage() {
     select: {
       id: true, round: true, status: true, updatedAt: true, feedback: true, reviewerId: true,
       reviewer: { select: { name: true, email: true } },
+      guest: { select: { name: true } },
       requestedBy: { select: { name: true, email: true } },
       deliverable: { select: DELIVERABLE_SELECT },
     },
@@ -57,8 +59,8 @@ export default async function ReviewHistoryPage() {
         const iReviewed = r.reviewerId === me.id;
         const other = iReviewed
           ? (r.requestedBy?.name ?? r.requestedBy?.email ?? null)
-          : (r.reviewer?.name ?? r.reviewer?.email ?? null);
-        const approved = r.status === "approved";
+          : (r.reviewer?.name ?? r.reviewer?.email ?? (r.guest ? `${r.guest.name} (guest)` : null));
+        const approved = isApproval(r.status);
         return (
           <div key={r.id} className="px-5 py-4">
             <div className="flex flex-wrap items-center gap-3">
@@ -76,10 +78,11 @@ export default async function ReviewHistoryPage() {
                 </div>
               </div>
               <StatusBadge tone={approved ? "success" : "warning"}>
-                {approved ? "Approved" : "Changes requested"}
+                {REVIEW_STATUS_LABEL[r.status as ReviewStatus] ?? r.status}
               </StatusBadge>
               <span className="shrink-0 text-xs text-muted-foreground">{fmtDate.format(r.updatedAt)}</span>
-              <ReopenReviewButton reviewId={r.id} approved={approved} />
+              {/* Guests reopen from their own link; nobody decides on their behalf. */}
+              {!r.guest && <ReopenReviewButton reviewId={r.id} approved={approved} />}
             </div>
             {r.feedback && (
               <p className="mt-2 rounded-md bg-muted/50 px-3 py-2 text-sm text-muted-foreground">

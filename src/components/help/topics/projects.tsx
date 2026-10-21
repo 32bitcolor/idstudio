@@ -97,33 +97,53 @@ export default function Projects() {
         a chip you can follow straight to its board; the <UI>×</UI> unlinks it.
       </P>
 
-      <H2>Review cycles</H2>
+      <H2>Review rounds</H2>
       <P>
-        Every deliverable has its own <strong>reviews</strong> — the SME and stakeholder sign-off loop
-        that&rsquo;s the daily bottleneck for most ID teams. Expand <UI>Reviews</UI> on a deliverable
-        to see and manage its rounds.
+        Every deliverable has its own <strong>review rounds</strong>: the SME and stakeholder sign-off
+        loop that&rsquo;s the daily bottleneck for most ID teams. Each round freezes a copy of the linked
+        storyboard, so reviewers comment on exactly what you sent, even if you keep editing.
       </P>
 
       <Steps>
         <>
-          Click <UI>+ Request a review</UI>, choose a reviewer from your workspace members, optionally
-          set a due date, and click <UI>Request review</UI>. This opens <strong>Round 1</strong> and
-          emails the reviewer a link to it.
+          On a deliverable, click <UI>+ Request a review</UI>. Pick reviewers from your workspace, and/or
+          add <strong>guests</strong> by name and email for SMEs who don&rsquo;t have an account. Set a
+          due date and click <UI>Start round 1</UI>. Everyone is emailed a link.
         </>
         <>
-          The reviewer acts on it — an approve / request-changes decision they&rsquo;ll find in{" "}
-          <strong>My Work</strong>. Each round tracks a status: <UI>Requested</UI>, <UI>In review</UI>,{" "}
-          <UI>Changes requested</UI>, or <UI>Approved</UI>.
+          Reviewers select text in any storyboard field and comment on it, or leave general feedback.
+          Then they choose <UI>Approve</UI>, <UI>Approve with minor changes</UI>, or{" "}
+          <UI>Request changes</UI>. The round passes only when <strong>every</strong> reviewer approves
+          (with or without minor changes).
         </>
         <>
-          Feedback lives on the round itself. Request another review to open the next round — rounds
-          are numbered, so the full revision history stays visible.
+          Reply to comments, and mark them <UI>Resolved</UI> or <UI>Won&rsquo;t fix</UI> with a note the
+          reviewer sees. Then start the next round: it goes back to the same people, and the review page
+          highlights what changed since the last one.
         </>
       </Steps>
 
+      <H3>Guest reviewers</H3>
+      <P>
+        A guest gets a personal link that opens just that one round: no account, no sidebar, nothing
+        else in your workspace. Guests can&rsquo;t @-mention anyone, and they never see member email
+        addresses. A link lasts until two weeks after the due date (90 days at most). After a guest
+        decides, their page is read-only unless they reopen their decision.
+      </P>
+      <UL>
+        <LI>
+          On the round page, a guest&rsquo;s <UI>⋯</UI> menu lets you copy their link, re-send the
+          invite, reset the link (the old one stops working), or turn it off.
+        </LI>
+        <LI>
+          Starting a new round sends each guest a new link. Links from earlier rounds become read-only.
+        </LI>
+        <LI>Guests and members with an undecided review get a reminder the day before it&rsquo;s due.</LI>
+      </UL>
+
       <Callout tone="tip">
-        The collapsed <UI>Reviews</UI> line shows the latest round&rsquo;s status at a glance, so you
-        can scan a project and immediately see what&rsquo;s still waiting on a SME.
+        Admins and managers can <UI>Override</UI> a round to pass it without every approval, for
+        example when an SME has gone silent. A reason is required, and it&rsquo;s shown on the round.
       </Callout>
 
       <H2>Milestones and time tracking</H2>

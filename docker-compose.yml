@@ -122,6 +122,8 @@ services:
       SMTP_PASSWORD: ${SMTP_PASSWORD:-}
       SMTP_FROM: "${SMTP_FROM:-IDStudio <no-reply@idstudio.haggabasin.com>}"
       APP_URL: ${APP_URL:-}
+      # Guest review links are HMACs keyed by this — reminder emails re-create them.
+      SESSION_SECRET: ${SESSION_SECRET}
     depends_on:
       redis:
         condition: service_healthy

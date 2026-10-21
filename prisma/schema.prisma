@@ -44,24 +44,24 @@ model User {
 }
 
 model Workspace {
-  id             String          @id @default(cuid())
-  name           String
-  slug           String          @unique
-  intakeEnabled  Boolean         @default(true) // admin on/off toggle for the public intake form
-  notificationSettings Json?     // admin per-type email toggles; null/absent key = enabled (opt-out). See src/lib/notifications.ts
-  createdAt      DateTime        @default(now())
-  updatedAt      DateTime        @updatedAt
-  members        Membership[]
-  boards         Board[]
-  projects       Project[]
-  storyboards    Storyboard[]
-  whiteboards    Whiteboard[]
-  groups         Group[]
-  intakeRequests IntakeRequest[]
-  statuses       WorkspaceStatus[]
-  sprints        Sprint[]
-  labels         Label[]
-  savedViews     SavedView[]
+  id                   String            @id @default(cuid())
+  name                 String
+  slug                 String            @unique
+  intakeEnabled        Boolean           @default(true) // admin on/off toggle for the public intake form
+  notificationSettings Json? // admin per-type email toggles; null/absent key = enabled (opt-out). See src/lib/notifications.ts
+  createdAt            DateTime          @default(now())
+  updatedAt            DateTime          @updatedAt
+  members              Membership[]
+  boards               Board[]
+  projects             Project[]
+  storyboards          Storyboard[]
+  whiteboards          Whiteboard[]
+  groups               Group[]
+  intakeRequests       IntakeRequest[]
+  statuses             WorkspaceStatus[]
+  sprints              Sprint[]
+  labels               Label[]
+  savedViews           SavedView[]
 }
 
 // Workspace/team-level, time-boxed grouping of work — independent of a project's
@@ -156,24 +156,24 @@ model Column {
 }
 
 model Card {
-  id           String         @id @default(cuid())
+  id           String           @id @default(cuid())
   columnId     String? // null means this card is a subtask (see parentCardId)
   parentCardId String? // set means this card IS a subtask, nested one level under another card
   title        String
   description  String? // TipTap document, stored as JSON string
   dueDate      DateTime?
-  done         Boolean        @default(false) // only meaningful for subtask-cards
+  done         Boolean          @default(false) // only meaningful for subtask-cards
   keySeq       Int? // this card's number in its board's key sequence — null if the board has no cardKeyPrefix; display as "{board.cardKeyPrefix}-{keySeq}"
   statusId     String? // canonical status — source of truth for cross-board views; kept in sync with the card's column on move
   sprintId     String? // optional sprint assignment (independent of project); powers the team sprint board
   position     String
-  createdAt    DateTime       @default(now())
-  updatedAt    DateTime       @updatedAt
-  column       Column?        @relation(fields: [columnId], references: [id], onDelete: Cascade)
-  parentCard   Card?          @relation("CardSubtasks", fields: [parentCardId], references: [id], onDelete: Cascade)
-  subtasks     Card[]         @relation("CardSubtasks")
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+  column       Column?          @relation(fields: [columnId], references: [id], onDelete: Cascade)
+  parentCard   Card?            @relation("CardSubtasks", fields: [parentCardId], references: [id], onDelete: Cascade)
+  subtasks     Card[]           @relation("CardSubtasks")
   status       WorkspaceStatus? @relation(fields: [statusId], references: [id], onDelete: SetNull)
-  sprint       Sprint?        @relation(fields: [sprintId], references: [id], onDelete: SetNull)
+  sprint       Sprint?          @relation(fields: [sprintId], references: [id], onDelete: SetNull)
   labels       CardLabel[]
   assignees    CardAssignee[]
   smes         CardSme[]
@@ -274,22 +274,25 @@ model Deliverable {
 // existed this row WAS the round; `round` is kept and mirrors ReviewRound.number so
 // existing queries and history keep working.)
 model ReviewCycle {
-  id            String      @id @default(cuid())
+  id            String       @id @default(cuid())
   deliverableId String
   roundId       String
-  reviewerId    String
+  // Exactly one of reviewerId / guestId (CHECK in the review_guests migration).
+  reviewerId    String?
+  guestId       String?      @unique
   requestedById String? // who set up the review (null for legacy rows)
   round         Int
-  status        String      @default("requested") // requested / in_review / changes_requested / approved
+  status        String       @default("requested") // requested / in_review / changes_requested / approved
   dueDate       DateTime?
   feedback      String? // the reviewer's summary that goes with their decision
   decidedAt     DateTime? // when it last became approved / changes_requested
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
-  deliverable   Deliverable @relation(fields: [deliverableId], references: [id], onDelete: Cascade)
-  reviewRound   ReviewRound @relation(fields: [roundId], references: [id], onDelete: Cascade)
-  reviewer      User        @relation("ReviewReviewer", fields: [reviewerId], references: [id], onDelete: Cascade)
-  requestedBy   User?       @relation("ReviewRequester", fields: [requestedById], references: [id], onDelete: SetNull)
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  deliverable   Deliverable  @relation(fields: [deliverableId], references: [id], onDelete: Cascade)
+  reviewRound   ReviewRound  @relation(fields: [roundId], references: [id], onDelete: Cascade)
+  reviewer      User?        @relation("ReviewReviewer", fields: [reviewerId], references: [id], onDelete: Cascade)
+  guest         ReviewGuest? @relation(fields: [guestId], references: [id], onDelete: Cascade)
+  requestedBy   User?        @relation("ReviewRequester", fields: [requestedById], references: [id], onDelete: SetNull)
 
   @@unique([roundId, reviewerId])
   @@index([deliverableId])
@@ -330,7 +333,8 @@ model ReviewComment {
   id           String          @id @default(cuid())
   roundId      String
   parentId     String? // one level of threading
-  authorId     String?
+  authorId     String? // at most one of authorId / guestId (CHECK); both null = author since deleted
+  guestId      String?
   body         String // TipTap document, stored as JSON string
   anchor       Json
   status       String          @default("open") // open / resolved / wont_fix
@@ -343,10 +347,29 @@ model ReviewComment {
   parent       ReviewComment?  @relation("ReviewCommentThread", fields: [parentId], references: [id], onDelete: Cascade)
   replies      ReviewComment[] @relation("ReviewCommentThread")
   author       User?           @relation("ReviewCommentAuthor", fields: [authorId], references: [id], onDelete: SetNull)
+  guest        ReviewGuest?    @relation(fields: [guestId], references: [id], onDelete: SetNull)
   resolvedBy   User?           @relation("ReviewCommentResolver", fields: [resolvedById], references: [id], onDelete: SetNull)
 
   @@index([roundId, status])
   @@index([parentId])
+}
+
+// An outside reviewer's credential for ONE assignment — not a User, no Membership, so
+// nothing in authz.ts can ever return it (docs/REVIEW-LINKS.md, locked decision 1). The
+// link is "<id>.<HMAC(SESSION_SECRET, id:nonce)>" (lib/review-guest.ts): only the nonce
+// is stored, so a database dump can't be replayed, yet the app can re-send the link.
+// Rotating the nonce kills the old link.
+model ReviewGuest {
+  id         String          @id @default(cuid())
+  name       String
+  email      String
+  nonce      String
+  expiresAt  DateTime
+  revokedAt  DateTime?
+  lastSeenAt DateTime?
+  createdAt  DateTime        @default(now())
+  assignment ReviewCycle?
+  comments   ReviewComment[]
 }
 
 model TimeEntry {

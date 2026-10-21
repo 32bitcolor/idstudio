@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import { ArrowRight, Check, MessageSquare, RotateCcw } from "lucide-react";
+import { ArrowRight, Check, CheckCheck, MessageSquare, RotateCcw } from "lucide-react";
 import { setReviewStatus, setReviewFeedback } from "@/app/actions/reviews";
 import { dueMeta, dueToneClass } from "@/lib/due";
 import { REVIEW_STATUS_LABEL, type ReviewStatus } from "@/lib/methodology";
@@ -59,7 +59,7 @@ function ReviewItem({
   const [err, setErr] = useState<string | null>(null);
   const due = dueMeta(review.dueIso);
 
-  function act(status: "in_review" | "approved" | "changes_requested") {
+  function act(status: "in_review" | "approved" | "approved_with_changes" | "changes_requested") {
     setErr(null);
     startTransition(async () => {
       // Persist any typed feedback first (esp. when requesting changes).
@@ -69,7 +69,7 @@ function ReviewItem({
       const res = await setReviewStatus(review.id, status);
       if (res?.error) { setErr(res.error); return; }
       if (status === "in_review") onPatch(review.id, status);
-      else onDrop(review.id); // approved / changes_requested leave the reviewer's queue
+      else onDrop(review.id); // a decision takes it out of the reviewer's queue
       // The server action already revalidates the root layout; router.refresh()
       // fetches that fresh data now so the header's badge count updates
       // immediately instead of waiting for the next navigation.
@@ -128,6 +128,9 @@ function ReviewItem({
       <div className="flex flex-wrap items-center gap-2">
         <Button size="sm" onClick={() => act("approved")} disabled={pending}>
           <Check className="size-4" /> Approve
+        </Button>
+        <Button size="sm" variant="outline" onClick={() => act("approved_with_changes")} disabled={pending}>
+          <CheckCheck className="size-4" /> Approve with minor changes
         </Button>
         <Button size="sm" variant="outline" onClick={() => act("changes_requested")} disabled={pending}>
           <RotateCcw className="size-4" /> Request changes

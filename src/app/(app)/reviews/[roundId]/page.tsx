@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { getCurrentUser } from "@/lib/dal";
 import { getReviewRoundForUser, isElevatedInWorkspace } from "@/lib/authz";
 import { diffSnapshots, parseSnapshot } from "@/lib/review-snapshot";
+import { COMMENT_SELECT, toCommentDTO } from "@/lib/review-comments";
 import { ReviewRoundView } from "@/components/review/review-round-view";
 
 export const metadata = { title: "Review · IDStudio" };
@@ -45,22 +46,10 @@ export default async function ReviewRoundPage({ params }: { params: Promise<{ ro
           feedback: true,
           decidedAt: true,
           reviewer: { select: { id: true, name: true, email: true } },
+          guest: { select: { id: true, name: true, email: true, lastSeenAt: true, expiresAt: true, revokedAt: true } },
         },
       },
-      comments: {
-        orderBy: { createdAt: "asc" },
-        select: {
-          id: true,
-          parentId: true,
-          body: true,
-          anchor: true,
-          status: true,
-          resolvedNote: true,
-          createdAt: true,
-          resolvedBy: { select: { name: true, email: true } },
-          author: { select: { id: true, name: true, email: true } },
-        },
-      },
+      comments: { orderBy: { createdAt: "asc" }, select: COMMENT_SELECT },
     },
   });
 
@@ -84,8 +73,7 @@ export default async function ReviewRoundPage({ params }: { params: Promise<{ ro
 
   return (
     <ReviewRoundView
-      me={{ id: me.id }}
-      canOverride={elevated}
+      viewer={{ kind: "member", id: me.id, canModerate: elevated }}
       members={members}
       round={{
         id: round.id,
@@ -109,22 +97,24 @@ export default async function ReviewRoundPage({ params }: { params: Promise<{ ro
         status: a.status,
         feedback: a.feedback,
         decidedAt: a.decidedAt ? a.decidedAt.toISOString() : null,
-        reviewer: a.reviewer,
+        reviewer: a.reviewer ? { id: a.reviewer.id, name: a.reviewer.name ?? a.reviewer.email } : null,
+        guest: a.guest
+          ? {
+              id: a.guest.id,
+              name: a.guest.name,
+              email: a.guest.email,
+              link: {
+                lastSeenAt: a.guest.lastSeenAt ? a.guest.lastSeenAt.toISOString() : null,
+                expiresAt: a.guest.expiresAt.toISOString(),
+                revoked: !!a.guest.revokedAt,
+              },
+            }
+          : null,
       }))}
       snapshot={snapshot}
       previousNumber={previous && prevSnapshot ? previous.number : null}
       diff={diff}
-      initialComments={round.comments.map((c) => ({
-        id: c.id,
-        parentId: c.parentId,
-        body: c.body,
-        anchor: c.anchor,
-        status: c.status,
-        resolvedNote: c.resolvedNote,
-        resolvedBy: c.resolvedBy ? c.resolvedBy.name ?? c.resolvedBy.email : null,
-        createdAt: c.createdAt.toISOString(),
-        author: c.author,
-      }))}
+      initialComments={round.comments.map((c) => toCommentDTO(c, "member"))}
     />
   );
 }

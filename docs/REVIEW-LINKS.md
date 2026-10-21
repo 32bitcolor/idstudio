@@ -64,11 +64,18 @@ is the supported path for authoring-tool output, and it's what SMEs already rece
    lightweight "guest users" — every list, search and group-visibility query in `authz.ts` would
    then have to learn to exclude them, and one miss leaks the workspace.
 
-2. **Tokens are stored hashed, exchanged for a cookie, and scoped to one reviewer.**
-   - 32 random bytes, base64url; only the **SHA-256 hash** is stored. A database dump can't be
-     replayed.
-   - `GET /review/<token>` validates, sets an httpOnly, Secure, `SameSite=Lax` cookie with
-     `Path=/review`, then **redirects to a token-free URL**. The token leaves the address bar,
+2. **Links are unforgeable from the database, exchanged for a cookie, and scoped to one reviewer.**
+   - *Amended in phase 2 (2026-10-21).* A link is `<guestId>.<HMAC-SHA256(SESSION_SECRET, guestId:nonce)>`
+     (`lib/review-guest-token.ts`). Only a random per-guest **nonce** is stored, so a database dump
+     still can't mint or replay a link, as the original "store only a hash" design intended. But
+     the app can re-create the link, which makes reminder emails and a designer's **Copy link**
+     possible. **Reset link** rotates the nonce, which kills the old link at once. Rotating
+     `SESSION_SECRET` kills every guest link, along with every session. Rejected: a random token
+     stored only as a hash. It can never be shown or re-sent, so every reminder would need a new
+     link that invalidates the one in the guest's inbox.
+   - `GET /review/<token>` validates, sets an httpOnly, Secure, `SameSite=Lax` cookie scoped to
+     `Path=/review/g/<guestId>` (so one browser can hold several reviews), then **redirects to a
+     token-free URL**. The token leaves the address bar,
      browser history, screenshots and `Referer` headers after first use.
    - The page sends `Referrer-Policy: no-referrer` and `X-Robots-Tag: noindex`.
    - Expiry defaults to the round's due date + 14 days (capped at 90), and every link is
@@ -287,11 +294,11 @@ approved for gating and shows its comments as follow-ups.
 
 All phases are additive. Each one ships something usable, and it's fine to stop after any of them.
 
-1. **Real rounds + anchored comments (members only).** `ReviewRound`, snapshots, the
+1. ✅ *Shipped 2026-10-21.* **Real rounds + anchored comments (members only).** `ReviewRound`, snapshots, the
    `ReviewCycle` migration, storyboard-field anchors, threads, resolve, and the
    "changed since last round" diff. This is valuable before any guest ever sees a link, and it's
    where the risky migration happens.
-2. **Guest review links.** `ReviewGuest`, the token→cookie exchange, the public `/review` route
+2. ✅ *Built 2026-10-21.* **Guest review links.** `ReviewGuest`, the token→cookie exchange, the public `/review` route
    group, rate limits, expiry and revoke, invite and decision emails, review due-date reminders,
    and the "Approve with minor changes" status.
 3. **File targets.** `ReviewFile`, streamed large uploads, Range downloads, and PDF (pdf.js),
@@ -322,4 +329,27 @@ All phases are additive. Each one ships something usable, and it's fine to stop 
 4. ~~**Who sees guest comments?**~~ **Resolved 2026-10-20:** anyone with access to the
    deliverable's project, under the existing group visibility rules. Nothing guest-specific.
 
-No open questions remain. Phase 1 is ready to build.
+No open questions remain.
+
+### Phase 2 as built
+
+- `ReviewGuest` (name, email, nonce, expiry, revoked, last seen). `ReviewCycle.reviewerId` is now
+  optional, with a `guestId` and a CHECK that exactly one is set. `ReviewComment.guestId` has a CHECK
+  that at most one author is set, because deleting an author nulls the column.
+- `/review/<token>` → cookie → `/review/g/<guestId>`. Revoked, expired and bad links go to
+  `/review/unavailable`. The pages have no app shell, send `Referrer-Policy: no-referrer` and
+  `X-Robots-Tag: noindex`, and never import `authz.ts`.
+- Guests comment (no mentions), reply, delete their own comments, and decide. After deciding, the
+  page is read-only until they **Reopen**. A newer round, or a round with an outcome, makes it
+  read-only. Guests see members' names but never their email addresses.
+- Members manage guests from the round page: copy link, re-send invite, reset link, turn off. Any
+  member with project access can do this, like every other review action. Members can also add a
+  reviewer, member or guest, to an open round.
+- **Approve with minor changes** is a new decision for members and guests, and counts toward
+  approval.
+- Decision emails include the comment counts, including how many are on screens changed since the
+  last round. Reminders go out the day before a review is due, to undecided members and guests.
+- Rate limits: link exchange is capped at 30 per 10 minutes per IP, and guest comments at 300 per
+  hour per guest.
+- Backups (format 6) include guests without their nonce, and restore gives them fresh ones, so
+  restored links are dead and members re-send them.

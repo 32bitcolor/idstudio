@@ -17,8 +17,8 @@ function layout(heading: string, bodyHtml: string): string {
 </div>`;
 }
 
-function button(url: string): string {
-  return `<p style="margin-top:20px"><a href="${url}" style="display:inline-block;background:#111;color:#fff;text-decoration:none;padding:9px 16px;border-radius:6px;font-size:14px">View in IDStudio →</a></p>`;
+function button(url: string, label = "View in IDStudio →"): string {
+  return `<p style="margin-top:20px"><a href="${url}" style="display:inline-block;background:#111;color:#fff;text-decoration:none;padding:9px 16px;border-radius:6px;font-size:14px">${esc(label)}</a></p>`;
 }
 
 type Email = { subject: string; html: string; text: string };
@@ -26,11 +26,11 @@ type Email = { subject: string; html: string; text: string };
 /** Append a "View in IDStudio" button (and the raw URL in the text part) to any
  *  templated email. No-op when url is undefined (e.g. APP_URL unset, or emails to
  *  external requesters who can't sign in). */
-export function withLink(email: Email, url: string | undefined): Email {
+export function withLink(email: Email, url: string | undefined, label?: string): Email {
   if (!url) return email;
   return {
     subject: email.subject,
-    html: email.html.replace(FOOTER, `${button(url)}\n  ${FOOTER}`),
+    html: email.html.replace(FOOTER, `${button(url, label)}\n  ${FOOTER}`),
     text: `${email.text}\n\n${url}`,
   };
 }
@@ -192,20 +192,42 @@ export function reviewDecided(params: {
   deliverableName: string;
   projectName: string;
   reviewerName: string;
-  decision: "approved" | "changes_requested";
+  decision: "approved" | "approved_with_changes" | "changes_requested";
   feedback?: string | null;
+  commentCount?: number;
+  /** Comments on screens changed since the previous round; null when there's no previous round to compare. */
+  changedCount?: number | null;
+  previousNumber?: number | null;
 }): Email {
-  const { requesterName, deliverableName, projectName, reviewerName, decision, feedback } = params;
-  const verb = decision === "approved" ? "approved" : "requested changes on";
+  const { requesterName, deliverableName, projectName, reviewerName, decision, feedback, commentCount = 0, changedCount, previousNumber } = params;
+  const verb =
+    decision === "approved" ? "approved" : decision === "approved_with_changes" ? "approved, with minor changes," : "requested changes on";
+  const subject =
+    decision === "approved"
+      ? `Approved: "${deliverableName}"`
+      : decision === "approved_with_changes"
+        ? `Approved with minor changes: "${deliverableName}"`
+        : `Changes requested: "${deliverableName}"`;
+  const heading =
+    decision === "approved" ? "Your review was approved" : decision === "approved_with_changes" ? "Approved, with minor changes" : "Changes were requested";
+  const counts =
+    commentCount > 0
+      ? `${commentCount} comment${commentCount === 1 ? "" : "s"}${
+          changedCount != null && previousNumber != null && changedCount > 0
+            ? `, ${changedCount} on screens changed since round ${previousNumber}`
+            : ""
+        }.`
+      : "";
   return {
-    subject: decision === "approved" ? `Approved: "${deliverableName}"` : `Changes requested: "${deliverableName}"`,
+    subject,
     html: layout(
-      decision === "approved" ? "Your review was approved" : "Changes were requested",
+      heading,
       `<p>Hi ${esc(requesterName)},</p>
 <p>${esc(reviewerName)} ${verb} <strong>${esc(deliverableName)}</strong> in project "${esc(projectName)}".</p>
+${counts ? `<p>${esc(counts)}</p>` : ""}
 ${feedback ? `<p style="border-left:3px solid #ddd;padding-left:12px;color:#444">${esc(feedback)}</p>` : ""}`,
     ),
-    text: `Hi ${requesterName},\n\n${reviewerName} ${verb} "${deliverableName}" in project "${projectName}".${feedback ? `\n\n${feedback}` : ""}`,
+    text: `Hi ${requesterName},\n\n${reviewerName} ${verb} "${deliverableName}" in project "${projectName}".${counts ? `\n\n${counts}` : ""}${feedback ? `\n\n${feedback}` : ""}`,
   };
 }
 
@@ -324,5 +346,42 @@ export function subtaskStatusChanged(params: {
 <p>On card "${esc(cardTitle)}" in ${esc(boardName)}.</p>`,
     ),
     text: `Hi ${recipientName},\n\n${actorName} ${verb} "${subtaskText}".\n\nOn card "${cardTitle}" in ${boardName}.`,
+  };
+}
+
+export function guestReviewInvite(params: {
+  guestName: string;
+  requesterName: string;
+  deliverableName: string;
+  workspaceName: string;
+  roundNumber: number;
+  dueDate: string | null;
+  expires: string;
+}): Email {
+  const { guestName, requesterName, deliverableName, workspaceName, roundNumber, dueDate, expires } = params;
+  const again = roundNumber > 1 ? ` This is round ${roundNumber}; the page highlights what changed since the last one.` : "";
+  return {
+    subject: `${requesterName} asked you to review "${deliverableName}"`,
+    html: layout(
+      "You've been asked to review",
+      `<p>Hi ${esc(guestName)},</p>
+<p>${esc(requesterName)} at ${esc(workspaceName)} asked you to review <strong>${esc(deliverableName)}</strong>.${esc(again)}</p>
+${dueDate ? `<p>Please review by <strong>${esc(dueDate)}</strong>.</p>` : ""}
+<p>No account needed: select any text to comment on it, then approve or request changes. The link is personal to you, so please don't forward it. It works until ${esc(expires)}.</p>`,
+    ),
+    text: `Hi ${guestName},\n\n${requesterName} at ${workspaceName} asked you to review "${deliverableName}".${again}${dueDate ? `\n\nPlease review by ${dueDate}.` : ""}\n\nNo account needed: select any text to comment on it, then approve or request changes. The link is personal to you, so please don't forward it. It works until ${expires}.`,
+  };
+}
+
+export function reviewDueReminder(params: { reviewerName: string; deliverableName: string; when: string }): Email {
+  const { reviewerName, deliverableName, when } = params;
+  return {
+    subject: `Review due ${when}: "${deliverableName}"`,
+    html: layout(
+      "A review is due soon",
+      `<p>Hi ${esc(reviewerName)},</p>
+<p>Your review of <strong>${esc(deliverableName)}</strong> is due <strong>${esc(when)}</strong>.</p>`,
+    ),
+    text: `Hi ${reviewerName},\n\nYour review of "${deliverableName}" is due ${when}.`,
   };
 }

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
 import {
   Check,
+  CheckCheck,
   CircleSlash,
   MessageSquare,
   MessageSquarePlus,
@@ -24,6 +25,8 @@ import {
   setReviewStatus,
   type ReviewCommentDTO,
 } from "@/app/actions/reviews";
+import { guestAddComment, guestDecide, guestDeleteComment, guestReopen } from "@/app/actions/review-guest";
+import { ReviewerList, type Assignment } from "@/components/review/reviewer-list";
 import { useSetPageTitle } from "@/components/app-shell/breadcrumbs";
 import { CommentBody, CommentComposer } from "@/components/board/comment-editor";
 import type { MentionMember } from "@/components/board/mention-list";
@@ -50,12 +53,24 @@ import {
   type ScreenField,
 } from "@/lib/review-anchor";
 import type { ScreenChange, SnapshotDiff, StoryboardSnapshot } from "@/lib/review-snapshot";
-import { REVIEW_STATUS_LABEL, type ReviewStatus } from "@/lib/methodology";
+import { isApproval, isDecided, type ReviewDecision } from "@/lib/methodology";
 import { extractText } from "@/lib/mentions";
 import { cn } from "@/lib/utils";
 
-type Member = { id: string; name: string | null; email: string };
-type Assignment = { id: string; status: string; feedback: string | null; decidedAt: string | null; reviewer: Member };
+/** Who's looking: a workspace member in the app, or a guest on their review link. */
+export type Viewer =
+  | { kind: "member"; id: string; canModerate: boolean }
+  | {
+      kind: "guest";
+      id: string; // the guest id
+      name: string;
+      canComment: boolean;
+      canDecide: boolean;
+      superseded: boolean;
+      closed: boolean;
+      expiresAt: string;
+    };
+
 type RoundInfo = {
   id: string;
   number: number;
@@ -99,8 +114,7 @@ function hasText(doc: string | null): boolean {
 }
 
 export function ReviewRoundView({
-  me,
-  canOverride,
+  viewer,
   members,
   round,
   deliverable,
@@ -111,8 +125,8 @@ export function ReviewRoundView({
   diff,
   initialComments,
 }: {
-  me: { id: string };
-  canOverride: boolean;
+  viewer: Viewer;
+  /** For @-mentions. Empty for guests: the picker would hand them the member list. */
   members: MentionMember[];
   round: RoundInfo;
   deliverable: { id: string; name: string };
@@ -123,10 +137,15 @@ export function ReviewRoundView({
   diff: SnapshotDiff | null;
   initialComments: ReviewCommentDTO[];
 }) {
+  const guest = viewer.kind === "guest";
   useSetPageTitle(`${deliverable.name} · Round ${round.number}`, [
     { label: "Projects", href: "/projects" },
     { label: project.name, href: `/projects/${project.id}` },
   ]);
+  const me = { id: viewer.id };
+  const canOverride = viewer.kind === "member" && viewer.canModerate;
+  const canComment = viewer.kind === "member" || viewer.canComment;
+  const mentionMembers = guest ? undefined : members;
 
   const [comments, setComments] = useState<ReviewCommentDTO[]>(initialComments);
   const [composing, setComposing] = useState<{ anchor: ReviewAnchor } | null>(null);
@@ -163,7 +182,9 @@ export function ReviewRoundView({
   }
 
   async function post(anchor: ReviewAnchor, body: string, parentId?: string) {
-    const res = await addReviewComment(round.id, anchor, body, parentId ?? null);
+    const res = guest
+      ? await guestAddComment(viewer.id, anchor, body, parentId ?? null)
+      : await addReviewComment(round.id, anchor, body, parentId ?? null);
     if (res && "comment" in res && res.comment) {
       setComments((prev) => [...prev, res.comment!]);
       if (!parentId) setComposing(null);
@@ -172,8 +193,8 @@ export function ReviewRoundView({
     return res && "error" in res ? res.error ?? "Couldn't post that comment." : null;
   }
 
-  const myAssignment = assignments.find((a) => a.reviewer.id === me.id) ?? null;
-  const approved = assignments.filter((a) => a.status === "approved").length;
+  const myAssignment = guest ? null : (assignments.find((a) => a.reviewer?.id === me.id) ?? null);
+  const approved = assignments.filter((a) => isApproval(a.status)).length;
   const changedCount = diff?.changedCount ?? 0;
   const visibleScreens =
     snapshot?.screens.filter((s) => !onlyChanged || !diff || diff.screens[s.id]?.kind !== "unchanged") ?? [];
@@ -194,7 +215,11 @@ export function ReviewRoundView({
             {round.dueDate && !round.outcome && <DueChip iso={round.dueDate} className="text-xs font-medium" />}
           </div>
           <p className="mt-1 flex flex-wrap gap-x-2 text-sm text-muted-foreground">
-            <Link href={`/projects/${project.id}`} className="hover:text-foreground hover:underline">{project.name}</Link>
+            {guest ? (
+              <span>{project.name}</span>
+            ) : (
+              <Link href={`/projects/${project.id}`} className="hover:text-foreground hover:underline">{project.name}</Link>
+            )}
             {round.requestedBy && <span>· requested by {round.requestedBy}</span>}
             <span>· {approved}/{assignments.length} approved</span>
           </p>
@@ -213,8 +238,9 @@ export function ReviewRoundView({
         </p>
       )}
 
-      <Reviewers assignments={assignments} />
+      <ReviewerList assignments={assignments} roundOpen={!round.outcome} manage={viewer.kind === "member"} roundId={round.id} members={members} />
       {myAssignment && <DecisionBar assignment={myAssignment} />}
+      {viewer.kind === "guest" && <GuestDecisionBar viewer={viewer} assignment={assignments.find((a) => a.guest?.id === viewer.id) ?? null} />}
 
       <div className="flex min-w-0 flex-wrap items-start gap-6">
         {/* ── What's under review ───────────────────────────── */}
@@ -254,7 +280,8 @@ export function ReviewRoundView({
                   countByAnchor={countByAnchor}
                   flash={flash}
                   composing={composing}
-                  members={members}
+                  members={mentionMembers}
+                  canComment={canComment}
                   onCompose={(anchor) => setComposing({ anchor })}
                   onCancel={() => setComposing(null)}
                   onPost={(anchor, body) => post(anchor, body)}
@@ -265,7 +292,9 @@ export function ReviewRoundView({
             <div className="rounded-lg border border-dashed border-border px-4 py-6 text-sm text-muted-foreground">
               {round.hasStoryboardNow
                 ? "This round was started before IDStudio recorded what each round reviewed, so there's no snapshot to show. Comments still work — use the panel."
-                : "This deliverable has no storyboard, so there's nothing to pin comments to. Leave feedback for the round in the panel."}
+                : guest
+                  ? "There's nothing to pin comments to in this round. Leave your feedback in the comments panel."
+                  : "This deliverable has no storyboard, so there's nothing to pin comments to. Leave feedback for the round in the panel."}
             </div>
           )}
         </section>
@@ -275,8 +304,9 @@ export function ReviewRoundView({
           threads={threads}
           repliesOf={repliesOf}
           me={me}
-          canModerate={canOverride}
-          members={members}
+          viewer={viewer}
+          canComment={canComment}
+          members={mentionMembers}
           screenTitle={screenTitle}
           onJump={jumpTo}
           onPost={post}
@@ -304,40 +334,15 @@ function Toggle({ active, onClick, children }: { active: boolean; onClick: () =>
   );
 }
 
-const DECISION_TONE: Record<string, "neutral" | "info" | "warning" | "success"> = {
-  requested: "neutral",
-  in_review: "info",
-  changes_requested: "warning",
-  approved: "success",
-};
-
-function Reviewers({ assignments }: { assignments: Assignment[] }) {
-  return (
-    <ul className="flex flex-wrap gap-2" aria-label="Reviewers">
-      {assignments.map((a) => (
-        <li key={a.id} className="flex min-w-0 max-w-full flex-col gap-1 rounded-lg border border-border bg-surface px-3 py-2 text-sm">
-          <span className="flex flex-wrap items-center gap-2">
-            <span className="font-medium">{a.reviewer.name ?? a.reviewer.email}</span>
-            <StatusBadge tone={DECISION_TONE[a.status] ?? "neutral"}>
-              {REVIEW_STATUS_LABEL[a.status as ReviewStatus] ?? a.status}
-            </StatusBadge>
-          </span>
-          {a.feedback && <span className="max-w-md text-xs text-muted-foreground">“{a.feedback}”</span>}
-        </li>
-      ))}
-    </ul>
-  );
-}
-
 /** The current user's own decision on this round. */
 function DecisionBar({ assignment }: { assignment: Assignment }) {
   const router = useRouter();
   const [summary, setSummary] = useState(assignment.feedback ?? "");
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
-  const decided = assignment.status === "approved" || assignment.status === "changes_requested";
+  const decided = isDecided(assignment.status);
 
-  function decide(status: "approved" | "changes_requested" | "in_review") {
+  function decide(status: ReviewDecision | "in_review") {
     setError(null);
     startTransition(async () => {
       if (summary.trim() !== (assignment.feedback ?? "").trim()) await setReviewFeedback(assignment.id, summary);
@@ -353,9 +358,7 @@ function DecisionBar({ assignment }: { assignment: Assignment }) {
   return (
     <section aria-label="Your decision" className="flex flex-col gap-2 rounded-lg border border-accent/40 bg-accent/5 p-4">
       <h2 className="text-sm font-semibold">
-        {decided
-          ? `You ${assignment.status === "approved" ? "approved" : "requested changes"} — you can still change your decision`
-          : "Your decision"}
+        {decided ? `You chose “${DECISION_PAST[assignment.status]}” — you can still change your decision` : "Your decision"}
       </h2>
       <Textarea
         value={summary}
@@ -367,17 +370,106 @@ function DecisionBar({ assignment }: { assignment: Assignment }) {
       />
       {error && <p role="alert" className="text-sm text-destructive-ink">{error}</p>}
       <div className="flex flex-wrap gap-2">
-        <Button size="sm" onClick={() => decide("approved")} disabled={pending}>
-          <Check className="size-4" aria-hidden="true" /> Approve
-        </Button>
-        <Button size="sm" variant="outline" onClick={() => decide("changes_requested")} disabled={pending}>
-          <RotateCcw className="size-4" aria-hidden="true" /> Request changes
-        </Button>
+        <DecisionButtons onDecide={decide} pending={pending} />
         {assignment.status === "requested" && (
           <Button size="sm" variant="ghost" onClick={() => decide("in_review")} disabled={pending}>
             Mark in review
           </Button>
         )}
+      </div>
+    </section>
+  );
+}
+
+const DECISION_PAST: Record<string, string> = {
+  approved: "Approve",
+  approved_with_changes: "Approve with minor changes",
+  changes_requested: "Request changes",
+};
+
+function DecisionButtons({ onDecide, pending }: { onDecide: (d: ReviewDecision) => void; pending: boolean }) {
+  return (
+    <>
+      <Button size="sm" onClick={() => onDecide("approved")} disabled={pending}>
+        <Check className="size-4" aria-hidden="true" /> Approve
+      </Button>
+      <Button size="sm" variant="outline" onClick={() => onDecide("approved_with_changes")} disabled={pending}>
+        <CheckCheck className="size-4" aria-hidden="true" /> Approve with minor changes
+      </Button>
+      <Button size="sm" variant="outline" onClick={() => onDecide("changes_requested")} disabled={pending}>
+        <RotateCcw className="size-4" aria-hidden="true" /> Request changes
+      </Button>
+    </>
+  );
+}
+
+/** A guest's decision, from their review link. Once they've decided, the page is
+ *  read-only until they reopen — which they can do until the round closes. */
+function GuestDecisionBar({ viewer, assignment }: { viewer: Extract<Viewer, { kind: "guest" }>; assignment: Assignment | null }) {
+  const router = useRouter();
+  const [summary, setSummary] = useState(assignment?.feedback ?? "");
+  const [error, setError] = useState<string | null>(null);
+  const [pending, startTransition] = useTransition();
+  if (!assignment) return null;
+  const decided = isDecided(assignment.status);
+
+  function run(fn: () => Promise<{ error?: string } | void>) {
+    setError(null);
+    startTransition(async () => {
+      const res = await fn();
+      if (res && res.error) setError(res.error);
+      else router.refresh();
+    });
+  }
+
+  if (viewer.superseded || viewer.closed) {
+    return (
+      <p className="rounded-lg border border-border bg-surface px-4 py-3 text-sm text-muted-foreground">
+        {viewer.superseded
+          ? "A newer round of this review has started, so this one is read-only. Check your email for the latest link."
+          : "This round is closed — thank you for your review. You can still read everything here."}
+        {decided && <> You chose <span className="font-medium text-foreground">{DECISION_PAST[assignment.status]}</span>.</>}
+      </p>
+    );
+  }
+
+  if (decided) {
+    return (
+      <section aria-label="Your decision" className="flex flex-wrap items-center gap-3 rounded-lg border border-success/40 bg-success/5 p-4">
+        <p className="min-w-0 flex-1 text-sm">
+          <span className="font-semibold">Thanks — you chose “{DECISION_PAST[assignment.status]}”.</span>{" "}
+          <span className="text-muted-foreground">The team has been told. Need to add something? Reopen your decision.</span>
+          {assignment.feedback && <span className="mt-1 block text-muted-foreground">“{assignment.feedback}”</span>}
+        </p>
+        {error && <p role="alert" className="text-sm text-destructive-ink">{error}</p>}
+        <Button size="sm" variant="outline" disabled={pending} onClick={() => run(() => guestReopen(viewer.id))}>
+          <Undo2 className="size-4" aria-hidden="true" /> Reopen
+        </Button>
+      </section>
+    );
+  }
+
+  return (
+    <section aria-label="Your decision" className="flex flex-col gap-2 rounded-lg border border-accent/40 bg-accent/5 p-4">
+      <h2 className="text-sm font-semibold">When you&apos;re done, {viewer.name.split(" ")[0]}, hand down your decision</h2>
+      <p className="text-xs text-muted-foreground">
+        Select text in any field and press <span className="font-medium">Comment</span> to quote it. This link is personal to you and works until{" "}
+        <time dateTime={viewer.expiresAt} suppressHydrationWarning>
+          {new Date(viewer.expiresAt).toLocaleDateString(undefined, { month: "long", day: "numeric" })}
+        </time>
+        .
+      </p>
+      <Textarea
+        value={summary}
+        onChange={(e) => setSummary(e.target.value)}
+        rows={2}
+        placeholder="Overall summary (optional)"
+        aria-label="Decision summary"
+        className="resize-none bg-surface"
+      />
+      {error && <p role="alert" className="text-sm text-destructive-ink">{error}</p>}
+      <div className="flex flex-wrap gap-2">
+        <DecisionButtons pending={pending} onDecide={(d) => run(() => guestDecide(viewer.id, d, summary))} />
       </div>
     </section>
   );
@@ -465,6 +557,7 @@ function ScreenCard({
   flash,
   composing,
   members,
+  canComment,
   onCompose,
   onCancel,
   onPost,
@@ -476,7 +569,8 @@ function ScreenCard({
   countByAnchor: Map<string, number>;
   flash: string | null;
   composing: { anchor: ReviewAnchor } | null;
-  members: MentionMember[];
+  members: MentionMember[] | undefined;
+  canComment: boolean;
   onCompose: (anchor: ReviewAnchor) => void;
   onCancel: () => void;
   onPost: (anchor: ReviewAnchor, body: string) => Promise<string | null>;
@@ -527,6 +621,7 @@ function ScreenCard({
                         <span className="sr-only"> open comment{open === 1 ? "" : "s"}</span>
                       </span>
                     )}
+                    {canComment && (
                     <button
                       type="button"
                       // Keep the reader's text selection alive so it can become the quote.
@@ -546,6 +641,7 @@ function ScreenCard({
                       <MessageSquarePlus className="size-3.5" aria-hidden="true" />
                       Comment<span className="sr-only"> on {SCREEN_FIELD_LABEL[f]}, screen {index}</span>
                     </button>
+                    )}
                   </div>
                   <CommentBody body={screen.fields[f] ?? ""} />
                 </div>
@@ -569,7 +665,7 @@ function Composer({
   label = "Comment",
 }: {
   anchor: ReviewAnchor;
-  members: MentionMember[];
+  members: MentionMember[] | undefined;
   onCancel?: () => void;
   onPost: (anchor: ReviewAnchor, body: string) => Promise<string | null>;
   label?: string;
@@ -604,7 +700,8 @@ function CommentsPanel({
   threads,
   repliesOf,
   me,
-  canModerate,
+  viewer,
+  canComment,
   members,
   screenTitle,
   onJump,
@@ -615,8 +712,9 @@ function CommentsPanel({
   threads: ReviewCommentDTO[];
   repliesOf: Map<string, ReviewCommentDTO[]>;
   me: { id: string };
-  canModerate: boolean;
-  members: MentionMember[];
+  viewer: Viewer;
+  canComment: boolean;
+  members: MentionMember[] | undefined;
   screenTitle: (id: string) => string;
   onJump: (a: ReviewAnchor) => void;
   onPost: (anchor: ReviewAnchor, body: string, parentId?: string) => Promise<string | null>;
@@ -660,10 +758,14 @@ function CommentsPanel({
         </div>
       </div>
 
-      <div className="rounded-lg border border-border bg-surface p-3">
-        <p className="mb-1 text-xs font-medium text-muted-foreground">Comment on the round as a whole</p>
-        <Composer anchor={GENERAL_ANCHOR} members={members} onPost={(a, b) => onPost(a, b)} />
-      </div>
+      {canComment && (
+        <div className="rounded-lg border border-border bg-surface p-3">
+          <p className="mb-1 text-xs font-medium text-muted-foreground">
+            {viewer.kind === "guest" ? "General feedback, not tied to one screen" : "Comment on the round as a whole"}
+          </p>
+          <Composer anchor={GENERAL_ANCHOR} members={members} onPost={(a, b) => onPost(a, b)} />
+        </div>
+      )}
 
       {shown.length === 0 && (
         <p className="px-1 text-sm text-muted-foreground">
@@ -677,7 +779,8 @@ function CommentsPanel({
             thread={t}
             replies={repliesOf.get(t.id) ?? []}
             me={me}
-            canModerate={canModerate}
+            viewer={viewer}
+            canComment={canComment}
             members={members}
             screenTitle={screenTitle}
             onJump={onJump}
@@ -697,7 +800,8 @@ function Thread({
   thread,
   replies,
   me,
-  canModerate,
+  viewer,
+  canComment,
   members,
   screenTitle,
   onJump,
@@ -708,8 +812,9 @@ function Thread({
   thread: ReviewCommentDTO;
   replies: ReviewCommentDTO[];
   me: { id: string };
-  canModerate: boolean;
-  members: MentionMember[];
+  viewer: Viewer;
+  canComment: boolean;
+  members: MentionMember[] | undefined;
   screenTitle: (id: string) => string;
   onJump: (a: ReviewAnchor) => void;
   onReply: (body: string) => Promise<string | null>;
@@ -737,13 +842,15 @@ function Thread({
 
   function remove(c: ReviewCommentDTO) {
     startTransition(async () => {
-      const res = await deleteReviewComment(c.id);
+      const res = viewer.kind === "guest" ? await guestDeleteComment(viewer.id, c.id) : await deleteReviewComment(c.id);
       if (res?.error) setError(res.error);
       else onDelete(c.id);
     });
   }
 
-  const canDelete = (c: ReviewCommentDTO) => c.author?.id === me.id || canModerate;
+  const member = viewer.kind === "member";
+  const canDelete = (c: ReviewCommentDTO) =>
+    member ? c.author?.id === me.id || viewer.canModerate : canComment && c.author?.id === me.id;
 
   return (
     <li className={cn("rounded-lg border bg-surface p-3", thread.status === "open" ? "border-border" : "border-border opacity-80")}>
@@ -814,8 +921,10 @@ function Thread({
         </form>
       ) : (
         <div className="mt-2 flex flex-wrap gap-1">
-          <Button size="xs" variant="ghost" onClick={() => setReplying((r) => !r)}>Reply</Button>
-          {thread.status === "open" ? (
+          {canComment && (
+            <Button size="xs" variant="ghost" onClick={() => setReplying((r) => !r)}>Reply</Button>
+          )}
+          {!member ? null : thread.status === "open" ? (
             <>
               <Button size="xs" variant="ghost" onClick={() => setClosing("resolved")}>
                 <Check className="size-3" aria-hidden="true" /> Resolve
@@ -860,7 +969,10 @@ function CommentItem({
   return (
     <div className="group/comment">
       <div className="flex items-center gap-2 text-xs">
-        <span className="font-semibold">{comment.author ? comment.author.name ?? comment.author.email : "Former member"}</span>
+        <span className="font-semibold">{comment.author ? comment.author.name : "Former reviewer"}</span>
+        {comment.author?.guest && (
+          <span className="rounded bg-muted px-1 py-px text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Guest</span>
+        )}
         <span className="text-muted-foreground"><When iso={comment.createdAt} /></span>
         {canDelete && (
           <button

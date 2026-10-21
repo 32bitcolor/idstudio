@@ -50,7 +50,8 @@ export default async function MyWorkPage() {
     prisma.reviewCycle.findMany({
       where: {
         requestedById: me.id,
-        reviewerId: { not: me.id },
+        // Guest assignments have no reviewerId — `not: me.id` alone would drop them (SQL NULL).
+        OR: [{ reviewerId: { not: me.id } }, { reviewerId: null }],
         status: { in: [...REQUESTER_OPEN] },
         deliverable: { project: { workspaceId: wsId, ...projectVis } },
       },
@@ -58,6 +59,7 @@ export default async function MyWorkPage() {
       select: {
         id: true, status: true, dueDate: true,
         reviewer: { select: { name: true, email: true } },
+        guest: { select: { name: true } },
         deliverable: { select: DELIVERABLE_SELECT },
       },
     }),
@@ -150,7 +152,7 @@ export default async function MyWorkPage() {
                       {r.deliverable.name}
                     </Link>
                     <div className="truncate text-sm text-muted-foreground">
-                      {r.deliverable.project.name} · reviewer: {r.reviewer.name ?? r.reviewer.email}
+                      {r.deliverable.project.name} · reviewer: {r.guest ? `${r.guest.name} (guest)` : r.reviewer ? r.reviewer.name ?? r.reviewer.email : "—"}
                     </div>
                   </div>
                   <StatusBadge tone={r.status === "changes_requested" ? "warning" : "info"}>

@@ -228,7 +228,13 @@ export async function getReviewForUser(reviewId: string) {
   if (!ctx) return null;
   return prisma.reviewCycle.findFirst({
     where: { id: reviewId, deliverable: { project: { workspace: ownedByUser(ctx.userId), ...projectAccessOR(ctx) } } },
-    select: { id: true, deliverable: { select: { projectId: true } } },
+    select: {
+      id: true,
+      roundId: true,
+      reviewerId: true,
+      guestId: true,
+      deliverable: { select: { projectId: true, project: { select: { workspaceId: true } } } },
+    },
   });
 }
 

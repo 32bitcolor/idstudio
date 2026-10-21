@@ -8,6 +8,7 @@ import { S3Client, PutObjectCommand, ListObjectsV2Command, DeleteObjectsCommand 
 import { Prisma } from "../src/generated/prisma/client";
 import { positionsAfter } from "../src/lib/ordering";
 import { buildSnapshot, type StoryboardSnapshot } from "../src/lib/review-snapshot";
+import { guestExpiry, guestLinkPath, newGuestNonce } from "../src/lib/review-guest-token";
 import type { ScreenField } from "../src/lib/review-anchor";
 
 // QA demo seed: fills the admin's workspace with a lived-in L&D team — 10 people, six projects at
@@ -539,14 +540,14 @@ async function review(
   });
   let snapshot = sb ? buildSnapshot(sb) : null;
   if (snapshot && stage) snapshot = stage(snapshot);
-  const decided = status === "approved" || status === "changes_requested";
+  const decided = status === "approved" || status === "approved_with_changes" || status === "changes_requested";
   const decidedAt = decided ? day(-Math.max(age - 3, 0), 11) : null;
   return prisma.reviewRound.create({
     data: {
       deliverableId, number: round, targetKind: snapshot ? "storyboard" : "none",
       snapshot: snapshot ?? Prisma.JsonNull, dueDate: due === null ? null : day(due),
       createdById: users[requester].id, createdAt: day(-age, 10),
-      outcome: status === "approved" ? "passed" : status === "changes_requested" ? "changes_requested" : null,
+      outcome: status === "approved" || status === "approved_with_changes" ? "passed" : status === "changes_requested" ? "changes_requested" : null,
       closedAt: decidedAt,
       assignments: {
         create: {
@@ -558,6 +559,44 @@ async function review(
     },
     select: { id: true, snapshot: true },
   });
+}
+
+/** Add an outside (guest) reviewer to an existing round — a ReviewGuest with its own
+ *  assignment, exactly as the app creates them. Returns the guest id for comments. */
+const seedGuests: Record<string, string> = {};
+async function guestReviewer(
+  key: string,
+  round: { id: string },
+  g: { name: string; email: string; status: string; feedback?: string; seenHoursAgo?: number },
+) {
+  const r = await prisma.reviewRound.findUniqueOrThrow({
+    where: { id: round.id },
+    select: { number: true, deliverableId: true, dueDate: true, createdById: true, createdAt: true },
+  });
+  const guest = await prisma.reviewGuest.create({
+    data: {
+      name: g.name,
+      email: g.email,
+      nonce: newGuestNonce(),
+      expiresAt: guestExpiry(r.dueDate),
+      lastSeenAt: g.seenHoursAgo == null ? null : new Date(Date.now() - g.seenHoursAgo * 3_600_000),
+      assignment: {
+        create: {
+          deliverableId: r.deliverableId, roundId: round.id, requestedById: r.createdById, round: r.number, status: g.status,
+          dueDate: r.dueDate, feedback: g.feedback ?? null, createdAt: r.createdAt,
+        },
+      },
+    },
+    select: { id: true, nonce: true },
+  });
+  seedGuests[key] = guest.id;
+  if (process.env.SESSION_SECRET) console.log(`  guest link for ${g.name}: ${guestLinkPath(guest)}`);
+  return guest.id;
+}
+
+/** "guest:<key>" in a thread's `by` means a guest reviewer added with guestReviewer(). */
+function authorOf(by: string) {
+  return by.startsWith("guest:") ? { guestId: seedGuests[by.slice(6)] } : { authorId: users[by].id };
 }
 
 type SeedThread = {
@@ -584,7 +623,7 @@ async function reviewComments(round: { id: string; snapshot: unknown }, threads:
     const closed = t.status && t.status !== "open";
     const parent = await prisma.reviewComment.create({
       data: {
-        roundId: round.id, authorId: users[t.by].id, body: paras(t.body), anchor, createdAt: day(-t.ago, 14),
+        roundId: round.id, ...authorOf(t.by), body: paras(t.body), anchor, createdAt: day(-t.ago, 14),
         status: t.status ?? "open",
         resolvedById: closed ? users[t.resolvedBy ?? "priya"].id : null,
         resolvedAt: closed ? day(-Math.max(t.ago - 2, 0), 16) : null,
@@ -593,7 +632,7 @@ async function reviewComments(round: { id: string; snapshot: unknown }, threads:
     });
     for (const r of t.replies ?? []) {
       await prisma.reviewComment.create({
-        data: { roundId: round.id, parentId: parent.id, authorId: users[r.by].id, body: paras(r.body), anchor, createdAt: day(-r.ago, 15) },
+        data: { roundId: round.id, parentId: parent.id, ...authorOf(r.by), body: paras(r.body), anchor, createdAt: day(-r.ago, 15) },
       });
     }
   }
@@ -984,6 +1023,20 @@ async function main() {
     },
     {
       by: "maya", ago: 0, body: "Marcus — can we get round 2 back by Thursday? Pilot recruiting starts next week.",
+    },
+  ]);
+  // Round 2 also went to outside counsel, who has no IDStudio account: a guest link.
+  await guestReviewer("dana", secR2, {
+    name: "Dana Whitfield", email: "dana.whitfield@example.com", status: "in_review", seenHoursAgo: 5,
+  });
+  await reviewComments(secR2, [
+    {
+      by: "guest:dana", ago: 0, anchor: { screen: "Expected push vs. MFA fatigue", field: "narration", quote: "Deny it, and report it — even at 11 p.m." },
+      body: "Good. Please also say that nobody gets in trouble for reporting a prompt they approved by mistake. Policy wants early reports, not hidden ones.",
+      replies: [{ by: "priya", ago: 0, body: "Thanks Dana, adding a line to this screen. Would \"You won't be in trouble for reporting it\" work?" }],
+    },
+    {
+      by: "guest:dana", ago: 0, body: "Overall this reads well and matches the acceptable-use policy. One wording note pinned above.",
     },
   ]);
   await review(secDel.aid, "elena", "priya", 1, "approved", -20, "Approved. Clear and accurate. Love that it fits on one card.", 24);

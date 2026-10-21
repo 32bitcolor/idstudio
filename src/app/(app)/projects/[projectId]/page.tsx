@@ -53,7 +53,12 @@ export default async function ProjectPage({ params }: { params: Promise<{ projec
               targetKind: true,
               assignments: {
                 orderBy: { createdAt: "asc" },
-                select: { status: true, reviewer: { select: { id: true, name: true, email: true } } },
+                select: {
+                  id: true,
+                  status: true,
+                  reviewer: { select: { id: true, name: true, email: true } },
+                  guest: { select: { name: true, email: true } },
+                },
               },
               _count: { select: { comments: { where: { parentId: null, status: "open" } } } },
             },
@@ -158,7 +163,12 @@ export default async function ProjectPage({ params }: { params: Promise<{ projec
       dueDate: r.dueDate ? r.dueDate.toISOString() : null,
       openComments: r._count.comments,
       hasSnapshot: r.targetKind === "storyboard",
-      reviewers: r.assignments.map((a) => ({ id: a.reviewer.id, name: a.reviewer.name ?? a.reviewer.email, status: a.status })),
+      reviewers: r.assignments.map((a) => ({
+        id: a.reviewer?.id ?? a.id,
+        name: a.reviewer ? a.reviewer.name ?? a.reviewer.email : a.guest?.name ?? "Guest",
+        status: a.status,
+        guest: a.guest ? { name: a.guest.name, email: a.guest.email } : null,
+      })),
     })),
   }));
 

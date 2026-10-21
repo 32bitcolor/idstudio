@@ -6,10 +6,10 @@ import { decrypt, SESSION_COOKIE } from "@/lib/session";
 // close to the data. Here we just pre-filter obvious unauthenticated access.
 
 const PUBLIC_ROUTES = ["/login", "/signup"];
-// The public intake form (/request/<workspace-slug>) is the one part of the app
-// meant to be reachable with no session at all — external stakeholders submitting
-// a request never log in.
-const PUBLIC_PREFIXES = ["/request/"];
+// Reachable with no session at all: the public intake form (/request/<workspace-slug>),
+// where external stakeholders submit requests, and guest review links (/review/…),
+// where outside SMEs review one round. Note "/review/" doesn't match "/reviews/".
+const PUBLIC_PREFIXES = ["/request/", "/review/"];
 
 export default async function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
@@ -27,7 +27,13 @@ export default async function proxy(req: NextRequest) {
     return NextResponse.redirect(new URL("/dashboard", req.url));
   }
 
-  return NextResponse.next();
+  const res = NextResponse.next();
+  // Guest review pages: keep the guest's page URL out of Referer headers and search engines.
+  if (pathname.startsWith("/review/")) {
+    res.headers.set("Referrer-Policy", "no-referrer");
+    res.headers.set("X-Robots-Tag", "noindex, nofollow");
+  }
+  return res;
 }
 
 export const config = {

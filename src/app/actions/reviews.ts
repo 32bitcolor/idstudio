@@ -12,18 +12,19 @@ import {
   getReviewCommentForUser,
   isElevatedInWorkspace,
 } from "@/lib/authz";
-import { REVIEW_STATUSES } from "@/lib/methodology";
+import { REVIEW_STATUSES, isDecided } from "@/lib/methodology";
 import { enqueueEmail } from "@/lib/queues";
-import { reviewRequested, reviewDecided, mentioned, withLink } from "@/lib/email-templates";
+import { reviewRequested, guestReviewInvite, mentioned, withLink } from "@/lib/email-templates";
 import { notificationsEnabled } from "@/lib/notify";
 import { appUrl } from "@/lib/app-url";
 import { buildSnapshot } from "@/lib/review-snapshot";
-import { validateAnchor } from "@/lib/review-anchor";
-import { syncRoundOutcome } from "@/lib/review-rounds";
+import { notifyReviewDecided, syncRoundOutcome } from "@/lib/review-rounds";
+import { createRoundComment, toCommentDTO, COMMENT_SELECT, type ReviewCommentDTO } from "@/lib/review-comments";
+import { guestExpiry, guestLinkPath, newGuestNonce } from "@/lib/review-guest-token";
 import { extractMentionIds, extractText } from "@/lib/mentions";
 
 function fmtDate(d: Date | null): string | null {
-  return d ? d.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" }) : null;
+  return d ? d.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric", timeZone: "UTC" }) : null;
 }
 
 // Review changes surface in the personal "My Work" hub too — refresh the whole
@@ -36,27 +37,127 @@ function revalidateReview(projectId: string, roundId?: string) {
   revalidatePath("/", "layout");
 }
 
+// ── Reviewers: members and guests ────────────────────────────────────────────
+
+const GuestInput = z.object({
+  name: z.string().trim().min(1, "Give each guest a name.").max(120),
+  email: z.string().trim().toLowerCase().email("One of the guest emails isn't valid.").max(254),
+});
+const ReviewersInput = z.object({
+  memberIds: z.array(z.string().min(1)).max(20),
+  guests: z.array(GuestInput).max(20),
+});
+export type ReviewersInput = z.input<typeof ReviewersInput>;
+
+/** Validate reviewers against the workspace. A "guest" whose email belongs to a
+ *  workspace member is quietly treated as that member — they have an account. */
+async function resolveReviewers(workspaceId: string, raw: unknown) {
+  const parsed = ReviewersInput.safeParse(raw);
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid reviewers." } as const;
+  const memberIds = new Set(parsed.data.memberIds);
+  const guestsByEmail = new Map(parsed.data.guests.map((g) => [g.email, g]));
+
+  if (guestsByEmail.size) {
+    const existing = await prisma.user.findMany({
+      where: { email: { in: [...guestsByEmail.keys()], mode: "insensitive" }, memberships: { some: { workspaceId } } },
+      select: { id: true, email: true },
+    });
+    for (const u of existing) {
+      memberIds.add(u.id);
+      guestsByEmail.delete(u.email.toLowerCase());
+    }
+  }
+  if (memberIds.size) {
+    const ok = await prisma.membership.count({ where: { userId: { in: [...memberIds] }, workspaceId } });
+    if (ok !== memberIds.size) return { error: "Every member reviewer must belong to this workspace." } as const;
+  }
+  if (memberIds.size + guestsByEmail.size === 0) return { error: "Add at least one reviewer." } as const;
+  if (memberIds.size + guestsByEmail.size > 20) return { error: "Too many reviewers." } as const;
+  return { memberIds: [...memberIds], guests: [...guestsByEmail.values()] } as const;
+}
+
+/** Email a guest their personal link. */
+async function sendGuestInvite(guestId: string, requesterName: string) {
+  const g = await prisma.reviewGuest.findUnique({
+    where: { id: guestId },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      nonce: true,
+      expiresAt: true,
+      assignment: {
+        select: {
+          reviewRound: {
+            select: {
+              number: true,
+              dueDate: true,
+              deliverable: { select: { name: true, project: { select: { workspace: { select: { id: true, name: true } } } } } },
+            },
+          },
+        },
+      },
+    },
+  });
+  if (!g?.assignment) return;
+  const round = g.assignment.reviewRound;
+  const ws = round.deliverable.project.workspace;
+  if (!(await notificationsEnabled(ws.id, "review"))) return;
+  await enqueueEmail({
+    to: g.email,
+    ...withLink(
+      guestReviewInvite({
+        guestName: g.name,
+        requesterName,
+        deliverableName: round.deliverable.name,
+        workspaceName: ws.name,
+        roundNumber: round.number,
+        dueDate: fmtDate(round.dueDate),
+        expires: fmtDate(g.expiresAt)!,
+      }),
+      appUrl(guestLinkPath(g)),
+      "Open the review →",
+    ),
+  });
+}
+
+async function sendMemberInvite(
+  reviewer: { id: string; name: string | null; email: string },
+  me: { id: string; name: string | null; email: string },
+  meta: { roundId: string; deliverableName: string; projectName: string; workspaceId: string; dueDate: Date | null },
+) {
+  if (!reviewer.email || reviewer.id === me.id) return;
+  if (!(await notificationsEnabled(meta.workspaceId, "review"))) return;
+  await enqueueEmail({
+    to: reviewer.email,
+    ...withLink(
+      reviewRequested({
+        reviewerName: reviewer.name ?? reviewer.email,
+        deliverableName: meta.deliverableName,
+        projectName: meta.projectName,
+        requesterName: me.name ?? me.email,
+        dueDate: fmtDate(meta.dueDate),
+      }),
+      appUrl(`/reviews/${meta.roundId}`),
+    ),
+  });
+}
+
 // ── Rounds ────────────────────────────────────────────────────────────────────
 
 /** Start the next review round on a deliverable: freeze what's being reviewed (the
- *  linked storyboard, if any), assign one or more reviewers, and email each of them. */
-export async function startReviewRound(deliverableId: string, reviewerIds: string[], dueIso: string | null) {
+ *  linked storyboard, if any), assign members and/or guests, and email each of them.
+ *  Guests get a fresh personal link per round; earlier rounds' links go read-only. */
+export async function startReviewRound(deliverableId: string, reviewers: ReviewersInput, dueIso: string | null) {
   const me = await getCurrentUser();
   if (!me) return { error: "Not signed in." };
   const d = await getDeliverableForUser(deliverableId);
   if (!d) return { error: "Deliverable not found." };
 
-  const ids = [...new Set(reviewerIds)].filter(Boolean);
-  if (ids.length === 0) return { error: "Pick at least one reviewer." };
-  if (ids.length > 20) return { error: "Too many reviewers." };
-
   const project = await prisma.project.findUnique({ where: { id: d.projectId }, select: { workspaceId: true, name: true } });
   if (!project) return { error: "Project not found." };
-  const members = await prisma.membership.findMany({
-    where: { userId: { in: ids }, workspaceId: project.workspaceId },
-    select: { userId: true },
-  });
-  if (members.length !== ids.length) return { error: "Every reviewer must be a workspace member." };
+  const who = await resolveReviewers(project.workspaceId, reviewers);
+  if ("error" in who) return { error: who.error };
 
   const dueDate = dueIso ? new Date(dueIso) : null;
   if (dueIso && Number.isNaN(dueDate!.getTime())) return { error: "Invalid date." };
@@ -77,6 +178,7 @@ export async function startReviewRound(deliverableId: string, reviewerIds: strin
     },
   });
   const snapshot = storyboard ? buildSnapshot(storyboard) : null;
+  const expiresAt = guestExpiry(dueDate);
 
   // Next number + insert atomically under Serializable isolation, so two concurrent
   // requests can't mint the same round.
@@ -90,7 +192,7 @@ export async function startReviewRound(deliverableId: string, reviewerIds: strin
           select: { number: true },
         });
         const number = (last?.number ?? 0) + 1;
-        return tx.reviewRound.create({
+        const created = await tx.reviewRound.create({
           data: {
             deliverableId,
             number,
@@ -99,15 +201,26 @@ export async function startReviewRound(deliverableId: string, reviewerIds: strin
             dueDate,
             createdById: me.id,
             assignments: {
-              create: ids.map((reviewerId) => ({ deliverableId, reviewerId, requestedById: me.id, round: number, dueDate })),
+              create: who.memberIds.map((reviewerId) => ({ deliverableId, reviewerId, requestedById: me.id, round: number, dueDate })),
             },
           },
-          select: {
-            id: true,
-            number: true,
-            assignments: { select: { reviewer: { select: { id: true, name: true, email: true } } } },
-          },
+          select: { id: true, number: true },
         });
+        const guestIds: string[] = [];
+        for (const g of who.guests) {
+          const guest = await tx.reviewGuest.create({
+            data: {
+              name: g.name,
+              email: g.email,
+              nonce: newGuestNonce(),
+              expiresAt,
+              assignment: { create: { deliverableId, roundId: created.id, requestedById: me.id, round: number, dueDate } },
+            },
+            select: { id: true },
+          });
+          guestIds.push(guest.id);
+        }
+        return { ...created, guestIds };
       },
       { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
     );
@@ -116,56 +229,68 @@ export async function startReviewRound(deliverableId: string, reviewerIds: strin
   }
   revalidateReview(d.projectId, round.id);
 
-  if (await notificationsEnabled(project.workspaceId, "review")) {
-    const meta = await prisma.deliverable.findUnique({ where: { id: deliverableId }, select: { name: true } });
-    for (const { reviewer } of round.assignments) {
-      if (!reviewer.email || reviewer.id === me.id) continue;
-      await enqueueEmail({
-        to: reviewer.email,
-        ...withLink(
-          reviewRequested({
-            reviewerName: reviewer.name ?? reviewer.email,
-            deliverableName: meta?.name ?? "",
-            projectName: project.name,
-            requesterName: me.name ?? me.email,
-            dueDate: fmtDate(dueDate),
-          }),
-          appUrl(`/reviews/${round.id}`),
-        ),
-      });
-    }
+  const deliverable = await prisma.deliverable.findUnique({ where: { id: deliverableId }, select: { name: true } });
+  const members = await prisma.user.findMany({ where: { id: { in: [...who.memberIds] } }, select: { id: true, name: true, email: true } });
+  for (const reviewer of members) {
+    await sendMemberInvite(reviewer, me, {
+      roundId: round.id,
+      deliverableName: deliverable?.name ?? "",
+      projectName: project.name,
+      workspaceId: project.workspaceId,
+      dueDate,
+    });
   }
+  for (const guestId of round.guestIds) await sendGuestInvite(guestId, me.name ?? me.email);
 
   return { roundId: round.id, number: round.number };
 }
 
-/** Add another reviewer to an open round. */
-export async function addRoundReviewer(roundId: string, reviewerId: string) {
+/** Add another reviewer — a member or a guest — to an open round. */
+export async function addRoundReviewer(roundId: string, reviewer: { memberId: string } | { guest: { name: string; email: string } }) {
   const me = await getCurrentUser();
   if (!me) return { error: "Not signed in." };
   const r = await getReviewRoundForUser(roundId);
   if (!r) return { error: "Review round not found." };
-  const round = await prisma.reviewRound.findUnique({ where: { id: roundId }, select: { closedAt: true, dueDate: true } });
-  if (round?.closedAt) return { error: "This round is closed — start a new round instead." };
-  const member = await prisma.membership.findFirst({
-    where: { userId: reviewerId, workspaceId: r.deliverable.project.workspaceId },
-    select: { id: true },
+  const round = await prisma.reviewRound.findUnique({
+    where: { id: roundId },
+    select: { outcome: true, dueDate: true, deliverable: { select: { name: true, project: { select: { name: true } } } } },
   });
-  if (!member) return { error: "Reviewer must be a workspace member." };
+  if (!round || round.outcome) return { error: "This round is closed — start a new round instead." };
+  const workspaceId = r.deliverable.project.workspaceId;
+  const who = await resolveReviewers(workspaceId, {
+    memberIds: "memberId" in reviewer ? [reviewer.memberId] : [],
+    guests: "guest" in reviewer ? [reviewer.guest] : [],
+  });
+  if ("error" in who) return { error: who.error };
+
+  const base = { deliverableId: r.deliverableId, roundId, requestedById: me.id, round: r.number, dueDate: round.dueDate };
   try {
-    await prisma.reviewCycle.create({
-      data: {
-        deliverableId: r.deliverableId,
-        roundId,
-        reviewerId,
-        requestedById: me.id,
-        round: r.number,
-        dueDate: round?.dueDate ?? null,
-      },
-    });
+    if (who.memberIds.length) {
+      await prisma.reviewCycle.create({ data: { ...base, reviewerId: who.memberIds[0] } });
+      const u = await prisma.user.findUnique({ where: { id: who.memberIds[0] }, select: { id: true, name: true, email: true } });
+      if (u) {
+        await sendMemberInvite(u, me, {
+          roundId,
+          deliverableName: round.deliverable.name,
+          projectName: round.deliverable.project.name,
+          workspaceId,
+          dueDate: round.dueDate,
+        });
+      }
+    } else {
+      const g = who.guests[0];
+      const dupe = await prisma.reviewCycle.findFirst({ where: { roundId, guest: { email: g.email } }, select: { id: true } });
+      if (dupe) return { error: "They're already reviewing this round." };
+      const guest = await prisma.reviewGuest.create({
+        data: { name: g.name, email: g.email, nonce: newGuestNonce(), expiresAt: guestExpiry(round.dueDate), assignment: { create: base } },
+        select: { id: true },
+      });
+      await sendGuestInvite(guest.id, me.name ?? me.email);
+    }
   } catch {
     return { error: "They're already reviewing this round." };
   }
+  // A new, undecided reviewer reopens a round that was waiting on nobody.
   await syncRoundOutcome(roundId);
   revalidateReview(r.deliverable.projectId, roundId);
 }
@@ -195,70 +320,44 @@ export async function overrideReviewRound(roundId: string, reason: string) {
 export async function deleteReviewRound(roundId: string) {
   const r = await getReviewRoundForUser(roundId);
   if (!r) return { error: "Review round not found." };
+  const guests = await prisma.reviewCycle.findMany({ where: { roundId, guestId: { not: null } }, select: { guestId: true } });
   await prisma.reviewRound.delete({ where: { id: roundId } });
+  // Their assignments and comments are gone with the round; the credentials go too.
+  await prisma.reviewGuest.deleteMany({ where: { id: { in: guests.map((g) => g.guestId!) } } });
   revalidateReview(r.deliverable.projectId);
 }
 
 // ── One reviewer's assignment ────────────────────────────────────────────────
 
+/** A member's own decision. Guests decide from their link (actions/review-guest.ts) —
+ *  nobody can decide on a guest's behalf. */
 export async function setReviewStatus(reviewId: string, status: string) {
+  const me = await getCurrentUser();
+  if (!me) return { error: "Not signed in." };
   const r = await getReviewForUser(reviewId);
   if (!r) return { error: "Review not found." };
+  if (r.guestId) return { error: "Guests decide from their own review link." };
   const parsed = z.enum(REVIEW_STATUSES).safeParse(status);
   if (!parsed.success) return { error: "Invalid status." };
-  const decided = parsed.data === "approved" || parsed.data === "changes_requested";
-  const row = await prisma.reviewCycle.update({
+  const decided = isDecided(parsed.data);
+  await prisma.reviewCycle.update({
     where: { id: reviewId },
     data: { status: parsed.data, decidedAt: decided ? new Date() : null },
-    select: { roundId: true },
   });
-  await syncRoundOutcome(row.roundId);
-  revalidateReview(r.deliverable.projectId, row.roundId);
-
-  // A decision notifies whoever requested the review.
-  if (decided) {
-    const me = await getCurrentUser();
-    const detail = await prisma.reviewCycle.findUnique({
-      where: { id: reviewId },
-      select: {
-        feedback: true,
-        requestedBy: { select: { id: true, name: true, email: true } },
-        reviewer: { select: { name: true, email: true } },
-        deliverable: { select: { name: true, project: { select: { name: true, workspaceId: true } } } },
-      },
-    });
-    if (
-      detail?.requestedBy?.email &&
-      detail.requestedBy.id !== me?.id &&
-      (await notificationsEnabled(detail.deliverable.project.workspaceId, "review"))
-    ) {
-      await enqueueEmail({
-        to: detail.requestedBy.email,
-        ...withLink(
-          reviewDecided({
-            requesterName: detail.requestedBy.name ?? detail.requestedBy.email,
-            deliverableName: detail.deliverable.name,
-            projectName: detail.deliverable.project.name,
-            reviewerName: detail.reviewer.name ?? detail.reviewer.email,
-            decision: parsed.data as "approved" | "changes_requested",
-            feedback: detail.feedback,
-          }),
-          appUrl(`/reviews/${row.roundId}`),
-        ),
-      });
-    }
-  }
+  await syncRoundOutcome(r.roundId);
+  revalidateReview(r.deliverable.projectId, r.roundId);
+  if (decided) await notifyReviewDecided(reviewId, me.id);
 }
 
 export async function setReviewFeedback(reviewId: string, feedback: string) {
   const r = await getReviewForUser(reviewId);
   if (!r) return { error: "Review not found." };
-  const row = await prisma.reviewCycle.update({
+  if (r.guestId) return { error: "Guests write their own summary." };
+  await prisma.reviewCycle.update({
     where: { id: reviewId },
     data: { feedback: feedback.trim() ? feedback.slice(0, 5000) : null },
-    select: { roundId: true },
   });
-  revalidateReview(r.deliverable.projectId, row.roundId);
+  revalidateReview(r.deliverable.projectId, r.roundId);
 }
 
 export async function setReviewDue(reviewId: string, dueIso: string | null) {
@@ -266,64 +365,78 @@ export async function setReviewDue(reviewId: string, dueIso: string | null) {
   if (!r) return { error: "Review not found." };
   const dueDate = dueIso ? new Date(dueIso) : null;
   if (dueIso && Number.isNaN(dueDate!.getTime())) return { error: "Invalid date." };
-  const row = await prisma.reviewCycle.update({ where: { id: reviewId }, data: { dueDate }, select: { roundId: true } });
-  revalidateReview(r.deliverable.projectId, row.roundId);
+  await prisma.reviewCycle.update({ where: { id: reviewId }, data: { dueDate } });
+  revalidateReview(r.deliverable.projectId, r.roundId);
 }
 
-/** Remove one reviewer from a round; removing the last one removes the round. */
+/** Remove one reviewer from a round; removing the last one removes the round. A guest's
+ *  link is revoked, not deleted, so their comments keep their name. */
 export async function deleteReviewCycle(reviewId: string) {
   const r = await getReviewForUser(reviewId);
   if (!r) return { error: "Review not found." };
-  const row = await prisma.reviewCycle.delete({ where: { id: reviewId }, select: { roundId: true } });
-  const left = await prisma.reviewCycle.count({ where: { roundId: row.roundId } });
+  await prisma.reviewCycle.delete({ where: { id: reviewId } });
+  if (r.guestId) await prisma.reviewGuest.update({ where: { id: r.guestId }, data: { revokedAt: new Date() } });
+  const left = await prisma.reviewCycle.count({ where: { roundId: r.roundId } });
   if (left === 0) {
-    await prisma.reviewRound.delete({ where: { id: row.roundId } });
-    revalidateReview(r.deliverable.projectId);
+    await deleteReviewRound(r.roundId);
     return;
   }
-  await syncRoundOutcome(row.roundId);
-  revalidateReview(r.deliverable.projectId, row.roundId);
+  await syncRoundOutcome(r.roundId);
+  revalidateReview(r.deliverable.projectId, r.roundId);
+}
+
+// ── Guest links (managed by members) ─────────────────────────────────────────
+
+async function guestAssignment(reviewId: string) {
+  const r = await getReviewForUser(reviewId);
+  if (!r?.guestId) return null;
+  const guest = await prisma.reviewGuest.findUnique({ where: { id: r.guestId }, select: { id: true, nonce: true } });
+  return guest ? { r, guest } : null;
+}
+
+/** The guest's current link, for pasting into chat or email by hand. */
+export async function getGuestLink(reviewId: string) {
+  const a = await guestAssignment(reviewId);
+  if (!a) return { error: "Guest not found." };
+  const path = guestLinkPath(a.guest);
+  return { url: appUrl(path) ?? path };
+}
+
+/** Issue a new link: the old one stops working at once. Also clears a revoke and
+ *  restarts the expiry clock, so it doubles as "extend". Emails the new link. */
+export async function resetGuestLink(reviewId: string) {
+  const me = await getCurrentUser();
+  if (!me) return { error: "Not signed in." };
+  const a = await guestAssignment(reviewId);
+  if (!a) return { error: "Guest not found." };
+  const round = await prisma.reviewRound.findUnique({ where: { id: a.r.roundId }, select: { dueDate: true } });
+  const guest = await prisma.reviewGuest.update({
+    where: { id: a.guest.id },
+    data: { nonce: newGuestNonce(), revokedAt: null, expiresAt: guestExpiry(round?.dueDate ?? null) },
+    select: { id: true, nonce: true },
+  });
+  await sendGuestInvite(guest.id, me.name ?? me.email);
+  revalidatePath(`/reviews/${a.r.roundId}`);
+  const path = guestLinkPath(guest);
+  return { url: appUrl(path) ?? path };
+}
+
+export async function revokeGuestLink(reviewId: string) {
+  const a = await guestAssignment(reviewId);
+  if (!a) return { error: "Guest not found." };
+  await prisma.reviewGuest.update({ where: { id: a.guest.id }, data: { revokedAt: new Date() } });
+  revalidatePath(`/reviews/${a.r.roundId}`);
+}
+
+export async function resendGuestInvite(reviewId: string) {
+  const me = await getCurrentUser();
+  if (!me) return { error: "Not signed in." };
+  const a = await guestAssignment(reviewId);
+  if (!a) return { error: "Guest not found." };
+  await sendGuestInvite(a.guest.id, me.name ?? me.email);
 }
 
 // ── Comments ─────────────────────────────────────────────────────────────────
-
-export type ReviewCommentDTO = {
-  id: string;
-  parentId: string | null;
-  body: string;
-  anchor: unknown;
-  status: string;
-  resolvedNote: string | null;
-  resolvedBy: string | null;
-  createdAt: string;
-  author: { id: string; name: string | null; email: string } | null;
-};
-
-const COMMENT_SELECT = {
-  id: true,
-  parentId: true,
-  body: true,
-  anchor: true,
-  status: true,
-  resolvedNote: true,
-  createdAt: true,
-  resolvedBy: { select: { name: true, email: true } },
-  author: { select: { id: true, name: true, email: true } },
-} satisfies Prisma.ReviewCommentSelect;
-
-function toDTO(c: Prisma.ReviewCommentGetPayload<{ select: typeof COMMENT_SELECT }>): ReviewCommentDTO {
-  return {
-    id: c.id,
-    parentId: c.parentId,
-    body: c.body,
-    anchor: c.anchor,
-    status: c.status,
-    resolvedNote: c.resolvedNote,
-    resolvedBy: c.resolvedBy ? c.resolvedBy.name ?? c.resolvedBy.email : null,
-    createdAt: c.createdAt.toISOString(),
-    author: c.author,
-  };
-}
 
 /** Comment on a round — on a storyboard field, or the round as a whole — or reply to
  *  a comment (replies inherit their parent's anchor; one level of threading). */
@@ -332,28 +445,12 @@ export async function addReviewComment(roundId: string, anchorRaw: unknown, body
   if (!me) return { error: "Not signed in." };
   const r = await getReviewRoundForUser(roundId);
   if (!r) return { error: "Review round not found." };
-  if (!body || body.length > 20000) return { error: "Comment is empty or too long." };
-  if (!extractText(body)) return { error: "Comment is empty." };
 
-  let anchor = validateAnchor(anchorRaw);
-  if (parentId) {
-    const parent = await prisma.reviewComment.findFirst({
-      where: { id: parentId, roundId },
-      select: { parentId: true, anchor: true },
-    });
-    if (!parent) return { error: "That comment no longer exists." };
-    if (parent.parentId) return { error: "Reply to the original comment, not a reply." };
-    anchor = validateAnchor(parent.anchor) ?? anchor;
-  }
-  if (!anchor) return { error: "Invalid comment location." };
-
-  const created = await prisma.reviewComment.create({
-    data: { roundId, parentId: parentId ?? null, authorId: me.id, body, anchor },
-    select: COMMENT_SELECT,
-  });
+  const created = await createRoundComment({ roundId, by: { authorId: me.id }, anchor: anchorRaw, body, parentId });
+  if ("error" in created) return { error: created.error };
   revalidatePath(`/reviews/${roundId}`);
 
-  // @-mentions notify the people mentioned (members only — this is staff review).
+  // @-mentions notify the people mentioned (members only — guests can't be mentioned).
   const ids = extractMentionIds(body).filter((id) => id !== me.id);
   if (ids.length && (await notificationsEnabled(r.deliverable.project.workspaceId, "mention"))) {
     const [people, deliverable] = await Promise.all([
@@ -383,7 +480,7 @@ export async function addReviewComment(roundId: string, anchorRaw: unknown, body
     }
   }
 
-  return { comment: toDTO(created) };
+  return { comment: toCommentDTO(created.row, "member") };
 }
 
 /** Resolve / won't-fix / reopen a top-level comment, with an optional note the
@@ -408,11 +505,11 @@ export async function setReviewCommentStatus(commentId: string, status: string, 
     select: COMMENT_SELECT,
   });
   revalidatePath(`/reviews/${c.roundId}`);
-  return { comment: toDTO(updated) };
+  return { comment: toCommentDTO(updated, "member") };
 }
 
-/** Delete your own comment (admins/managers can delete any). Deleting a thread's
- *  first comment removes its replies. */
+/** Delete your own comment (admins/managers can delete any, guests' included).
+ *  Deleting a thread's first comment removes its replies. */
 export async function deleteReviewComment(commentId: string) {
   const me = await getCurrentUser();
   if (!me) return { error: "Not signed in." };
@@ -427,3 +524,5 @@ export async function deleteReviewComment(commentId: string) {
   await prisma.reviewComment.delete({ where: { id: commentId } });
   revalidatePath(`/reviews/${c.roundId}`);
 }
+
+export type { ReviewCommentDTO };

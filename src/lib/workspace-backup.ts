@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import { Prisma } from "@/generated/prisma/client";
 import { getObjectBytes, putObjectBytes, buildObjectKey } from "@/lib/storage";
 import { workspaceStatusSeedData } from "@/lib/status";
+import { newGuestNonce } from "@/lib/review-guest-token";
 
 // Full logical backup of a single workspace: the entire content graph plus its
 // members (by email) and attachment media. Restore recreates it as a NEW
@@ -11,7 +12,7 @@ import { workspaceStatusSeedData } from "@/lib/status";
 // can be restored into the same instance (a copy) or a fresh one (disaster
 // recovery). Media re-uploads to object storage under new keys.
 
-export const BACKUP_FORMAT = 5; // bump when the shape changes
+export const BACKUP_FORMAT = 6; // bump when the shape changes
 
 const WS = "__ws";
 const USER = "__user";
@@ -23,6 +24,8 @@ type Spec = {
   fks: Record<string, string>; // column -> map key (an entity key, WS, or USER)
   sort?: (rows: any[]) => any[]; // reorder before import, for self-referential fks
   json?: string[]; // nullable Json columns — Prisma wants DbNull, not null, on create
+  omit?: string[]; // columns never written to a backup file (credentials)
+  fill?: () => Record<string, any>; // replacement values for omitted columns on import
 };
 
 // A card's column is null when it's a subtask — reach it via its parent's
@@ -76,12 +79,28 @@ const SPECS: Spec[] = [
     fks: { deliverableId: "deliverable", createdById: USER, overriddenById: USER },
     json: ["snapshot"],
   },
-  { key: "reviewCycle", model: "reviewCycle", where: (w) => ({ deliverable: { project: { workspaceId: w } } }), fks: { deliverableId: "deliverable", roundId: "reviewRound", reviewerId: USER, requestedById: USER } },
+  // Guest reviewers travel without their link nonce, and get a fresh one on restore:
+  // a restored workspace has dead guest links by design, so a backup file can never be
+  // used to open someone's review (docs/REVIEW-LINKS.md). Members re-send links.
+  {
+    key: "reviewGuest",
+    model: "reviewGuest",
+    where: (w) => ({
+      OR: [
+        { assignment: { deliverable: { project: { workspaceId: w } } } },
+        { comments: { some: { round: { deliverable: { project: { workspaceId: w } } } } } },
+      ],
+    }),
+    fks: {},
+    omit: ["nonce"],
+    fill: () => ({ nonce: newGuestNonce() }),
+  },
+  { key: "reviewCycle", model: "reviewCycle", where: (w) => ({ deliverable: { project: { workspaceId: w } } }), fks: { deliverableId: "deliverable", roundId: "reviewRound", reviewerId: USER, guestId: "reviewGuest", requestedById: USER } },
   {
     key: "reviewComment",
     model: "reviewComment",
     where: (w) => ({ round: { deliverable: { project: { workspaceId: w } } } }),
-    fks: { roundId: "reviewRound", parentId: "reviewComment", authorId: USER, resolvedById: USER },
+    fks: { roundId: "reviewRound", parentId: "reviewComment", authorId: USER, guestId: "reviewGuest", resolvedById: USER },
     sort: (rows) => [...rows].sort((a, b) => (a.parentId ? 1 : 0) - (b.parentId ? 1 : 0)),
   },
   { key: "timeEntry", model: "timeEntry", where: (w) => ({ project: { workspaceId: w } }), fks: { projectId: "project", deliverableId: "deliverable", userId: USER } },
@@ -133,6 +152,7 @@ export async function exportWorkspace(workspaceId: string): Promise<{
   const data: Record<string, any[]> = {};
   for (const spec of SPECS) {
     const rows = await (prisma as any)[spec.model].findMany({ where: spec.where(workspaceId) });
+    for (const row of rows) for (const col of spec.omit ?? []) delete row[col];
     data[spec.model] = spec.sort ? spec.sort(rows) : rows;
   }
   const attachments = await prisma.attachment.findMany({ where: { workspaceId } });
@@ -312,6 +332,7 @@ export async function importWorkspace(
       delete d.updatedAt; // let @updatedAt default
       for (const col of Object.keys(spec.fks)) d[col] = remap(spec.fks[col], row[col] ?? null);
       for (const col of spec.json ?? []) if (d[col] == null) d[col] = Prisma.DbNull;
+      if (spec.fill) Object.assign(d, spec.fill());
       const created = await (prisma as any)[spec.model].create({ data: d });
       if (spec.key) maps[spec.key][row.id] = created.id;
     }

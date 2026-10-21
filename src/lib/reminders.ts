@@ -1,14 +1,16 @@
 import type { PrismaClient } from "../generated/prisma/client";
-import { cardDueReminder, milestoneDueReminder, withLink } from "./email-templates";
+import { cardDueReminder, milestoneDueReminder, reviewDueReminder, withLink } from "./email-templates";
 import { appUrl } from "./app-url";
 import { notificationEnabled } from "./notifications";
+import { guestLinkPath } from "./review-guest-token";
 
 type EmailMsg = { to: string; subject: string; html: string; text: string };
 type Enqueue = (msg: EmailMsg) => Promise<void>;
 
 /**
  * Scan for work due *tomorrow* and enqueue reminder emails — cards (to their
- * assignees) and milestones (to workspace admins). Runs daily from the worker;
+ * assignees), milestones (to workspace admins) and undecided reviews (to the
+ * reviewer, member or guest). Runs daily from the worker;
  * the one-day-out window means each item is reminded exactly once. Dependencies
  * are injected so this stays out of the server-only Prisma client.
  */
@@ -92,6 +94,41 @@ export async function runDueReminders(prisma: PrismaClient, enqueue: Enqueue): P
       });
       sent++;
     }
+  }
+
+  // Reviews due tomorrow that the reviewer hasn't decided yet, in rounds still open.
+  // Guests get their current link (re-derivable — see review-guest-token.ts) unless
+  // it's been turned off or has expired.
+  const reviews = await prisma.reviewCycle.findMany({
+    where: {
+      dueDate: { gte: tomorrow, lt: dayAfter },
+      status: { in: ["requested", "in_review"] },
+      reviewRound: { outcome: null },
+    },
+    select: {
+      roundId: true,
+      reviewer: { select: { name: true, email: true } },
+      guest: { select: { id: true, name: true, email: true, nonce: true, revokedAt: true, expiresAt: true } },
+      deliverable: { select: { name: true, project: { select: { workspaceId: true } } } },
+    },
+  });
+  for (const r of reviews) {
+    if (!(await remindersOn(r.deliverable.project.workspaceId))) continue;
+    let to: { name: string; email: string } | null = null;
+    let link: string | undefined;
+    if (r.reviewer?.email) {
+      to = { name: r.reviewer.name ?? r.reviewer.email, email: r.reviewer.email };
+      link = appUrl(`/reviews/${r.roundId}`);
+    } else if (r.guest && !r.guest.revokedAt && r.guest.expiresAt > now) {
+      to = { name: r.guest.name, email: r.guest.email };
+      link = appUrl(guestLinkPath(r.guest));
+    }
+    if (!to) continue;
+    await enqueue({
+      to: to.email,
+      ...withLink(reviewDueReminder({ reviewerName: to.name, deliverableName: r.deliverable.name, when: "tomorrow" }), link, "Open the review →"),
+    });
+    sent++;
   }
 
   return sent;

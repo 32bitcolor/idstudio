@@ -102,12 +102,26 @@ export const ASSESSMENT_ITEM_TYPE_LABEL: Record<AssessmentItemType, string> = {
   other: "Other",
 };
 
-export const REVIEW_STATUSES = ["requested", "in_review", "changes_requested", "approved"] as const;
+export const REVIEW_STATUSES = ["requested", "in_review", "changes_requested", "approved_with_changes", "approved"] as const;
 export type ReviewStatus = (typeof REVIEW_STATUSES)[number];
 
 export const REVIEW_STATUS_LABEL: Record<ReviewStatus, string> = {
   requested: "Requested",
   in_review: "In review",
   changes_requested: "Changes requested",
+  approved_with_changes: "Approved with minor changes",
   approved: "Approved",
 };
+
+/** The three decisions a reviewer can hand down. "Approved with minor changes" counts
+ *  as approval for the round's gate — its comments are follow-ups, not blockers. */
+export const REVIEW_DECISIONS = ["approved", "approved_with_changes", "changes_requested"] as const;
+export type ReviewDecision = (typeof REVIEW_DECISIONS)[number];
+
+export function isApproval(status: string): boolean {
+  return status === "approved" || status === "approved_with_changes";
+}
+
+export function isDecided(status: string): boolean {
+  return (REVIEW_DECISIONS as readonly string[]).includes(status);
+}
