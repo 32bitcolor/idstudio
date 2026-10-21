@@ -9,8 +9,12 @@ import { cn } from "@/lib/utils"
  * dropdown in the app one consistent, theme-aware look.
  */
 function Select({ className, children, ...props }: React.ComponentProps<"select">) {
+  // The wrapper is full-width by default; a caller asking the select for `w-auto`
+  // wants it sized to its content, so the wrapper must shrink too (otherwise every
+  // inline `w-auto` dropdown silently stretched to a full row).
+  const auto = /(^|\s)w-auto(\s|$)/.test(className ?? "")
   return (
-    <div className="relative inline-flex w-full">
+    <div className={cn("relative inline-flex", auto ? "w-auto" : "w-full")}>
       <select
         data-slot="select"
         className={cn(

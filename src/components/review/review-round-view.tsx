@@ -80,6 +80,16 @@ function when(iso: string) {
   return new Date(iso).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
 }
 
+/** A timestamp in the viewer's own timezone. The server renders it in ITS timezone,
+ *  so the text legitimately differs on hydration — hence the suppression. */
+function When({ iso }: { iso: string }) {
+  return (
+    <time dateTime={iso} suppressHydrationWarning>
+      {when(iso)}
+    </time>
+  );
+}
+
 const fieldDomId = (screenId: string, field: ScreenField) => `field-${screenId}-${field}`;
 const anchorKey = (a: ReviewAnchor) => (a.kind === "storyboard_field" ? `${a.screenId}:${a.field}` : "general");
 
@@ -197,7 +207,7 @@ export function ReviewRoundView({
           <ShieldCheck className="mr-1.5 inline size-4 text-accent" aria-hidden="true" />
           <span className="font-semibold">Passed by override</span>{" "}
           <span className="text-muted-foreground">
-            — {round.overridden.by}, {when(round.overridden.at)}, with {approved} of {assignments.length} approved:
+            — {round.overridden.by}, <When iso={round.overridden.at} />, with {approved} of {assignments.length} approved:
           </span>{" "}
           “{round.overridden.reason}”
         </p>
@@ -851,7 +861,7 @@ function CommentItem({
     <div className="group/comment">
       <div className="flex items-center gap-2 text-xs">
         <span className="font-semibold">{comment.author ? comment.author.name ?? comment.author.email : "Former member"}</span>
-        <span className="text-muted-foreground">{when(comment.createdAt)}</span>
+        <span className="text-muted-foreground"><When iso={comment.createdAt} /></span>
         {canDelete && (
           <button
             type="button"
