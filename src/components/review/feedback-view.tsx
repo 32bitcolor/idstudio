@@ -116,17 +116,24 @@ export function FeedbackView({
             Feedback <span className="text-muted-foreground">· {deliverable.name}</span>
           </h1>
         }
-        description={`${items.length - closedTotal} open · ${closedTotal} closed · ${linkedCount} on a board, across ${rounds.length} round${rounds.length === 1 ? "" : "s"}`}
-        actions={rounds.map((r) => (
-          <Link
-            key={r.id}
-            href={`/reviews/${r.id}`}
-            className="inline-flex items-center gap-1.5 rounded-md border border-border px-2 py-1 text-xs font-medium hover:bg-hover"
-          >
-            Round {r.number}
-            <StatusBadge tone={roundTone(r.outcome)} className="px-1.5 py-0 text-[11px]">{roundLabel(r.outcome, false)}</StatusBadge>
-          </Link>
-        ))}
+        description={
+          <>
+            {items.length - closedTotal} open · {closedTotal} closed · {linkedCount} on a board, across {rounds.length} round
+            {rounds.length === 1 ? "" : "s"}
+            <span className="mt-2 flex flex-wrap gap-2">
+              {rounds.map((r) => (
+                <Link
+                  key={r.id}
+                  href={`/reviews/${r.id}`}
+                  className="inline-flex items-center gap-1.5 rounded-md border border-border px-2 py-1 text-xs font-medium text-foreground hover:bg-hover"
+                >
+                  Round {r.number}
+                  <StatusBadge tone={roundTone(r.outcome)} className="px-1.5 py-0 text-[11px]">{roundLabel(r.outcome, false)}</StatusBadge>
+                </Link>
+              ))}
+            </span>
+          </>
+        }
       />
 
       {/* ── Filters ─────────────────────────────────────────── */}

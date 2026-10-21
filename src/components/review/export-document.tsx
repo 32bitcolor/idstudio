@@ -89,7 +89,12 @@ export function ExportDocument({ doc }: { doc: ExportDoc }) {
       {doc.reviewers.length > 0 && (
         <section className="mt-8">
           <h2 className="border-b border-[#d0d5da] pb-1 text-xl font-bold">Reviewers</h2>
-          <table className="mt-3 w-full border-collapse text-left text-[13px]">
+          <table className="mt-3 w-full table-fixed border-collapse text-left text-[13px]">
+            <colgroup>
+              <col className="w-[28%]" />
+              <col className="w-[24%]" />
+              <col />
+            </colgroup>
             <thead>
               <tr className="bg-[#f3f6f8]">
                 <th className="border border-[#d0d5da] px-2 py-1 font-semibold">Reviewer</th>
