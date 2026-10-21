@@ -35,8 +35,10 @@ const StoryboardFieldAnchor = z.object({
 const Frac = z.number().min(0).max(1);
 const Page = z.number().int().min(1).max(10000);
 const FilePointAnchor = z.object({ kind: z.literal("file_point"), page: Page, x: Frac, y: Frac });
+// A region can carry the text selected inside it (a PDF's text layer), like a
+// storyboard quote — the region is the selection's bounding box.
 const FileRegionAnchor = z
-  .object({ kind: z.literal("file_region"), page: Page, x: Frac, y: Frac, w: Frac, h: Frac })
+  .object({ kind: z.literal("file_region"), page: Page, x: Frac, y: Frac, w: Frac, h: Frac, quote: Quote.optional() })
   .refine((a) => a.x + a.w <= 1.0001 && a.y + a.h <= 1.0001 && a.w > 0 && a.h > 0, "Region is off the page.");
 
 export const ReviewAnchor = z.union([GeneralAnchor, StoryboardFieldAnchor, FilePointAnchor, FileRegionAnchor]);

@@ -1,16 +1,17 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Download, MessageSquarePlus } from "lucide-react";
+import { Download, MessageSquarePlus, Quote } from "lucide-react";
 import type { PDFDocumentProxy } from "pdfjs-dist";
 
 import type { FileAnchor } from "@/lib/review-anchor";
 import { cn } from "@/lib/utils";
 
 // Reviewing a PDF or an image (docs/REVIEW-LINKS.md, phase 3). PDFs are drawn by pdf.js
-// into canvases: no text layer, no annotation layer, no scripts — we render the file,
-// we never run it. Click a page to drop a pin, drag to mark a region; each comment
-// thread shows as a numbered marker where it was left.
+// into canvases, with pdf.js's text layer on top (invisible, selectable text) so words
+// can be quoted — but no annotation layer, no forms, no scripts: we render the file, we
+// never run it. Click a page to drop a pin, drag over blank space to mark a region, or
+// select text to quote it; each comment thread shows as a numbered marker.
 
 export type ReviewFileView = {
   url: string; // where this viewer may read the bytes (member API route or guest route)
@@ -52,6 +53,7 @@ export function FileReview({
   const [doc, setDoc] = useState<PDFDocumentProxy | null>(null);
   const [ratio, setRatio] = useState<number | null>(null); // first page's height / width, for placeholders
   const [error, setError] = useState<string | null>(null);
+  const selection = useTextSelection(wrap, canComment && isPdf);
 
   useEffect(() => {
     if (!isPdf) return;
@@ -107,7 +109,9 @@ export function FileReview({
       </div>
       {canComment && (
         <p className="text-xs text-muted-foreground">
-          Click or tap the {isPdf ? "page" : "image"} to pin a comment. With a mouse, drag to mark an area.
+          {isPdf
+            ? "Click or tap a page to pin a comment, or select text to quote it. With a mouse, drag over blank space to mark an area."
+            : "Click or tap the image to pin a comment. With a mouse, drag to mark an area."}
         </p>
       )}
 
@@ -145,6 +149,7 @@ export function FileReview({
                   canComment={canComment}
                   pins={pinsOn(n)}
                   pending={composingHere ? composingAnchor : null}
+                  selection={selection?.page === n ? selection : null}
                   flash={flash}
                   onCompose={onCompose}
                   onSelectPin={onSelectPin}
@@ -173,6 +178,7 @@ function Surface({
   canComment,
   pins,
   pending,
+  selection,
   flash,
   onCompose,
   onSelectPin,
@@ -183,6 +189,7 @@ function Surface({
   canComment: boolean;
   pins: FilePin[];
   pending: FileAnchor | null;
+  selection: TextSelection | null;
   flash: string | null;
   onCompose: (anchor: FileAnchor) => void;
   onSelectPin: (threadId: string) => void;
@@ -190,6 +197,9 @@ function Surface({
 }) {
   const box = useRef<HTMLDivElement>(null);
   const [drag, setDrag] = useState<{ x0: number; y0: number; x1: number; y1: number } | null>(null);
+  // Pressing on PDF text belongs to the browser's text selection; a plain click there
+  // (nothing ends up selected) still drops a pin.
+  const textDown = useRef<{ x: number; y: number } | null>(null);
 
   function frac(e: React.PointerEvent) {
     const r = box.current!.getBoundingClientRect();
@@ -208,7 +218,12 @@ function Surface({
         canComment && "cursor-crosshair touch-pan-y",
       )}
       onPointerDown={(e) => {
-        if (!canComment || e.button !== 0 || (e.target as HTMLElement).closest("[data-pin]")) return;
+        const target = e.target as HTMLElement;
+        if (!canComment || e.button !== 0 || target.closest("[data-pin], [data-selection-action]")) return;
+        if (target.closest(".textLayer span:not(.endOfContent)")) {
+          textDown.current = frac(e);
+          return;
+        }
         const p = frac(e);
         setDrag({ x0: p.x, y0: p.y, x1: p.x, y1: p.y });
         (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
@@ -219,6 +234,12 @@ function Surface({
         setDrag({ ...drag, x1: p.x, y1: p.y });
       }}
       onPointerUp={() => {
+        const t = textDown.current;
+        textDown.current = null;
+        if (t) {
+          if (window.getSelection()?.isCollapsed !== false) onCompose({ kind: "file_point", page, x: t.x, y: t.y });
+          return;
+        }
         if (!drag) return;
         const x = Math.min(drag.x0, drag.x1);
         const y = Math.min(drag.y0, drag.y1);
@@ -238,6 +259,25 @@ function Surface({
         />
       )}
       {pending && !isWholePage(pending) && <Marker anchor={pending} label="New comment" pending />}
+      {selection && !pending && (
+        <button
+          type="button"
+          data-selection-action
+          // Keep the selection alive through the click.
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={() => {
+            onCompose(selection.anchor);
+            window.getSelection()?.removeAllRanges();
+          }}
+          className="absolute z-20 inline-flex h-8 items-center gap-1.5 rounded-md bg-foreground px-2.5 text-xs font-semibold text-background shadow-lg outline-none focus-visible:ring-[3px] focus-visible:ring-ring/60"
+          style={{
+            left: `min(${selection.button.x * 100}%, calc(100% - 11rem))`,
+            top: `calc(${selection.button.y * 100}% + 6px)`,
+          }}
+        >
+          <Quote className="size-3.5" aria-hidden="true" /> Comment on selection
+        </button>
+      )}
       {pins.map((p) =>
         isWholePage(p.anchor) ? null : (
           <Marker
@@ -327,6 +367,7 @@ function Marker({
  *  have hundreds of pages), and redrawn when the available width changes. */
 function PdfPage({ doc, page, width, ratio }: { doc: PDFDocumentProxy; page: number; width: number; ratio: number }) {
   const canvas = useRef<HTMLCanvasElement>(null);
+  const text = useRef<HTMLDivElement>(null);
   const [near, setNear] = useState(page <= 2);
   const [height, setHeight] = useState(width * ratio);
 
@@ -342,6 +383,7 @@ function PdfPage({ doc, page, width, ratio }: { doc: PDFDocumentProxy; page: num
   useEffect(() => {
     if (!near) return;
     let task: { cancel: () => void; promise: Promise<void> } | null = null;
+    let layer: { cancel: () => void } | null = null;
     let stale = false;
     (async () => {
       const p = await doc.getPage(page);
@@ -356,14 +398,30 @@ function PdfPage({ doc, page, width, ratio }: { doc: PDFDocumentProxy; page: num
       setHeight(base.height * scale);
       task = p.render({ canvas: c, viewport: vp });
       await task.promise.catch(() => {});
+
+      // The selectable text, at CSS scale (the canvas is drawn at device scale).
+      const box = text.current;
+      if (stale || !box) return;
+      const { TextLayer } = await import("pdfjs-dist");
+      box.replaceChildren();
+      box.style.setProperty("--total-scale-factor", String(scale));
+      const tl = new TextLayer({ textContentSource: p.streamTextContent(), container: box, viewport: p.getViewport({ scale }) });
+      layer = tl;
+      await tl.render().catch(() => {});
     })();
     return () => {
       stale = true;
       task?.cancel();
+      layer?.cancel();
     };
   }, [doc, page, width, near]);
 
-  return <canvas ref={canvas} className="block w-full select-none" style={{ height }} aria-hidden="true" />;
+  return (
+    <div className="relative">
+      <canvas ref={canvas} className="block w-full select-none" style={{ height }} aria-hidden="true" />
+      <div ref={text} className="textLayer" data-page={page} />
+    </div>
+  );
 }
 
 /** The element's content width, kept current as the layout changes. The first
@@ -392,4 +450,60 @@ function useWidth(ref: React.RefObject<HTMLElement | null>) {
     };
   }, [ref]);
   return w;
+}
+
+type TextSelection = {
+  page: number;
+  anchor: FileAnchor;
+  /** Where to show "Comment on selection": the end of the selection, as page fractions. */
+  button: { x: number; y: number };
+};
+
+/** Watch the document selection; when it's a run of text inside ONE page's text layer,
+ *  describe it as a quoted region (its bounding box, in page fractions) for that page.
+ *  Works for mouse drags and for touch long-press selection alike. */
+function useTextSelection(root: React.RefObject<HTMLElement | null>, enabled: boolean): TextSelection | null {
+  const [sel, setSel] = useState<TextSelection | null>(null);
+  useEffect(() => {
+    if (!enabled) return;
+    let frame = 0;
+    const read = () => {
+      const s = window.getSelection();
+      const el = (n: Node | null) => (n instanceof Element ? n : n?.parentElement ?? null);
+      const layer = el(s?.anchorNode ?? null)?.closest<HTMLElement>(".textLayer");
+      if (!s || s.isCollapsed || !layer || !root.current?.contains(layer) || el(s.focusNode)?.closest(".textLayer") !== layer) {
+        setSel(null);
+        return;
+      }
+      const exact = s.toString().replace(/\s+/g, " ").trim().slice(0, 500);
+      const box = layer.getBoundingClientRect();
+      const rects = [...s.getRangeAt(0).getClientRects()].filter((r) => r.width > 0 && r.height > 0);
+      if (!exact || !rects.length || !box.width) {
+        setSel(null);
+        return;
+      }
+      const fx = (v: number) => Math.min(1, Math.max(0, (v - box.left) / box.width));
+      const fy = (v: number) => Math.min(1, Math.max(0, (v - box.top) / box.height));
+      const x0 = fx(Math.min(...rects.map((r) => r.left)));
+      const y0 = fy(Math.min(...rects.map((r) => r.top)));
+      const x1 = fx(Math.max(...rects.map((r) => r.right)));
+      const y1 = fy(Math.max(...rects.map((r) => r.bottom)));
+      const last = rects[rects.length - 1];
+      setSel({
+        page: Number(layer.dataset.page),
+        anchor: { kind: "file_region", page: Number(layer.dataset.page), x: x0, y: y0, w: Math.max(x1 - x0, 0.005), h: Math.max(y1 - y0, 0.005), quote: { exact } },
+        button: { x: fx(last.left), y: fy(last.bottom) },
+      });
+    };
+    const onChange = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(read);
+    };
+    document.addEventListener("selectionchange", onChange);
+    return () => {
+      cancelAnimationFrame(frame);
+      document.removeEventListener("selectionchange", onChange);
+    };
+  }, [root, enabled]);
+  return enabled ? sel : null;
 }

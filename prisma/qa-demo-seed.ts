@@ -666,7 +666,7 @@ type SeedThread = {
   body: string;
   anchor?: { screen: string; field: ScreenField; quote?: string };
   /** On a file round: a pin (x, y) or an area (+ w, h), as fractions of the page. */
-  pin?: { page: number; x: number; y: number; w?: number; h?: number };
+  pin?: { page: number; x: number; y: number; w?: number; h?: number; quote?: string };
   status?: "open" | "resolved" | "wont_fix";
   resolvedBy?: string;
   note?: string;
@@ -679,8 +679,10 @@ async function reviewComments(round: { id: string; snapshot: unknown }, threads:
   for (const t of threads) {
     let anchor: object = { kind: "general" };
     if (t.pin) {
-      const { page, x, y, w, h } = t.pin;
-      anchor = w != null && h != null ? { kind: "file_region", page, x, y, w, h } : { kind: "file_point", page, x, y };
+      const { page, x, y, w, h, quote } = t.pin;
+      anchor = w != null && h != null
+        ? { kind: "file_region", page, x, y, w, h, ...(quote ? { quote: { exact: quote } } : {}) }
+        : { kind: "file_point", page, x, y };
     } else if (t.anchor) {
       const screen = snap?.screens.find((x) => x.title === t.anchor!.screen);
       if (!screen) throw new Error(`no screen "${t.anchor.screen}" in round snapshot`);
@@ -1144,6 +1146,10 @@ async function main() {
       body: "Much better. Can the 'tell' line be bold? It's the most important sentence in the module.",
     },
     { by: "marcus", ago: 1, pin: { page: 1, x: 0, y: 0, w: 1, h: 1 }, body: "Title slide works. No notes." },
+    {
+      by: "marcus", ago: 0, pin: { page: 2, x: 0.07, y: 0.26, w: 0.55, h: 0.05, quote: "Keep your password: sign in at the link below." },
+      body: "Real phish rarely says \"sign in at the link\" this plainly. Try \"Action required: verify your account to avoid interruption.\"",
+    },
   ]);
   await review(secDel.quiz, "admin", "priya", 1, "requested", 6, null, 1);
   await time(sec.project.id, [

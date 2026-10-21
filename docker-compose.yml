@@ -123,6 +123,11 @@ services:
       APP_URL: ${APP_URL:-}
       # Guest review links are HMACs keyed by this — reminder emails re-create them.
       SESSION_SECRET: ${SESSION_SECRET}
+      # The nightly review-file sweep deletes unused uploads from MinIO.
+      S3_ENDPOINT: http://minio:9000
+      S3_BUCKET: ${S3_BUCKET:-idstudio}
+      S3_ACCESS_KEY: ${MINIO_ROOT_USER}
+      S3_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
     depends_on:
       redis:
         condition: service_healthy

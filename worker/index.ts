@@ -5,6 +5,8 @@ import { PrismaPg } from "@prisma/adapter-pg";
 import { sendMail } from "../src/lib/mailer";
 import { enqueueEmail } from "../src/lib/queues";
 import { runDueReminders } from "../src/lib/reminders";
+import { sweepReviewFiles } from "../src/lib/review-file-sweep";
+import { S3Client } from "@aws-sdk/client-s3";
 
 // Background job runner. Phase 5 registers real LearnUpon sync jobs here; for
 // now it stays alive and confirms the app ⇄ Redis ⇄ worker topology works.
@@ -69,6 +71,31 @@ const remindersWorker = new Worker(
 );
 remindersWorker.on("failed", (job, err) => console.error(`[worker] reminders job ${job?.id} failed:`, err));
 
+// Nightly storage clean-up: review files that were uploaded but never used, and bytes
+// left behind when deliverables/projects/workspaces were deleted (src/lib/review-file-sweep.ts).
+const s3 = new S3Client({
+  region: process.env.S3_REGION ?? "us-east-1",
+  endpoint: process.env.S3_ENDPOINT ?? "http://localhost:9000",
+  forcePathStyle: true,
+  credentials: { accessKeyId: process.env.S3_ACCESS_KEY ?? "", secretAccessKey: process.env.S3_SECRET_KEY ?? "" },
+});
+const maintenanceQueue = new Queue("maintenance", { connection });
+maintenanceQueue
+  .add("sweep-review-files", {}, { repeat: { pattern: "30 4 * * *" }, removeOnComplete: true, removeOnFail: 50 })
+  .then(() => console.log("[worker] scheduled nightly review-file sweep (04:30 UTC)"))
+  .catch((err) => console.error("[worker] failed to schedule the review-file sweep:", err));
+
+const maintenanceWorker = new Worker(
+  "maintenance",
+  async () => {
+    const r = await sweepReviewFiles(prisma, s3, process.env.S3_BUCKET ?? "idstudio");
+    console.log(`[worker] review-file sweep: ${r.unusedFiles} unused upload(s), ${r.orphanedObjects} orphaned object(s) removed`);
+    return r;
+  },
+  { connection },
+);
+maintenanceWorker.on("failed", (job, err) => console.error(`[worker] maintenance job ${job?.id} failed:`, err));
+
 console.log("[worker] starting…");
 
 async function shutdown() {
@@ -76,8 +103,10 @@ async function shutdown() {
   await worker.close();
   await emailWorker.close();
   await remindersWorker.close();
+  await maintenanceWorker.close();
   await lmsQueue.close();
   await remindersQueue.close();
+  await maintenanceQueue.close();
   await prisma.$disconnect();
   process.exit(0);
 }

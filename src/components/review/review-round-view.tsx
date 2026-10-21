@@ -114,6 +114,11 @@ function When({ iso }: { iso: string }) {
 const fieldDomId = (screenId: string, field: ScreenField) => `field-${screenId}-${field}`;
 const anchorKey = (a: ReviewAnchor) => (a.kind === "storyboard_field" ? `${a.screenId}:${a.field}` : "general");
 
+/** The text a comment quotes: selected in a storyboard field, or in a PDF's text. */
+function quoteOf(a: ReviewAnchor): string | undefined {
+  return a.kind === "storyboard_field" || a.kind === "file_region" ? a.quote?.exact : undefined;
+}
+
 /** Whether a stored field has any words in it (empty fields aren't shown). */
 function hasText(doc: string | null): boolean {
   return extractText(doc) !== "";
@@ -776,8 +781,10 @@ function Composer({
   label?: string;
 }) {
   const [error, setError] = useState<string | null>(null);
-  const quote = anchor.kind === "storyboard_field" ? anchor.quote?.exact : undefined;
-  const spot = isFileAnchor(anchor)
+  const quote = quoteOf(anchor);
+  const spot = quote
+    ? null
+    : isFileAnchor(anchor)
     ? anchor.kind === "file_point"
       ? "Pinned comment"
       : anchor.w === 1 && anchor.h === 1
@@ -1002,10 +1009,10 @@ function Thread({
           </StatusBadge>
         )}
       </div>
-      {anchor.kind === "storyboard_field" && anchor.quote && (
+      {quoteOf(anchor) && (
         <blockquote className="mb-1.5 flex gap-1.5 border-l-2 border-accent/60 pl-2 text-xs text-muted-foreground">
           <Quote className="mt-0.5 size-3 shrink-0" aria-hidden="true" />
-          {anchor.quote.exact}
+          {quoteOf(anchor)}
         </blockquote>
       )}
 
