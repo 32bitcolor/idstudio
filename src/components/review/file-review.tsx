@@ -107,7 +107,7 @@ export function FileReview({
       </div>
       {canComment && (
         <p className="text-xs text-muted-foreground">
-          Click anywhere on the {isPdf ? "page" : "image"} to pin a comment, or drag to mark an area.
+          Click or tap the {isPdf ? "page" : "image"} to pin a comment. With a mouse, drag to mark an area.
         </p>
       )}
 

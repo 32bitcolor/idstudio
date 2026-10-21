@@ -294,7 +294,17 @@ export function ReviewRoundView({
 
       <ReviewerList assignments={assignments} roundOpen={!round.outcome} manage={viewer.kind === "member"} roundId={round.id} members={members} />
       {myAssignment && <DecisionBar assignment={myAssignment} />}
-      {viewer.kind === "guest" && <GuestDecisionBar viewer={viewer} assignment={assignments.find((a) => a.guest?.id === viewer.id) ?? null} />}
+      {viewer.kind === "guest" && (
+        <GuestDecisionBar
+          viewer={viewer}
+          assignment={assignments.find((a) => a.guest?.id === viewer.id) ?? null}
+          howTo={
+            round.file
+              ? `Click or tap the ${round.file.mimeType === "application/pdf" ? "pages" : "image"} to pin a comment.`
+              : "Select text in any field and press Comment to quote it."
+          }
+        />
+      )}
 
       <div className="flex min-w-0 flex-wrap items-start gap-6">
         {/* ── What's under review ───────────────────────────── */}
@@ -492,7 +502,15 @@ function DecisionButtons({ onDecide, pending }: { onDecide: (d: ReviewDecision) 
 
 /** A guest's decision, from their review link. Once they've decided, the page is
  *  read-only until they reopen — which they can do until the round closes. */
-function GuestDecisionBar({ viewer, assignment }: { viewer: Extract<Viewer, { kind: "guest" }>; assignment: Assignment | null }) {
+function GuestDecisionBar({
+  viewer,
+  assignment,
+  howTo,
+}: {
+  viewer: Extract<Viewer, { kind: "guest" }>;
+  assignment: Assignment | null;
+  howTo: string;
+}) {
   const router = useRouter();
   const [summary, setSummary] = useState(assignment?.feedback ?? "");
   const [error, setError] = useState<string | null>(null);
@@ -540,7 +558,7 @@ function GuestDecisionBar({ viewer, assignment }: { viewer: Extract<Viewer, { ki
     <section aria-label="Your decision" className="flex flex-col gap-2 rounded-lg border border-accent/40 bg-accent/5 p-4">
       <h2 className="text-sm font-semibold">When you&apos;re done, {viewer.name.split(" ")[0]}, hand down your decision</h2>
       <p className="text-xs text-muted-foreground">
-        Select text in any field and press <span className="font-medium">Comment</span> to quote it. This link is personal to you and works until{" "}
+        {howTo} This link is personal to you and works until{" "}
         <time dateTime={viewer.expiresAt} suppressHydrationWarning>
           {new Date(viewer.expiresAt).toLocaleDateString(undefined, { month: "long", day: "numeric" })}
         </time>

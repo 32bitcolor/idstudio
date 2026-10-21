@@ -301,7 +301,7 @@ All phases are additive. Each one ships something usable, and it's fine to stop 
 2. ✅ *Built 2026-10-21.* **Guest review links.** `ReviewGuest`, the token→cookie exchange, the public `/review` route
    group, rate limits, expiry and revoke, invite and decision emails, review due-date reminders,
    and the "Approve with minor changes" status.
-3. **File targets.** `ReviewFile`, streamed large uploads, Range downloads, and PDF (pdf.js),
+3. ✅ *Built 2026-10-21 (PDF + images; video deferred).* **File targets.** `ReviewFile`, streamed large uploads, Range downloads, and PDF (pdf.js),
    image and video anchors.
 4. **Feedback → work, and export.** Comments → cards, a consolidated feedback view, and
    **storyboard + comments export to Word/PDF**. This folds in the long-requested storyboard
@@ -353,3 +353,32 @@ No open questions remain.
   hour per guest.
 - Backups (format 6) include guests without their nonce, and restore gives them fresh ones, so
   restored links are dead and members re-send them.
+
+### Phase 3 as built (PDF and images; video deferred)
+
+- `ReviewFile` (workspace, deliverable, name, sniffed MIME type, size, storage key, uploader) and
+  `ReviewRound.fileId`; `targetKind` is now `storyboard`, `file` or `none`. A file is immutable: the
+  next round uploads a new version or reuses the same file, and the round page says which.
+- **Upload:** `PUT /api/review-files?deliverableId=…&name=…` with the raw bytes (not multipart).
+  The body streams to MinIO through `@aws-sdk/lib-storage` and is never buffered: a 60 MB upload
+  through the tunnel left the app at about 300 MB of memory. The type comes from the file's magic
+  bytes; only PDF, PNG, JPEG, WebP and GIF are accepted, never SVG. The cap is **95 MB**, enforced
+  from Content-Length and again by a byte counter while streaming. It sits under Cloudflare's 100 MB
+  body limit, so files this size need no chunking.
+- **Serving:** members use `/api/review-files/<id>`, gated by the deliverable's access rules.
+  Guests use `/review/g/<guestId>/file`, sent with their path-scoped cookie and limited to their
+  own round's file. Both honour HTTP Range (206) and send `nosniff`, `CSP: sandbox; default-src
+  'none'` and `Content-Disposition: inline` (or `attachment` with `?download`).
+- **Rendering:** pdf.js 6 draws each page into a canvas lazily, near the viewport, and redraws on
+  resize. There's no text layer, no annotation layer and no XFA, so nothing in a PDF runs. The
+  worker, CMaps, standard fonts, WASM decoders and ICC profiles are copied into `public/vendor/pdfjs`
+  by `scripts/copy-pdf-worker.mjs` before dev and build, so they always match the installed version.
+- **Anchors:** `file_point` and `file_region` (page, plus 0–1 fractions). Click to pin, drag with a
+  mouse to mark an area, or use **Comment on page N** (keyboard path; stored as a whole-page
+  region). Markers are numbered in thread order and link both ways with the comments panel.
+- **Not yet:** video (the 500 MB cap needs chunked upload through Cloudflare; Range serving is
+  already in place), and quoting text inside a PDF (it would need pdf.js's text layer). Uploads
+  abandoned before a round starts are deleted when the designer cancels or picks another file;
+  closing the tab instead leaves an unused file behind, which a periodic sweep should clean up.
+- Backup format 7 carries review files with their bytes, re-uploaded on restore. The dead presign
+  helpers, `S3_PUBLIC_ENDPOINT` and `@aws-sdk/s3-request-presigner` are gone.

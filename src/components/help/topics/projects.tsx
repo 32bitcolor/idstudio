@@ -106,12 +106,15 @@ export default function Projects() {
 
       <Steps>
         <>
-          On a deliverable, click <UI>+ Request a review</UI>. Pick reviewers from your workspace, and/or
-          add <strong>guests</strong> by name and email for SMEs who don&rsquo;t have an account. Set a
-          due date and click <UI>Start round 1</UI>. Everyone is emailed a link.
+          On a deliverable, click <UI>+ Request a review</UI> and choose what&rsquo;s being reviewed: the
+          linked storyboard, or a <strong>PDF or image</strong> you upload (for example, a Storyline or
+          Rise export). Pick reviewers from your workspace, and/or add <strong>guests</strong> by name and
+          email for SMEs who don&rsquo;t have an account. Set a due date and click <UI>Start round 1</UI>.
+          Everyone is emailed a link.
         </>
         <>
-          Reviewers select text in any storyboard field and comment on it, or leave general feedback.
+          Reviewers select text in any storyboard field and comment on it. On a PDF or image, they click
+          to drop a numbered pin or drag to mark an area. They can also leave general feedback.
           Then they choose <UI>Approve</UI>, <UI>Approve with minor changes</UI>, or{" "}
           <UI>Request changes</UI>. The round passes only when <strong>every</strong> reviewer approves
           (with or without minor changes).
@@ -122,6 +125,12 @@ export default function Projects() {
           highlights what changed since the last one.
         </>
       </Steps>
+
+      <Callout tone="tip">
+        Reviewing a file? PDFs and PNG, JPEG, WebP or GIF images up to 95 MB work. For an e-learning
+        build, publish it to PDF (Storyline: <UI>Publish → Print</UI>) and upload that. IDStudio shows
+        files; it never runs them. For the next round, upload the new version, or reuse the same file.
+      </Callout>
 
       <H3>Guest reviewers</H3>
       <P>
