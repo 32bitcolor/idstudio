@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { AlertCircle, Columns3, FolderKanban } from "lucide-react";
+import { AlertCircle, Clock, Columns3, FolderKanban } from "lucide-react";
 
 import { prisma } from "@/lib/db";
 import { getActiveMembership } from "@/lib/dal";
@@ -114,7 +114,7 @@ function BoardTile({
   return (
     <Link
       href={`/boards/${board.id}`}
-      className="group flex h-full flex-col gap-3 rounded-xl border border-border bg-card p-5 shadow-sm outline-none transition-colors hover:border-border-strong focus-visible:ring-[3px] focus-visible:ring-ring/50"
+      className="group flex h-full flex-col gap-3 rounded-xl border border-border bg-surface p-5 shadow-sm outline-none transition-colors hover:border-border-strong focus-visible:ring-[3px] focus-visible:ring-ring/50"
     >
       <div className="flex items-start gap-2">
         <h2 className="line-clamp-2 min-w-0 flex-1 font-semibold leading-snug group-hover:underline group-hover:underline-offset-2">{board.name}</h2>
@@ -158,16 +158,24 @@ function BoardTile({
         )}
       </div>
 
-      <div className="flex min-h-6 items-center gap-2 border-t border-border pt-3 text-xs text-muted-foreground">
-        {tally.overdue > 0 && (
-          <span className="inline-flex items-center gap-1 font-medium text-destructive-ink">
-            <AlertCircle className="size-3.5" aria-hidden="true" />
-            {tally.overdue} overdue
+      {/* One line, always: people give way first, then the date shortens to its icon. */}
+      <div className="flex min-h-6 items-center gap-2 whitespace-nowrap border-t border-border pt-3 text-xs text-muted-foreground">
+        <span className="flex min-w-0 items-center gap-1 overflow-hidden">
+          <AvatarStack assignees={people} />
+          {people.length > 3 && <span>+{people.length - 3}</span>}
+        </span>
+        <span className="ml-auto flex shrink-0 items-center gap-3">
+          {tally.overdue > 0 && (
+            <span className="inline-flex items-center gap-1 font-medium text-destructive-ink">
+              <AlertCircle className="size-3.5" aria-hidden="true" />
+              {tally.overdue} overdue
+            </span>
+          )}
+          <span className="inline-flex items-center gap-1" title={`Last updated ${ago(tally.updatedAt)}`}>
+            <Clock className="size-3.5" aria-hidden="true" />
+            {ago(tally.updatedAt)}
           </span>
-        )}
-        <AvatarStack assignees={people} />
-        {people.length > 3 && <span>+{people.length - 3}</span>}
-        <span className="ml-auto shrink-0">Updated {ago(tally.updatedAt)}</span>
+        </span>
       </div>
     </Link>
   );
