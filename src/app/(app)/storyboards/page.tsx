@@ -52,7 +52,7 @@ export default async function StoryboardsPage() {
           description="Create a storyboard to lay out screens, narration, and interaction notes for a course."
         />
       ) : (
-        <ul className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <ul className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 [&>*]:min-w-0">
           {storyboards.map((sb) => (
             <li key={sb.id}>
               <Link href={`/storyboards/${sb.id}`} className="group block">

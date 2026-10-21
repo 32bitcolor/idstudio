@@ -38,7 +38,7 @@ export default async function WhiteboardsPage() {
           description="Create a whiteboard to sketch a workflow, wireframe a screen, or map out ideas — solo or with your team."
         />
       ) : (
-        <ul className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <ul className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 [&>*]:min-w-0">
           {whiteboards.map((w) => (
             <li key={w.id}>
               <Link href={`/whiteboards/${w.id}`} className="group block">

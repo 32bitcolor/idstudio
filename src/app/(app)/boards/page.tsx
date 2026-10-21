@@ -43,7 +43,7 @@ export default async function BoardsPage() {
           description="Create a board to move cards across columns — ideal for a course build or a content pipeline."
         />
       ) : (
-        <ul className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <ul className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 [&>*]:min-w-0">
           {boards.map((b) => (
             <li key={b.id}>
               <Link href={`/boards/${b.id}`} className="group block">

@@ -52,7 +52,7 @@ export default async function ProjectsPage() {
           description="Start an ADDIE or SAM project to plan phases, link deliverables, and run SME review cycles."
         />
       ) : (
-        <ul className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <ul className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 [&>*]:min-w-0">
           {projects.map((p) => {
             const total = p.phases.length;
             const done = p.phases.filter((ph) => ph.status === "done").length;
