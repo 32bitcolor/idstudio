@@ -1,4 +1,5 @@
 import * as React from "react";
+import { Plus } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
@@ -67,5 +68,30 @@ export function SectionHeader({
       </h2>
       {action}
     </div>
+  );
+}
+
+/** The one look for a section's rows: a single bordered panel, rows divided by hairlines.
+ *  Rows that carry `group` can use `ROW_ACTIONS` to reveal their buttons on hover. */
+export function ListPanel({ className, children }: { className?: string; children: React.ReactNode }) {
+  return <ul className={cn("divide-y divide-border rounded-lg border border-border bg-surface", className)}>{children}</ul>;
+}
+
+/** Row buttons that stay out of the way until the row is hovered or focused; always
+ *  shown on touch screens, where there's no hover. */
+export const ROW_ACTIONS =
+  "flex shrink-0 items-center gap-0.5 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 [@media(hover:none)]:opacity-100";
+
+/** "+ Add a …" trigger under a list. */
+export function AddRowButton({ onClick, children }: { onClick: () => void; children: React.ReactNode }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="mt-2 flex w-fit items-center gap-1.5 rounded-md px-2 py-1 text-sm text-muted-foreground outline-none hover:bg-hover hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50"
+    >
+      <Plus className="size-4" aria-hidden="true" />
+      {children}
+    </button>
   );
 }

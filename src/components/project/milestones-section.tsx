@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { X } from "lucide-react";
 import { createMilestone, toggleMilestone, setMilestoneDue, deleteMilestone } from "@/app/actions/deliverables";
-import { SectionHeader } from "@/components/shared/page";
+import { AddRowButton, ListPanel, ROW_ACTIONS, SectionHeader } from "@/components/shared/page";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -48,33 +48,49 @@ export function MilestonesSection({ projectId, initial }: { projectId: string; i
   return (
     <section className="mt-8">
       <SectionHeader>Milestones</SectionHeader>
-      <div className="flex flex-col gap-1.5">
-        {items.length === 0 && <p className="text-sm text-muted-foreground">No milestones yet.</p>}
-        {items.map((m) => {
-          const done = !!m.completedAt;
-          return (
-            <div key={m.id} className="group flex items-center gap-3 rounded-lg border border-border px-3 py-2">
-              <input type="checkbox" checked={done} onChange={() => toggle(m)} className="h-4 w-4 shrink-0" />
-              <span className={`flex-1 text-sm ${done ? "text-foreground/40 line-through" : ""}`}>{m.name}</span>
-              <Input
-                type="date"
-                value={m.dueDate ? m.dueDate.slice(0, 10) : ""}
-                onChange={(e) => changeDue(m, e.target.value)}
-                className={cn("h-7 w-auto px-1.5 py-0.5 text-xs", overdue(m.dueDate, done) ? "text-destructive" : "text-muted-foreground")}
-              />
-              <Button
-                variant="ghost"
-                size="icon-xs"
-                onClick={() => remove(m.id)}
-                className="shrink-0 text-foreground/30 opacity-0 hover:text-destructive group-hover:opacity-100"
-                title="Delete milestone"
-              >
-                <X className="size-3.5" />
-              </Button>
-            </div>
-          );
-        })}
-      </div>
+      {items.length === 0 ? (
+        <p className="text-sm text-muted-foreground">No milestones yet.</p>
+      ) : (
+        <ListPanel>
+          {items.map((m) => {
+            const done = !!m.completedAt;
+            return (
+              <li key={m.id} className="group flex items-center gap-3 px-3 py-2">
+                <input
+                  type="checkbox"
+                  checked={done}
+                  onChange={() => toggle(m)}
+                  aria-label={`Mark "${m.name}" ${done ? "not done" : "done"}`}
+                  className="size-4 shrink-0 rounded border-border-strong accent-accent"
+                />
+                <span className={cn("min-w-0 flex-1 truncate text-sm", done && "text-muted-foreground line-through")}>{m.name}</span>
+                <Input
+                  type="date"
+                  aria-label={`Due date for ${m.name}`}
+                  value={m.dueDate ? m.dueDate.slice(0, 10) : ""}
+                  onChange={(e) => changeDue(m, e.target.value)}
+                  className={cn(
+                    "h-7 w-auto border-transparent bg-transparent px-1.5 py-0.5 text-xs shadow-none hover:border-border focus-visible:border-ring",
+                    overdue(m.dueDate, done) ? "font-medium text-destructive-ink" : "text-muted-foreground",
+                  )}
+                />
+                <div className={ROW_ACTIONS}>
+                  <Button
+                    variant="ghost"
+                    size="icon-xs"
+                    onClick={() => remove(m.id)}
+                    className="hover:bg-destructive/10 hover:text-destructive"
+                    title="Delete milestone"
+                    aria-label={`Delete milestone ${m.name}`}
+                  >
+                    <X className="size-3.5" />
+                  </Button>
+                </div>
+              </li>
+            );
+          })}
+        </ListPanel>
+      )}
       <MilestoneComposer onAdd={add} />
     </section>
   );
@@ -87,9 +103,7 @@ function MilestoneComposer({ onAdd }: { onAdd: (name: string, dueIso: string | n
 
   if (!open) {
     return (
-      <button onClick={() => setOpen(true)} className="mt-2 rounded-lg px-2 py-1.5 text-left text-sm text-foreground/50 hover:bg-hover">
-        + Add a milestone
-      </button>
+      <AddRowButton onClick={() => setOpen(true)}>Add a milestone</AddRowButton>
     );
   }
 

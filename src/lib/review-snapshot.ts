@@ -57,7 +57,7 @@ export type SnapshotDiff = {
 
 /** Compare text content, not raw JSON — re-saving a TipTap doc can reorder attributes
  *  without changing a word, and that mustn't light up as "changed". */
-function plain(doc: string | null): string {
+export function plainText(doc: string | null): string {
   if (!doc) return "";
   try {
     const parts: string[] = [];
@@ -87,7 +87,7 @@ export function diffSnapshots(prev: StoryboardSnapshot, curr: StoryboardSnapshot
       changedCount++;
       continue;
     }
-    const fields = SCREEN_FIELDS.filter((f) => plain(s.fields[f]) !== plain(old.fields[f]));
+    const fields = SCREEN_FIELDS.filter((f) => plainText(s.fields[f]) !== plainText(old.fields[f]));
     const titleChanged = s.title.trim() !== old.title.trim();
     const typeChanged = s.screenType !== old.screenType;
     if (fields.length || titleChanged || typeChanged) {

@@ -25,9 +25,11 @@ import type { RoundSummary } from "@/components/project/review-rounds";
 import { ProjectContextStrip, type ProjectContext } from "@/components/board/project-context-strip";
 import { useSetPageTitle } from "@/components/app-shell/breadcrumbs";
 import { ChevronUp, ChevronDown, X } from "lucide-react";
-import { PageContainer, PageHeader, SectionHeader } from "@/components/shared/page";
+import { AddRowButton, ListPanel, PageContainer, PageHeader, ROW_ACTIONS, SectionHeader } from "@/components/shared/page";
+import { StatusDot, type StatusCategory } from "@/components/shared/work-item";
+import { cn } from "@/lib/utils";
 import { InlineTitle } from "@/components/shared/inline-title";
-import { StatusBadge, type StatusTone } from "@/components/shared/status-badge";
+import { StatusBadge } from "@/components/shared/status-badge";
 import { ConfirmDelete } from "@/components/shared/confirm-delete";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -66,10 +68,26 @@ const NEXT_STATUS: Record<string, PhaseStatus> = {
   done: "not_started",
 };
 
-function phaseTone(s: string): StatusTone {
-  if (s === "done") return "success";
-  if (s === "in_progress") return "info";
-  return "neutral";
+const PHASE_CATEGORY: Record<string, StatusCategory> = {
+  not_started: "todo",
+  in_progress: "active",
+  done: "done",
+};
+
+/** A date that reads as plain text until you hover or focus it. */
+function PhaseDate({ label, value, onChange }: { label: string; value: string | null; onChange: (v: string) => void }) {
+  return (
+    <Input
+      type="date"
+      aria-label={label}
+      value={value ? value.slice(0, 10) : ""}
+      onChange={(e) => onChange(e.target.value)}
+      className={cn(
+        "h-7 w-auto border-transparent bg-transparent px-1.5 py-0.5 text-xs shadow-none hover:border-border focus-visible:border-ring",
+        !value && "text-muted-foreground/70",
+      )}
+    />
+  );
 }
 
 function move<T>(arr: T[], from: number, to: number) {
@@ -244,78 +262,79 @@ export function ProjectView({
       />
 
       <section id="phases" className="mt-8 scroll-mt-20">
-        <SectionHeader>
-          Phases{phases.length > 0 && <span className="ml-1 font-normal normal-case tracking-normal">· {done}/{phases.length} done</span>}
+        <SectionHeader
+          action={
+            phases.length > 0 && (
+              <span className="flex items-center gap-2 text-xs text-muted-foreground">
+                <span className="h-1.5 w-20 overflow-hidden rounded-full bg-muted" aria-hidden="true">
+                  <span className="block h-full rounded-full bg-success" style={{ width: `${(done / phases.length) * 100}%` }} />
+                </span>
+                {done}/{phases.length} done
+              </span>
+            )
+          }
+        >
+          Phases
         </SectionHeader>
-        <div className="flex flex-col gap-2">
-          {phases.length === 0 && (
-            <p className="text-sm text-muted-foreground">No phases yet. Add the first one below.</p>
-          )}
-          {phases.map((p, i) => (
-            <div key={p.id} className="flex items-start gap-3 rounded-xl border border-border p-3">
-              <button
-                onClick={() => cycleStatus(p)}
-                className="mt-0.5 shrink-0 rounded-full outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
-                title="Click to advance status"
-                aria-label={`Phase status: ${PHASE_STATUS_LABEL[p.status as PhaseStatus] ?? p.status}. Click to advance.`}
-              >
-                <StatusBadge tone={phaseTone(p.status)}>
-                  {PHASE_STATUS_LABEL[p.status as PhaseStatus] ?? p.status}
-                </StatusBadge>
-              </button>
-              <div className="min-w-0 flex-1">
-                <InlineTitle
-                  value={p.name}
-                  onChange={(v) => renamePhaseLocal(p.id, v)}
-                  onCommit={() => commitPhaseName(p, p.name)}
-                  ariaLabel="Phase name"
-                  className="text-sm font-medium tracking-normal"
-                />
-                <div className="mt-1.5 flex flex-wrap items-center gap-3 px-1 text-xs text-muted-foreground">
-                  <label className="flex items-center gap-1">
-                    Start
-                    <Input
-                      type="date"
-                      aria-label="Phase start date"
-                      value={p.startDate ? p.startDate.slice(0, 10) : ""}
-                      onChange={(e) => changeDate(p, "start", e.target.value)}
-                      className="h-7 w-auto px-1.5 py-0.5 text-xs"
+        {phases.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No phases yet. Add the first one below.</p>
+        ) : (
+          <ListPanel>
+            {phases.map((p, i) => {
+              const label = PHASE_STATUS_LABEL[p.status as PhaseStatus] ?? p.status;
+              return (
+                <li key={p.id} className="group flex flex-wrap items-center gap-x-3 gap-y-1.5 px-3 py-2">
+                  <span className="w-5 shrink-0 text-right text-xs tabular-nums text-muted-foreground" aria-hidden="true">
+                    {i + 1}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => cycleStatus(p)}
+                    title="Click to advance status"
+                    aria-label={`Phase status: ${label}. Click to advance.`}
+                    className="inline-flex h-6 w-28 shrink-0 items-center gap-1.5 rounded-full border border-border px-2 text-xs font-medium outline-none hover:bg-hover focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                  >
+                    <StatusDot category={PHASE_CATEGORY[p.status] ?? null} />
+                    {label}
+                  </button>
+                  <div className="min-w-0 flex-1 basis-40">
+                    <InlineTitle
+                      value={p.name}
+                      onChange={(v) => renamePhaseLocal(p.id, v)}
+                      onCommit={() => commitPhaseName(p, p.name)}
+                      ariaLabel="Phase name"
+                      className={cn("text-sm font-medium tracking-normal", p.status === "done" && "text-muted-foreground")}
                     />
-                  </label>
-                  <label className="flex items-center gap-1">
-                    End
-                    <Input
-                      type="date"
-                      aria-label="Phase end date"
-                      value={p.endDate ? p.endDate.slice(0, 10) : ""}
-                      onChange={(e) => changeDate(p, "end", e.target.value)}
-                      className="h-7 w-auto px-1.5 py-0.5 text-xs"
-                    />
-                  </label>
-                </div>
-              </div>
-              <div className="flex shrink-0 items-center gap-1 text-muted-foreground">
-                <Button variant="ghost" size="icon-xs" disabled={i === 0} onClick={() => reorder(i, -1)} title="Move up" aria-label="Move phase up">
-                  <ChevronUp className="size-3.5" />
-                </Button>
-                <Button variant="ghost" size="icon-xs" disabled={i === phases.length - 1} onClick={() => reorder(i, 1)} title="Move down" aria-label="Move phase down">
-                  <ChevronDown className="size-3.5" />
-                </Button>
-                <ConfirmDelete
-                  title="Delete this phase?"
-                  description="This permanently deletes the phase."
-                  confirmLabel="Delete phase"
-                  onConfirm={() => removePhase(p.id)}
-                  trigger={
-                    <Button variant="ghost" size="icon-xs" className="hover:text-destructive" title="Delete phase" aria-label="Delete phase">
-                      <X className="size-3.5" />
+                  </div>
+                  <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                    <PhaseDate label="Phase start date" value={p.startDate} onChange={(v) => changeDate(p, "start", v)} />
+                    <span aria-hidden="true">–</span>
+                    <PhaseDate label="Phase end date" value={p.endDate} onChange={(v) => changeDate(p, "end", v)} />
+                  </div>
+                  <div className={ROW_ACTIONS}>
+                    <Button variant="ghost" size="icon-xs" disabled={i === 0} onClick={() => reorder(i, -1)} title="Move up" aria-label="Move phase up">
+                      <ChevronUp className="size-3.5" />
                     </Button>
-                  }
-                />
-              </div>
-            </div>
-          ))}
-        </div>
+                    <Button variant="ghost" size="icon-xs" disabled={i === phases.length - 1} onClick={() => reorder(i, 1)} title="Move down" aria-label="Move phase down">
+                      <ChevronDown className="size-3.5" />
+                    </Button>
+                    <ConfirmDelete
+                      title="Delete this phase?"
+                      description="This permanently deletes the phase."
+                      confirmLabel="Delete phase"
+                      onConfirm={() => removePhase(p.id)}
+                      trigger={
+                        <Button variant="ghost" size="icon-xs" className="hover:bg-destructive/10 hover:text-destructive" title="Delete phase" aria-label="Delete phase">
+                          <X className="size-3.5" />
+                        </Button>
+                      }
+                    />
+                  </div>
+                </li>
+              );
+            })}
+          </ListPanel>
+        )}
         <PhaseComposer onAdd={addPhase} />
       </section>
 
@@ -368,9 +387,7 @@ function PhaseComposer({ onAdd }: { onAdd: (name: string) => void }) {
 
   if (!open) {
     return (
-      <button onClick={() => setOpen(true)} className="mt-2 rounded-lg px-2 py-1.5 text-left text-sm text-foreground/50 hover:bg-hover">
-        + Add a phase
-      </button>
+      <AddRowButton onClick={() => setOpen(true)}>Add a phase</AddRowButton>
     );
   }
 
