@@ -6,11 +6,12 @@ import { ssoUrls } from "@/lib/sso/urls";
 import { splitPem } from "@/lib/sso/metadata";
 
 // SAML 2.0 service provider (docs/SSO.md), on @node-saml/node-saml for the XML
-// signature work. Requests aren't signed (JumpCloud doesn't need it); responses must
-// carry a signed assertion from the configured certificate. IdP-initiated sign-in
-// (the app tile in JumpCloud's portal) is allowed: InResponseTo is checked when
-// present, against request ids held in Redis rather than a cookie, since the IdP's
-// POST back is cross-site and a Lax cookie wouldn't come along.
+// signature work. Requests aren't signed (JumpCloud doesn't need it). Responses must be
+// signed by the configured certificate: the whole response (JumpCloud's default) or the
+// assertion (Okta's, Entra's); node-saml checks the signature covers what it reads.
+// IdP-initiated sign-in (the app tile in JumpCloud's portal) is allowed: InResponseTo
+// is checked when present, against request ids held in Redis rather than a cookie,
+// since the IdP's POST back is cross-site and a Lax cookie wouldn't come along.
 
 const REQUEST_TTL_S = 10 * 60;
 
@@ -43,7 +44,8 @@ export function samlFor(conn: SamlConn): SAML {
     idpCert: conn.idpCert ? splitPem(conn.idpCert) : "missing",
     identifierFormat: null, // JumpCloud chooses the NameID; we read the email from it or an attribute
     disableRequestedAuthnContext: true,
-    wantAssertionsSigned: true,
+    // Both false = either one must carry a valid signature (never neither).
+    wantAssertionsSigned: false,
     wantAuthnResponseSigned: false,
     acceptedClockSkewMs: 60_000,
     validateInResponseTo: ValidateInResponseTo.ifPresent,
