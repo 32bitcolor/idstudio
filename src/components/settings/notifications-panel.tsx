@@ -54,7 +54,7 @@ export function NotificationsPanel({
           <h2 className="font-medium">Email notifications</h2>
         </div>
         <p className="mt-1 text-sm text-muted-foreground">
-          IDStudio emails people on activity like assignments, comments, reviews, and status
+          Tavoro emails people on activity like assignments, comments, reviews, and status
           changes. Delivery goes through your configured SMTP provider (set the{" "}
           <code className="rounded bg-muted px-1 py-0.5 text-xs">SMTP_*</code> environment variables
           on the server).

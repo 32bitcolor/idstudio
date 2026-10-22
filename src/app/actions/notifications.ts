@@ -67,9 +67,9 @@ export async function sendTestEmail(to?: string) {
   try {
     await sendMail({
       to: parsed.data,
-      subject: "IDStudio test email",
-      html: "<p>✅ Your IDStudio email notifications are configured correctly.</p><p>This is a test message from <strong>Settings → Notifications</strong>.</p>",
-      text: "Your IDStudio email notifications are configured correctly. This is a test message from Settings → Notifications.",
+      subject: "Tavoro test email",
+      html: "<p>✅ Your Tavoro email notifications are configured correctly.</p><p>This is a test message from <strong>Settings → Notifications</strong>.</p>",
+      text: "Your Tavoro email notifications are configured correctly. This is a test message from Settings → Notifications.",
     });
     return { success: `Test email sent to ${parsed.data}.` };
   } catch (e) {

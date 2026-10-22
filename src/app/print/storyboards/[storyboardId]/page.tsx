@@ -11,7 +11,7 @@ const load = cache(storyboardExport);
 export async function generateMetadata({ params }: { params: Promise<{ storyboardId: string }> }) {
   const { storyboardId } = await params;
   const doc = (await getStoryboardForUser(storyboardId)) ? await load(storyboardId) : null;
-  return { title: doc?.fileName ?? "Export · IDStudio" };
+  return { title: doc?.fileName ?? "Export · Tavoro" };
 }
 
 export default async function PrintStoryboardPage({ params }: { params: Promise<{ storyboardId: string }> }) {

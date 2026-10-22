@@ -18,7 +18,7 @@ export default function MembersAccess() {
       <H2>Managing members</H2>
       <P>
         Open <UI>Settings → Members</UI> to see everyone in the workspace, their email, and their
-        role. IDStudio uses admin-provisioned accounts — there&rsquo;s no open sign-up into an
+        role. Tavoro uses admin-provisioned accounts — there&rsquo;s no open sign-up into an
         existing workspace — so you create each person&rsquo;s login and share their first password
         out-of-band.
       </P>
@@ -113,7 +113,7 @@ export default function MembersAccess() {
 
       <H2>Group-based access control</H2>
       <P>
-        By default IDStudio is open: every board, project, storyboard, and whiteboard is visible to
+        By default Tavoro is open: every board, project, storyboard, and whiteboard is visible to
         all members. Groups let you tighten that on a per-resource basis when something should only
         be seen by certain people.
       </P>

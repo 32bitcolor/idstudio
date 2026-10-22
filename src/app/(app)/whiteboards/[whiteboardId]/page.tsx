@@ -3,7 +3,7 @@ import { prisma } from "@/lib/db";
 import { getWhiteboardForUser, storyboardVisibilityWhere } from "@/lib/authz";
 import { WhiteboardView } from "@/components/whiteboard/whiteboard-view";
 
-export const metadata = { title: "Whiteboard · IDStudio" };
+export const metadata = { title: "Whiteboard · Tavoro" };
 
 export default async function WhiteboardPage({ params }: { params: Promise<{ whiteboardId: string }> }) {
   const { whiteboardId } = await params;

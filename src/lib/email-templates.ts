@@ -7,7 +7,7 @@ function esc(s: string): string {
   return s.replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" })[c] as string);
 }
 
-const FOOTER = `<p style="margin-top:24px;color:#888;font-size:12px">IDStudio</p>`;
+const FOOTER = `<p style="margin-top:24px;color:#888;font-size:12px">Tavoro</p>`;
 
 function layout(heading: string, bodyHtml: string): string {
   return `<div style="font-family:sans-serif;max-width:480px;margin:0 auto;color:#1a1a1a">
@@ -17,13 +17,13 @@ function layout(heading: string, bodyHtml: string): string {
 </div>`;
 }
 
-function button(url: string, label = "View in IDStudio →"): string {
+function button(url: string, label = "View in Tavoro →"): string {
   return `<p style="margin-top:20px"><a href="${url}" style="display:inline-block;background:#111;color:#fff;text-decoration:none;padding:9px 16px;border-radius:6px;font-size:14px">${esc(label)}</a></p>`;
 }
 
 type Email = { subject: string; html: string; text: string };
 
-/** Append a "View in IDStudio" button (and the raw URL in the text part) to any
+/** Append a "View in Tavoro" button (and the raw URL in the text part) to any
  *  templated email. No-op when url is undefined (e.g. APP_URL unset, or emails to
  *  external requesters who can't sign in). */
 export function withLink(email: Email, url: string | undefined, label?: string): Email {
@@ -234,9 +234,9 @@ ${feedback ? `<p style="border-left:3px solid #ddd;padding-left:12px;color:#444"
 export function memberWelcome(params: { name: string; workspaceName: string; inviterName: string }): Email {
   const { name, workspaceName, inviterName } = params;
   return {
-    subject: `You've been added to ${workspaceName} on IDStudio`,
+    subject: `You've been added to ${workspaceName} on Tavoro`,
     html: layout(
-      "Welcome to IDStudio",
+      "Welcome to Tavoro",
       `<p>Hi ${esc(name)},</p>
 <p>${esc(inviterName)} added you to the <strong>${esc(workspaceName)}</strong> workspace.</p>
 <p>Ask ${esc(inviterName)} for your initial password, then sign in and change it under Settings → Account.</p>`,
@@ -248,7 +248,7 @@ export function memberWelcome(params: { name: string; workspaceName: string; inv
 export function passwordReset(params: { name: string; workspaceName: string; adminName: string }): Email {
   const { name, workspaceName, adminName } = params;
   return {
-    subject: "Your IDStudio password was reset",
+    subject: "Your Tavoro password was reset",
     html: layout(
       "Your password was reset",
       `<p>Hi ${esc(name)},</p>

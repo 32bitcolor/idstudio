@@ -14,7 +14,7 @@ export async function GET() {
   for (const [id, bytes] of Object.entries(media)) files[`media/${id}`] = bytes;
   const zip = zipSync(files, { level: 6 });
 
-  const filename = `idstudio-${json.workspace.slug}-${json.exportedAt.slice(0, 10)}.zip`;
+  const filename = `tavoro-${json.workspace.slug}-${json.exportedAt.slice(0, 10)}.zip`;
   return new Response(new Uint8Array(zip), {
     headers: {
       "Content-Type": "application/zip",

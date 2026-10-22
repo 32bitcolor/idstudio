@@ -17,6 +17,7 @@
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
   --font-sans: var(--font-sans-body);
+  --font-brand: var(--font-brand-face), var(--font-sans-body), ui-sans-serif, sans-serif;
   --font-mono: var(--font-geist-mono);
 
   /* ── shadcn/ui token bridge ───────────────────────────────────────────────

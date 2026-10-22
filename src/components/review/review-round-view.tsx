@@ -416,7 +416,7 @@ export function ReviewRoundView({
           ) : (
             <div className="rounded-lg border border-dashed border-border px-4 py-6 text-sm text-muted-foreground">
               {round.hasStoryboardNow
-                ? "This round was started before IDStudio recorded what each round reviewed, so there's no snapshot to show. Comments still work — use the panel."
+                ? "This round was started before Tavoro recorded what each round reviewed, so there's no snapshot to show. Comments still work — use the panel."
                 : guest
                   ? "There's nothing to pin comments to in this round. Leave your feedback in the comments panel."
                   : "This deliverable has no storyboard, so there's nothing to pin comments to. Leave feedback for the round in the panel."}

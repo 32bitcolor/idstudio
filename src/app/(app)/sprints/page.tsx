@@ -4,7 +4,7 @@ import { getActiveMembership } from "@/lib/dal";
 import { PageContainer, PageHeader } from "@/components/shared/page";
 import { SprintsManager } from "@/components/sprint/sprints-manager";
 
-export const metadata = { title: "Sprints · IDStudio" };
+export const metadata = { title: "Sprints · Tavoro" };
 
 export default async function SprintsPage() {
   const membership = await getActiveMembership();

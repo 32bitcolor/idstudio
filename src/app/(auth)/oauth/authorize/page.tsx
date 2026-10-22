@@ -6,7 +6,7 @@ import { normaliseScope } from "@/lib/api-tokens";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
 
-export const metadata = { title: "Connect an app · IDStudio" };
+export const metadata = { title: "Connect an app · Tavoro" };
 
 type Params = Record<string, string | string[] | undefined>;
 const one = (v: string | string[] | undefined) => (typeof v === "string" ? v : "");
@@ -63,7 +63,7 @@ export default async function AuthorizePage({ searchParams }: { searchParams: Pr
       <div>
         <h2 className="text-lg font-medium">Connect {client.name}?</h2>
         <p className="mt-1 text-muted-foreground">
-          <span className="font-medium text-foreground">{client.name}</span> wants to use IDStudio as{" "}
+          <span className="font-medium text-foreground">{client.name}</span> wants to use Tavoro as{" "}
           <span className="font-medium text-foreground">{me.name ?? me.email}</span>. It will see what you can see, and anything it does is
           recorded under your name.
         </p>

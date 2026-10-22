@@ -4,7 +4,7 @@ import { getActiveMembership } from "@/lib/dal";
 import { boardVisibilityWhere } from "@/lib/authz";
 import { SprintBoard } from "@/components/sprint/sprint-board";
 
-export const metadata = { title: "Sprint board · IDStudio" };
+export const metadata = { title: "Sprint board · Tavoro" };
 
 export default async function SprintBoardPage({ params }: { params: Promise<{ sprintId: string }> }) {
   const { sprintId } = await params;

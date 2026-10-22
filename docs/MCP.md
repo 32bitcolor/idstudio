@@ -1,6 +1,6 @@
-# IDStudio as an MCP server
+# Tavoro as an MCP server
 
-*Built 2026-10-22.* IDStudio speaks the [Model Context Protocol](https://modelcontextprotocol.io), so
+*Built 2026-10-22.* Tavoro speaks the [Model Context Protocol](https://modelcontextprotocol.io), so
 Claude (Claude.ai, Claude Desktop, Claude Code) and other MCP clients can read and work in a workspace
 as a signed-in member. This doc records what was built and why.
 
@@ -11,8 +11,8 @@ as a signed-in member. This doc records what was built and why.
    spec allows. An open GET event stream carried nothing here, and through Cloudflare it held up the
    client's next request.
 2. **Two kinds of credential, one table.** `ApiToken` rows are either *personal tokens*
-   (`idst_…`, made in Settings, pasted into a client) or *OAuth connections* (`idsto_…` access +
-   `idstr_…` refresh, issued after the consent screen). Only SHA-256 hashes are stored. Each one acts
+   (`tav_…`, made in Settings, pasted into a client) or *OAuth connections* (`tavo_…` access +
+   `tavr_…` refresh, issued after the consent screen). Only SHA-256 hashes are stored. Each one acts
    as **one user in one workspace** with scope `read` or `read write`.
 3. **MCP reuses the app's permission model instead of copying it.** The route authenticates the
    bearer token and runs the whole request inside `runAsPrincipal()` (`AsyncLocalStorage`,
@@ -30,7 +30,7 @@ as a signed-in member. This doc records what was built and why.
    database and Markdown in tools (`lib/markdown.ts`, both directions: headings, lists (nested),
    quotes, code, bold/italic/strike/code, links, hard breaks). Mentions become `@Name` text; MCP
    writes don't send mention emails.
-6. **OAuth 2.1 built in, public clients only.** IDStudio is both the authorization server and the
+6. **OAuth 2.1 built in, public clients only.** Tavoro is both the authorization server and the
    resource server:
    - RFC 9728 protected-resource metadata and RFC 8414 server metadata, at the `/.well-known/…` paths
      through `next.config.ts` rewrites (the App Router can't route a dot-folder);
@@ -63,8 +63,8 @@ as a signed-in member. This doc records what was built and why.
 
 \* destructive
 
-**Resources:** `idstudio://project/{id}`, `idstudio://board/{id}`, `idstudio://storyboard/{id}`,
-`idstudio://card/{ref}` and `idstudio://review-round/{id}`, as JSON. All except cards are listable.
+**Resources:** `tavoro://project/{id}`, `tavoro://board/{id}`, `tavoro://storyboard/{id}`,
+`tavoro://card/{ref}` and `tavoro://review-round/{id}`, as JSON. All except cards are listable.
 
 **Prompts:** `status_report`, `summarize_feedback`, `draft_storyboard`, `triage_intake`,
 `plan_sprint`. Each one embeds the relevant data and asks the model to confirm before changing

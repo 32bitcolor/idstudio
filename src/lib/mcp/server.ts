@@ -11,11 +11,11 @@ import { loadStoryboard, registerStoryboardTools } from "@/lib/mcp/tools/storybo
 import { loadRound, registerReviewTools } from "@/lib/mcp/tools/reviews";
 import { registerPlanningTools } from "@/lib/mcp/tools/planning";
 
-// IDStudio's MCP server (docs/MCP.md): tools for reading and changing the workspace,
+// Tavoro's MCP server (docs/MCP.md): tools for reading and changing the workspace,
 // resources for reading one thing by URI, and prompts for common ID workflows. Built
 // fresh per request, inside runAsPrincipal(), so every tool runs as the token's user.
 
-const INSTRUCTIONS = `IDStudio is an instructional-design team workspace: projects (ADDIE/SAM phases, deliverables, milestones, learning objectives), boards of cards, storyboards (screens with on-screen text, narration, visuals, interaction and developer notes), SME review rounds with pinned comments, intake requests and sprints.
+const INSTRUCTIONS = `Tavoro is an instructional-design team workspace: projects (ADDIE/SAM phases, deliverables, milestones, learning objectives), boards of cards, storyboards (screens with on-screen text, narration, visuals, interaction and developer notes), SME review rounds with pinned comments, intake requests and sprints.
 
 Start with get_workspace to learn who you are acting as, your access level, and the members, statuses, labels and sprints other tools accept. Use search to find things by name, then the get_* tools for detail. Cards can be referred to by key (e.g. SEC-12). Rich text (descriptions, comments, storyboard fields) is Markdown in both directions. Dates are YYYY-MM-DD.
 
@@ -30,7 +30,7 @@ function registerResources(server: McpServer) {
 
   server.registerResource(
     "project",
-    new ResourceTemplate("idstudio://project/{id}", {
+    new ResourceTemplate("tavoro://project/{id}", {
       list: async () => ({
         resources: (
           await prisma.project.findMany({
@@ -39,7 +39,7 @@ function registerResources(server: McpServer) {
             take: 50,
             select: { id: true, name: true },
           })
-        ).map((p) => ({ uri: `idstudio://project/${p.id}`, name: p.name, mimeType: "application/json" })),
+        ).map((p) => ({ uri: `tavoro://project/${p.id}`, name: p.name, mimeType: "application/json" })),
       }),
     }),
     { title: "Project", description: "A project with phases, deliverables, milestones and objectives", mimeType: "application/json" },
@@ -48,11 +48,11 @@ function registerResources(server: McpServer) {
 
   server.registerResource(
     "board",
-    new ResourceTemplate("idstudio://board/{id}", {
+    new ResourceTemplate("tavoro://board/{id}", {
       list: async () => ({
         resources: (
           await prisma.board.findMany({ where: { workspaceId: ws(), ...(await boardVisibilityWhere()) }, orderBy: { name: "asc" }, take: 50, select: { id: true, name: true } })
-        ).map((b) => ({ uri: `idstudio://board/${b.id}`, name: b.name, mimeType: "application/json" })),
+        ).map((b) => ({ uri: `tavoro://board/${b.id}`, name: b.name, mimeType: "application/json" })),
       }),
     }),
     { title: "Board", description: "A board's columns and cards", mimeType: "application/json" },
@@ -61,11 +61,11 @@ function registerResources(server: McpServer) {
 
   server.registerResource(
     "storyboard",
-    new ResourceTemplate("idstudio://storyboard/{id}", {
+    new ResourceTemplate("tavoro://storyboard/{id}", {
       list: async () => ({
         resources: (
           await prisma.storyboard.findMany({ where: { workspaceId: ws(), ...(await storyboardVisibilityWhere()) }, orderBy: { updatedAt: "desc" }, take: 50, select: { id: true, title: true } })
-        ).map((s) => ({ uri: `idstudio://storyboard/${s.id}`, name: s.title, mimeType: "application/json" })),
+        ).map((s) => ({ uri: `tavoro://storyboard/${s.id}`, name: s.title, mimeType: "application/json" })),
       }),
     }),
     { title: "Storyboard", description: "A storyboard, screen by screen, fields in Markdown", mimeType: "application/json" },
@@ -74,14 +74,14 @@ function registerResources(server: McpServer) {
 
   server.registerResource(
     "card",
-    new ResourceTemplate("idstudio://card/{ref}", { list: undefined }),
-    { title: "Card", description: "A card by id or key (idstudio://card/SEC-12)", mimeType: "application/json" },
+    new ResourceTemplate("tavoro://card/{ref}", { list: undefined }),
+    { title: "Card", description: "A card by id or key (tavoro://card/SEC-12)", mimeType: "application/json" },
     async (uri, { ref }) => json(uri, await loadCard(decodeURIComponent(String(ref)))),
   );
 
   server.registerResource(
     "review-round",
-    new ResourceTemplate("idstudio://review-round/{id}", {
+    new ResourceTemplate("tavoro://review-round/{id}", {
       list: async () => ({
         resources: (
           await prisma.reviewRound.findMany({
@@ -90,7 +90,7 @@ function registerResources(server: McpServer) {
             take: 50,
             select: { id: true, number: true, deliverable: { select: { name: true } } },
           })
-        ).map((r) => ({ uri: `idstudio://review-round/${r.id}`, name: `${r.deliverable.name} · round ${r.number}`, mimeType: "application/json" })),
+        ).map((r) => ({ uri: `tavoro://review-round/${r.id}`, name: `${r.deliverable.name} · round ${r.number}`, mimeType: "application/json" })),
       }),
     }),
     { title: "Review round", description: "A review round with decisions, comment threads, and the storyboard as reviewed", mimeType: "application/json" },
@@ -113,7 +113,7 @@ function registerPrompts(server: McpServer) {
       return {
         messages: [
           user(
-            `Write a concise weekly status report for the project below, for stakeholders who don't use IDStudio.\n\nCover: overall status in one line; phase progress; each deliverable's state and where its review stands (call get_review_round for open rounds if you need the comments); milestones due in the next two weeks or overdue; risks and blockers (overdue items, changes requested, gaps in objective coverage); next steps with owners. Keep it under 400 words, plain language, with links.\n\nProject data:\n${JSON.stringify(project, null, 2)}`,
+            `Write a concise weekly status report for the project below, for stakeholders who don't use Tavoro.\n\nCover: overall status in one line; phase progress; each deliverable's state and where its review stands (call get_review_round for open rounds if you need the comments); milestones due in the next two weeks or overdue; risks and blockers (overdue items, changes requested, gaps in objective coverage); next steps with owners. Keep it under 400 words, plain language, with links.\n\nProject data:\n${JSON.stringify(project, null, 2)}`,
           ),
         ],
       };
@@ -202,7 +202,7 @@ function registerPrompts(server: McpServer) {
 
 export function buildMcpServer(): McpServer {
   const server = new McpServer(
-    { name: "idstudio", title: "IDStudio", version: "1.0.0" },
+    { name: "tavoro", title: "Tavoro", version: "1.0.0" },
     { instructions: INSTRUCTIONS, capabilities: { tools: {}, resources: {}, prompts: {} } },
   );
   registerWorkspaceTools(server);

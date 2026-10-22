@@ -27,8 +27,10 @@ const THEMES = [
   { id: "synthwave", label: "Synthwave", bg: "#241b35", accent: "#ff7edb" },
 ] as const;
 
-const STORAGE_KEY = "idstudio-theme";
-const THEME_EVENT = "idstudio-theme-change";
+const STORAGE_KEY = "tavoro-theme";
+/** Where the theme lived before the rename to Tavoro; read once as a fallback. */
+const LEGACY_STORAGE_KEY = "idstudio-theme";
+const THEME_EVENT = "tavoro-theme-change";
 
 function subscribe(callback: () => void) {
   // "storage" syncs across tabs; the custom event syncs within this tab.
@@ -42,7 +44,7 @@ function subscribe(callback: () => void) {
 
 function getSnapshot() {
   try {
-    return localStorage.getItem(STORAGE_KEY) ?? "system";
+    return localStorage.getItem(STORAGE_KEY) ?? localStorage.getItem(LEGACY_STORAGE_KEY) ?? "system";
   } catch {
     return "system";
   }

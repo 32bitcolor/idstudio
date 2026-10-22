@@ -4,7 +4,7 @@ import { getActiveMembership } from "@/lib/dal";
 import { Role } from "@/generated/prisma/client";
 import { GroupDetail } from "@/components/settings/group-detail";
 
-export const metadata = { title: "Group · IDStudio" };
+export const metadata = { title: "Group · Tavoro" };
 
 export default async function GroupDetailPage({ params }: { params: Promise<{ groupId: string }> }) {
   const { groupId } = await params;

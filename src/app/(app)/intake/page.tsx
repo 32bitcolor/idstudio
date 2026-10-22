@@ -8,7 +8,7 @@ import { PageContainer, PageHeader } from "@/components/shared/page";
 import { EmptyState } from "@/components/shared/empty-state";
 import { TriageQueue } from "@/components/intake/triage-queue";
 
-export const metadata = { title: "Intake · IDStudio" };
+export const metadata = { title: "Intake · Tavoro" };
 
 export default async function IntakePage() {
   const membership = await getActiveMembership();

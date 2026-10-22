@@ -4,7 +4,7 @@ import { getProjectForUser, boardVisibilityWhere } from "@/lib/authz";
 import { ProjectView } from "@/components/project/project-view";
 import { loadProjectContext } from "@/lib/project-context";
 
-export const metadata = { title: "Project · IDStudio" };
+export const metadata = { title: "Project · Tavoro" };
 
 export default async function ProjectPage({ params }: { params: Promise<{ projectId: string }> }) {
   const { projectId } = await params;

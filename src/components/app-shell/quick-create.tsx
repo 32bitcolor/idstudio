@@ -122,7 +122,7 @@ function CreateDialog({ kind, onClose }: { kind: Kind | null; onClose: () => voi
                     <Link href="/help/addie-sam" onClick={onClose} className="font-medium text-foreground underline underline-offset-2">
                       Compare ADDIE &amp; SAM
                     </Link>{" "}
-                    — IDStudio seeds the matching phases.
+                    — Tavoro seeds the matching phases.
                   </p>
                 </div>
               )}

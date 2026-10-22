@@ -4,7 +4,7 @@ import { getActiveMembership } from "@/lib/dal";
 import { Role } from "@/generated/prisma/client";
 import { LabelsManager } from "@/components/settings/labels-manager";
 
-export const metadata = { title: "Labels · IDStudio" };
+export const metadata = { title: "Labels · Tavoro" };
 
 export default async function LabelsPage() {
   const membership = await getActiveMembership();

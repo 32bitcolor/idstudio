@@ -6,7 +6,7 @@ import { diffSnapshots, parseSnapshot } from "@/lib/review-snapshot";
 import { COMMENT_SELECT, toCommentDTO } from "@/lib/review-comments";
 import { ReviewRoundView } from "@/components/review/review-round-view";
 
-export const metadata = { title: "Review · IDStudio" };
+export const metadata = { title: "Review · Tavoro" };
 
 export default async function ReviewRoundPage({
   params,

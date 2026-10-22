@@ -7,7 +7,7 @@ import { parseSnapshot, type StoryboardSnapshot } from "@/lib/review-snapshot";
 import { pinNumbers, quoteOf } from "@/lib/review-feedback";
 import { FeedbackView, type FeedbackGroup, type FeedbackItem } from "@/components/review/feedback-view";
 
-export const metadata = { title: "Feedback · IDStudio" };
+export const metadata = { title: "Feedback · Tavoro" };
 
 /** Every comment on a deliverable, across all its review rounds, grouped by the screen
  *  or page it's about (docs/REVIEW-LINKS.md, phase 4). */

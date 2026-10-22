@@ -31,7 +31,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Corrupt backup.json." }, { status: 400 });
   }
   if (typeof exp.format !== "number" || exp.format > BACKUP_FORMAT) {
-    return NextResponse.json({ error: "This backup was made by a newer version of IDStudio." }, { status: 400 });
+    return NextResponse.json({ error: "This backup was made by a newer version of Tavoro." }, { status: 400 });
   }
 
   const media: Record<string, Uint8Array> = {};

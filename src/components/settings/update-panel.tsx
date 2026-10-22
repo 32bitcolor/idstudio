@@ -164,8 +164,8 @@ export function UpdatePanel({ initial }: { initial: UpdateStatus | null }) {
           <div>
             <h2 className="font-medium">In-app updates aren&rsquo;t configured</h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              This IDStudio install doesn&rsquo;t have the self-update agent running. Install it on the
-              host with <code className="rounded bg-muted px-1">deploy/idstudio-updater.service</code>{" "}
+              This Tavoro install doesn&rsquo;t have the self-update agent running. Install it on the
+              host with <code className="rounded bg-muted px-1">deploy/tavoro-updater.service</code>{" "}
               and redeploy so the app and agent share the control directory.
             </p>
           </div>
@@ -189,7 +189,7 @@ export function UpdatePanel({ initial }: { initial: UpdateStatus | null }) {
     }
   }
   async function onUpdate() {
-    if (!confirm("Update IDStudio now? The app will rebuild and briefly restart. In-progress work should be saved first.")) return;
+    if (!confirm("Update Tavoro now? The app will rebuild and briefly restart. In-progress work should be saved first.")) return;
     setPending("update");
     beginTracking(s?.currentCommit);
     try {

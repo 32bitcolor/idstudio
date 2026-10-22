@@ -4,7 +4,7 @@ import { Role } from "@/generated/prisma/client";
 import { getEmailConfigured, getNotificationSettings } from "@/app/actions/notifications";
 import { NotificationsPanel } from "@/components/settings/notifications-panel";
 
-export const metadata = { title: "Notifications · IDStudio" };
+export const metadata = { title: "Notifications · Tavoro" };
 
 export default async function NotificationsSettingsPage() {
   const membership = await getActiveMembership();

@@ -3,7 +3,7 @@ import { prisma } from "@/lib/db";
 import { getStoryboardForUser, whiteboardVisibilityWhere } from "@/lib/authz";
 import { StoryboardView } from "@/components/storyboard/storyboard-view";
 
-export const metadata = { title: "Storyboard · IDStudio" };
+export const metadata = { title: "Storyboard · Tavoro" };
 
 export default async function StoryboardPage({ params }: { params: Promise<{ storyboardId: string }> }) {
   const { storyboardId } = await params;

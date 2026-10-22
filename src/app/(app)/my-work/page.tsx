@@ -14,7 +14,7 @@ import { Card } from "@/components/ui/card";
 import { ReviewInbox, type InboxReview } from "@/components/my-work/review-inbox";
 import { artifactLink, DELIVERABLE_SELECT } from "@/components/my-work/artifact";
 
-export const metadata = { title: "My Work · IDStudio" };
+export const metadata = { title: "My Work · Tavoro" };
 
 // Reviewer's actionable queue vs. the requester's open loops. Resolved reviews
 // (approved / changes-requested) live on the Review History tab.

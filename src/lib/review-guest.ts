@@ -8,7 +8,7 @@ import { tokenMatches } from "@/lib/review-guest-token";
 // one round its credential names (docs/REVIEW-LINKS.md, locked decision 1). Nothing in
 // this file touches authz.ts, User or Membership — a guest is not a user.
 
-export const GUEST_COOKIE = "idstudio_review";
+export const GUEST_COOKIE = "tavoro_review";
 
 /** The token-free page a guest lands on. The cookie is scoped to exactly this path, so
  *  one browser can hold links for several reviews without them overwriting each other. */

@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { IntakeForm } from "./intake-form";
 
-export const metadata = { title: "Submit a request · IDStudio" };
+export const metadata = { title: "Submit a request · Tavoro" };
 
 export default async function PublicIntakePage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;

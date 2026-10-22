@@ -4,9 +4,9 @@ import { prisma } from "@/lib/db";
 import type { Principal } from "@/lib/principal";
 
 // Credentials for MCP clients (docs/MCP.md). Two kinds share one table:
-//   personal  "idst_…"   made in Settings → AI & MCP, pasted into a client
-//   oauth     "idsto_…"  issued to a client after the consent screen; it expires
-//                         after an hour and the client renews it with "idstr_…"
+//   personal  "tav_…"   made in Settings → AI & MCP, pasted into a client
+//   oauth     "tavo_…"  issued to a client after the consent screen; it expires
+//                         after an hour and the client renews it with "tavr_…"
 // Only SHA-256 hashes are stored. A secret has 256 bits of entropy, so a fast hash is
 // the right tool (a password hash would only slow every request down).
 
@@ -20,7 +20,7 @@ export function sha256(s: string): string {
   return createHash("sha256").update(s).digest("hex");
 }
 
-export function newSecret(prefix: "idst_" | "idsto_" | "idstr_" | "idstc_"): string {
+export function newSecret(prefix: "tav_" | "tavo_" | "tavr_" | "tavc_"): string {
   return prefix + randomBytes(32).toString("base64url");
 }
 
@@ -47,7 +47,7 @@ export async function createPersonalToken(input: {
   scope: Scope;
   expiresAt: Date | null;
 }) {
-  const token = newSecret("idst_");
+  const token = newSecret("tav_");
   const row = await prisma.apiToken.create({
     data: {
       userId: input.userId,
@@ -66,8 +66,8 @@ export async function createPersonalToken(input: {
 
 /** A fresh access + refresh token pair for an OAuth connection (new or renewed). */
 export function newOAuthPair() {
-  const accessToken = newSecret("idsto_");
-  const refreshToken = newSecret("idstr_");
+  const accessToken = newSecret("tavo_");
+  const refreshToken = newSecret("tavr_");
   const now = Date.now();
   return {
     accessToken,
@@ -87,7 +87,8 @@ export function newOAuthPair() {
 export async function authenticateBearer(req: Request): Promise<Principal | null> {
   const header = req.headers.get("authorization") ?? "";
   const m = /^Bearer\s+(\S+)$/i.exec(header);
-  if (!m || !/^idsto?_/.test(m[1])) return null;
+  // idst_/idsto_ are tokens issued before the rename to Tavoro; they keep working.
+  if (!m || !/^(tav|idst)o?_/.test(m[1])) return null;
   const row = await prisma.apiToken.findUnique({
     where: { tokenHash: sha256(m[1]) },
     select: { id: true, userId: true, workspaceId: true, scope: true, expiresAt: true, revokedAt: true, lastUsedAt: true },

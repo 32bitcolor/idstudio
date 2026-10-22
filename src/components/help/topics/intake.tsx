@@ -84,7 +84,7 @@ export default function Intake() {
       </DefList>
 
       <P>
-        The moment a request has both scores, IDStudio derives its priority and an impact/effort{" "}
+        The moment a request has both scores, Tavoro derives its priority and an impact/effort{" "}
         <em>quadrant</em> badge &mdash; a <em>Quick win</em> (high impact, low effort), a{" "}
         <em>Big bet</em> (high impact, high effort), a <em>Fill-in</em>, or a <em>Reconsider</em>{" "}
         &mdash; so you can see at a glance what deserves your team&rsquo;s time. Scoring an untriaged
@@ -121,7 +121,7 @@ export default function Intake() {
 
       <H2>Approving and rejecting</H2>
       <P>
-        When a request is worth doing, use <UI>Approve &amp; create project</UI>. IDStudio spins up a
+        When a request is worth doing, use <UI>Approve &amp; create project</UI>. Tavoro spins up a
         new <strong>ADDIE</strong> project from the request&rsquo;s title, marks the request as{" "}
         <UI>Converted</UI>, and links the two so you can jump between them. You&rsquo;ll be dropped
         straight onto the new project to start planning. (Approving asks you to confirm first, since
@@ -144,7 +144,7 @@ export default function Intake() {
 
       <H3>How Intake fits</H3>
       <P>
-        Intake is the first pillar of the IDStudio roadmap and the top of the funnel: it&rsquo;s where
+        Intake is the first pillar of the Tavoro roadmap and the top of the funnel: it&rsquo;s where
         demand enters, gets weighed, and turns into committed work. Approved requests flow directly
         into <em>Projects</em>, where the ADDIE methodology carries them from analysis through
         evaluation. Think of Intake as deciding <em>whether</em> and <em>what</em>, and Projects as

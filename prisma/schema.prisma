@@ -1,4 +1,4 @@
-// IDStudio — Instructional Designer Workspace
+// Tavoro — Instructional Designer Workspace
 // Prisma 7 schema. Client is generated to src/generated/prisma (see generator).
 // Phase 0 covers identity & tenancy only; feature models (boards, projects,
 // storyboards, exams, LMS) are added in later phases.

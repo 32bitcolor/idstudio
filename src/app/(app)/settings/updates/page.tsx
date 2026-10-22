@@ -4,7 +4,7 @@ import { Role } from "@/generated/prisma/client";
 import { readUpdateStatus } from "@/lib/updater";
 import { UpdatePanel } from "@/components/settings/update-panel";
 
-export const metadata = { title: "Updates · IDStudio" };
+export const metadata = { title: "Updates · Tavoro" };
 
 export default async function UpdatesSettingsPage() {
   const membership = await getActiveMembership();

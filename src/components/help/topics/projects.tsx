@@ -5,7 +5,7 @@ export default function Projects() {
   return (
     <>
       <Lead>
-        <strong>Projects</strong> are the instructional-design planning heart of IDStudio. A project
+        <strong>Projects</strong> are the instructional-design planning heart of Tavoro. A project
         holds the whole shape of a build: the methodology and its phases, the deliverables you owe,
         the SME and stakeholder reviews they go through, your milestones, and the time logged against
         it all — one place to answer &ldquo;where is this, and what&rsquo;s left?&rdquo;
@@ -14,7 +14,7 @@ export default function Projects() {
       <H2>Create a project and pick a methodology</H2>
       <P>
         Projects live under <UI>Projects</UI> in the sidebar. When you create one you choose a{" "}
-        <strong>methodology</strong>, and IDStudio seeds the matching phases so you start with real
+        <strong>methodology</strong>, and Tavoro seeds the matching phases so you start with real
         structure instead of a blank page.
       </P>
 
@@ -129,7 +129,7 @@ export default function Projects() {
 
       <Callout tone="tip">
         Reviewing a file? PDFs and PNG, JPEG, WebP or GIF images up to 95 MB work. For an e-learning
-        build, publish it to PDF (Storyline: <UI>Publish → Print</UI>) and upload that. IDStudio shows
+        build, publish it to PDF (Storyline: <UI>Publish → Print</UI>) and upload that. Tavoro shows
         files; it never runs them. For the next round, upload the new version, or reuse the same file.
       </Callout>
 
@@ -162,7 +162,7 @@ export default function Projects() {
       </P>
       <UL>
         <LI>
-          On any open comment, click <UI>Send to board</UI>. Pick a board and column, and IDStudio makes a
+          On any open comment, click <UI>Send to board</UI>. Pick a board and column, and Tavoro makes a
           card that quotes the comment and links back to it. The comment shows the card&rsquo;s key.
         </LI>
         <LI>

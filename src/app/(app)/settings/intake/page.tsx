@@ -4,7 +4,7 @@ import { Role } from "@/generated/prisma/client";
 import { prisma } from "@/lib/db";
 import { IntakeLinkPanel } from "@/components/settings/intake-link-panel";
 
-export const metadata = { title: "Intake · IDStudio" };
+export const metadata = { title: "Intake · Tavoro" };
 
 export default async function IntakeSettingsPage() {
   const membership = await getActiveMembership();

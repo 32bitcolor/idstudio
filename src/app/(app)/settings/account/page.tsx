@@ -1,7 +1,7 @@
 import { requireUser } from "@/lib/dal";
 import { AccountForm } from "@/components/settings/account-form";
 
-export const metadata = { title: "Account · IDStudio" };
+export const metadata = { title: "Account · Tavoro" };
 
 export default async function AccountSettingsPage() {
   const user = await requireUser();

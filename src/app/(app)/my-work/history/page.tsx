@@ -12,7 +12,7 @@ import { Card } from "@/components/ui/card";
 import { artifactLink, DELIVERABLE_SELECT } from "@/components/my-work/artifact";
 import { ReopenReviewButton } from "@/components/my-work/reopen-review-button";
 
-export const metadata = { title: "Review History · IDStudio" };
+export const metadata = { title: "Review History · Tavoro" };
 
 // Resolved review outcomes surface here (kept off the active Overview tab).
 const RESOLVED = ["approved", "approved_with_changes", "changes_requested"] as const;

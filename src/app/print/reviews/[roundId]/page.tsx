@@ -11,7 +11,7 @@ const load = cache(roundExport);
 export async function generateMetadata({ params }: { params: Promise<{ roundId: string }> }) {
   const { roundId } = await params;
   const doc = (await getReviewRoundForUser(roundId)) ? await load(roundId) : null;
-  return { title: doc?.fileName ?? "Export · IDStudio" };
+  return { title: doc?.fileName ?? "Export · Tavoro" };
 }
 
 export default async function PrintRoundPage({ params }: { params: Promise<{ roundId: string }> }) {

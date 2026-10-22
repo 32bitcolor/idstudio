@@ -1,4 +1,4 @@
-# IDStudio reverse proxy.
+# Tavoro reverse proxy.
 # - Public domain  → Caddy auto-provisions a Let's Encrypt certificate.
 # - DOMAIN=localhost → Caddy serves HTTPS with its built-in internal CA.
 # - DOMAIN=<bare IP> → internal CA cert; the global `default_sni` makes Caddy serve

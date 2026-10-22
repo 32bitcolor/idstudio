@@ -3,7 +3,7 @@ import { getActiveMembership } from "@/lib/dal";
 import { Role } from "@/generated/prisma/client";
 import { BackupPanel } from "@/components/settings/backup-panel";
 
-export const metadata = { title: "Backup · IDStudio" };
+export const metadata = { title: "Backup · Tavoro" };
 
 export default async function BackupSettingsPage() {
   const membership = await getActiveMembership();

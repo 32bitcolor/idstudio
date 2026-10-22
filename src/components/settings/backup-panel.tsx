@@ -83,7 +83,7 @@ export function BackupPanel({ workspaceName }: { workspaceName: string }) {
           <div className="min-w-0 flex-1">
             <h2 className="font-medium">Restore from a backup</h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              Import an IDStudio backup archive. It always restores into a <strong>new</strong>{" "}
+              Import an Tavoro backup archive. It always restores into a <strong>new</strong>{" "}
               workspace (your current one is never overwritten), and you&rsquo;ll be switched into the
               restored copy. Members are matched by email; restored accounts start without a password
               until an admin sets one.

@@ -75,7 +75,7 @@ export function AiSettings({
       <section>
         <SectionHeader>Connect an AI assistant</SectionHeader>
         <p className="mb-3 max-w-2xl text-sm text-muted-foreground">
-          IDStudio is an MCP server. Claude and other assistants that speak MCP can look things up and do work in{" "}
+          Tavoro is an MCP server. Claude and other assistants that speak MCP can look things up and do work in{" "}
           <span className="font-medium text-foreground">{workspaceName}</span> as you: read projects, boards, storyboards and reviews, create
           and update cards, draft screens, answer review comments and more. They see only what you can see.
         </p>
@@ -101,11 +101,11 @@ export function AiSettings({
               <KeyRound className="size-4" aria-hidden="true" /> Claude Code and other tools
             </h3>
             <p className="mb-2 text-muted-foreground">Sign in through the browser:</p>
-            <Code>{`claude mcp add --transport http idstudio ${mcpUrl}`}</Code>
+            <Code>{`claude mcp add --transport http tavoro ${mcpUrl}`}</Code>
             <p className="my-2 text-muted-foreground">
               Then run <span className="font-mono text-foreground">/mcp</span> in Claude Code to sign in. Or use a personal token (below):
             </p>
-            <Code>{`claude mcp add --transport http idstudio ${mcpUrl} \\\n  --header "Authorization: Bearer <token>"`}</Code>
+            <Code>{`claude mcp add --transport http tavoro ${mcpUrl} \\\n  --header "Authorization: Bearer <token>"`}</Code>
           </div>
         </div>
       </section>
@@ -215,7 +215,7 @@ function NewTokenDialog({ mcpUrl, onClose }: { mcpUrl: string; onClose: () => vo
               <CopyButton text={token} />
             </div>
             <p className="text-muted-foreground">Claude Code:</p>
-            <Code>{`claude mcp add --transport http idstudio ${mcpUrl} \\\n  --header "Authorization: Bearer ${token}"`}</Code>
+            <Code>{`claude mcp add --transport http tavoro ${mcpUrl} \\\n  --header "Authorization: Bearer ${token}"`}</Code>
             <DialogFooter>
               <Button onClick={onClose}>Done</Button>
             </DialogFooter>

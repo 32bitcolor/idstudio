@@ -5,7 +5,7 @@ export default function AccountThemes() {
     <>
       <Lead>
         Two things every user controls for themselves, no admin required: your <strong>password</strong>{" "}
-        and how IDStudio <strong>looks</strong>. This guide covers changing your own password from
+        and how Tavoro <strong>looks</strong>. This guide covers changing your own password from
         Account settings and switching among the built-in themes.
       </Lead>
 
@@ -42,9 +42,9 @@ export default function AccountThemes() {
         the old one.
       </Callout>
 
-      <H2>Theming IDStudio</H2>
+      <H2>Theming Tavoro</H2>
       <P>
-        IDStudio ships with a big library of hand-tuned themes, and the entire interface re-colors
+        Tavoro ships with a big library of hand-tuned themes, and the entire interface re-colors
         instantly when you pick one — sidebar, cards, buttons, charts, and all. Find the theme picker
         in <UI>Settings → Account</UI>, under <UI>Appearance</UI> — a grid of swatches, each showing
         a preview of that theme&rsquo;s background and accent color. Click one to apply it.
@@ -61,7 +61,7 @@ export default function AccountThemes() {
           between visits. A different computer or browser has its own independent setting.
         </Def>
         <Def term="System option">
-          Pick <UI>System</UI> and IDStudio follows your operating system&rsquo;s light/dark
+          Pick <UI>System</UI> and Tavoro follows your operating system&rsquo;s light/dark
           preference instead of pinning a specific palette.
         </Def>
       </DefList>

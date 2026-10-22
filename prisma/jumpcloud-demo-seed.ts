@@ -1,6 +1,6 @@
 /**
  * Demo content seed for the "JumpCloud Customer Education" workspace — a
- * stakeholder-review demo showing IDStudio populated the way a real customer
+ * stakeholder-review demo showing Tavoro populated the way a real customer
  * education team would use it: people, groups, boards, projects, storyboards,
  * whiteboards, and an intake queue in a mix of states.
  *
@@ -629,7 +629,7 @@ function arrowEl(x: number, y: number, dx: number, dy: number, extra: Ex = {}): 
 }
 function excalidraw(elements: Ex[]): string {
   return JSON.stringify({
-    type: "excalidraw", version: 2, source: "idstudio-demo",
+    type: "excalidraw", version: 2, source: "tavoro-demo",
     elements, appState: { viewBackgroundColor: "#ffffff", gridSize: null }, files: {},
   });
 }

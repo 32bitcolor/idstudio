@@ -12,7 +12,7 @@ import { EmptyState } from "@/components/shared/empty-state";
 import { StatusBadge, type StatusTone } from "@/components/shared/status-badge";
 import { Card } from "@/components/ui/card";
 
-export const metadata = { title: "Projects · IDStudio" };
+export const metadata = { title: "Projects · Tavoro" };
 
 function projectTone(status: string): StatusTone {
   if (status === "completed") return "success";

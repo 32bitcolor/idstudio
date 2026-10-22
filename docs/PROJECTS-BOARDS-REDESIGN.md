@@ -10,7 +10,7 @@ Today Board and Project are **sibling** objects — two top-level nav modules, t
 roots, only loosely tied (a `Deliverable` can link to a single card). That's the awkward
 middle: users feel "why is there a Board over here and a Project over there?"
 
-IDStudio is a **project-first** product (intake → project → the team executes the work),
+Tavoro is a **project-first** product (intake → project → the team executes the work),
 so a board should be *how a project's work is executed*, not a peer object. Concretely we
 want:
 

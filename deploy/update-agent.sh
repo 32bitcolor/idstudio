@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# IDStudio self-update agent. Runs on the host (VM) as the deploy user, watching a
+# Tavoro self-update agent. Runs on the host (VM) as the deploy user, watching a
 # shared control directory that the web app can write to. The app NEVER runs git
 # or docker itself — it only drops a one-word `request` file here; this agent (which
 # has git + docker access) performs the pull/build/restart and writes status back as
@@ -7,9 +7,11 @@
 # container is the whole point (no Docker socket in an internet-facing app).
 set -uo pipefail
 
-REPO="${IDSTUDIO_REPO:-/home/idstudio/idstudio}"
-CTRL="${IDSTUDIO_CONTROL:-$REPO/update-control}"
-BRANCH="${IDSTUDIO_BRANCH:-main}"
+# Defaults: the checkout this script lives in. TAVORO_* overrides; the IDSTUDIO_*
+# names from before the rename are still honoured.
+REPO="${TAVORO_REPO:-${IDSTUDIO_REPO:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}}"
+CTRL="${TAVORO_CONTROL:-${IDSTUDIO_CONTROL:-$REPO/update-control}}"
+BRANCH="${TAVORO_BRANCH:-${IDSTUDIO_BRANCH:-main}}"
 
 mkdir -p "$CTRL"; chmod 777 "$CTRL" 2>/dev/null || true
 cd "$REPO" || { echo "no repo at $REPO"; exit 1; }

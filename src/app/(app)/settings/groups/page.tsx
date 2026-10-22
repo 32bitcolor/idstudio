@@ -4,7 +4,7 @@ import { getActiveMembership } from "@/lib/dal";
 import { Role } from "@/generated/prisma/client";
 import { GroupsManager } from "@/components/settings/groups-manager";
 
-export const metadata = { title: "Groups · IDStudio" };
+export const metadata = { title: "Groups · Tavoro" };
 
 export default async function GroupsPage() {
   const membership = await getActiveMembership();

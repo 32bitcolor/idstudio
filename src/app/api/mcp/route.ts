@@ -29,7 +29,7 @@ function unauthorized(req: Request, description: string) {
 async function handle(req: Request) {
   const principal = await authenticateBearer(req);
   if (!principal) {
-    return unauthorized(req, req.headers.get("authorization") ? "The token is invalid, expired or revoked." : "Sign in to IDStudio to use this server.");
+    return unauthorized(req, req.headers.get("authorization") ? "The token is invalid, expired or revoked." : "Sign in to Tavoro to use this server.");
   }
   // Generous: a model working through a task makes many calls, but a runaway loop stops.
   if (!(await checkThrottle(`mcp:${principal.tokenId}`, 600, 60))) {

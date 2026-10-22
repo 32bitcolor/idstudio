@@ -10,7 +10,7 @@ import { CreateButton } from "@/components/app-shell/quick-create";
 import { EmptyState } from "@/components/shared/empty-state";
 import { AvatarStack, type WorkMember } from "@/components/shared/work-item";
 
-export const metadata = { title: "Boards · IDStudio" };
+export const metadata = { title: "Boards · Tavoro" };
 
 type Tally = { todo: number; active: number; done: number; overdue: number; updatedAt: Date; people: Map<string, WorkMember> };
 

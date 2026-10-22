@@ -4,7 +4,7 @@ import { appUrl } from "@/lib/app-url";
 import { Role } from "@/generated/prisma/client";
 import { AiSettings, type ConnectionRow } from "@/components/settings/ai-settings";
 
-export const metadata = { title: "AI & MCP · IDStudio" };
+export const metadata = { title: "AI & MCP · Tavoro" };
 
 const SELECT = {
   id: true,

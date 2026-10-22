@@ -5,7 +5,7 @@ import { getIntakeRequestForUser } from "@/lib/authz";
 import { PageContainer, PageHeader } from "@/components/shared/page";
 import { RequestDetail } from "@/components/intake/request-detail";
 
-export const metadata = { title: "Request · IDStudio" };
+export const metadata = { title: "Request · Tavoro" };
 
 export default async function IntakeRequestPage({ params }: { params: Promise<{ id: string }> }) {
   const membership = await getActiveMembership();

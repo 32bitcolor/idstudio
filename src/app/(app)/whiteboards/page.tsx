@@ -10,7 +10,7 @@ import { CreateButton } from "@/components/app-shell/quick-create";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Card } from "@/components/ui/card";
 
-export const metadata = { title: "Whiteboards · IDStudio" };
+export const metadata = { title: "Whiteboards · Tavoro" };
 
 export default async function WhiteboardsPage() {
   const membership = await getActiveMembership();

@@ -11,8 +11,20 @@ const PUBLIC_ROUTES = ["/login", "/signup"];
 // where outside SMEs review one round. Note "/review/" doesn't match "/reviews/".
 const PUBLIC_PREFIXES = ["/request/", "/review/"];
 
+// Hostnames the app used to live at (e.g. before the rename to Tavoro). Page visits
+// there redirect to the same path on APP_URL; API calls and OAuth discovery are
+// excluded by the matcher and keep working, so existing MCP connections don't break.
+const LEGACY_HOSTS = (process.env.LEGACY_HOSTS ?? "")
+  .split(",")
+  .map((h) => h.trim().toLowerCase())
+  .filter(Boolean);
+
 export default async function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
+  const host = (req.headers.get("x-forwarded-host") ?? req.headers.get("host") ?? "").split(":")[0].toLowerCase();
+  if (LEGACY_HOSTS.includes(host) && process.env.APP_URL) {
+    return NextResponse.redirect(new URL(pathname + req.nextUrl.search, process.env.APP_URL), 308);
+  }
   const session = await decrypt(req.cookies.get(SESSION_COOKIE)?.value);
   const isAuthPage = PUBLIC_ROUTES.includes(pathname);
   const isPublic = isAuthPage || PUBLIC_PREFIXES.some((p) => pathname.startsWith(p));

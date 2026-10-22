@@ -20,14 +20,14 @@ import { cardDescriptionForComment, describePlace, excerpt } from "../src/lib/re
 // intake request in the target workspace (and demo users, all @example.com) before rebuilding.
 // Refuses to run unless DEMO_SEED_CONFIRM matches the workspace name.
 //
-//   DATABASE_URL=… DEMO_SEED_CONFIRM="IDStudio Test" npx tsx prisma/qa-demo-seed.ts
+//   DATABASE_URL=… DEMO_SEED_CONFIRM="Tavoro Test" npx tsx prisma/qa-demo-seed.ts
 //
 // Optional: S3_ENDPOINT / S3_ACCESS_KEY / S3_SECRET_KEY / S3_BUCKET to upload card attachments
 // (skipped without them). Every demo user's password is DEMO_PASSWORD (default below).
 
 const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL ?? "" }) });
 
-const ADMIN_EMAIL = process.env.DEMO_ADMIN_EMAIL ?? "admin@idstudio.local";
+const ADMIN_EMAIL = process.env.DEMO_ADMIN_EMAIL ?? "admin@tavoro.local";
 const DEMO_PASSWORD = process.env.DEMO_PASSWORD ?? "demo-pass-2026";
 const DEMO_DOMAIN = "@example.com"; // reserved, undeliverable — UI actions during QA can't email real people
 const SECOND_WS_SLUG = "partner-enablement-demo";
@@ -254,7 +254,7 @@ const s3 =
         credentials: { accessKeyId: process.env.S3_ACCESS_KEY, secretAccessKey: process.env.S3_SECRET_KEY },
       })
     : null;
-const BUCKET = process.env.S3_BUCKET ?? "idstudio";
+const BUCKET = process.env.S3_BUCKET ?? "tavoro";
 
 // ── Excalidraw scenes ─────────────────────────────────────────────────────────
 let seedN = 1000;
@@ -289,7 +289,7 @@ function arrow(x1: number, y1: number, x2: number, y2: number) {
   });
 }
 const scene = (elements: unknown[]) =>
-  JSON.stringify({ type: "excalidraw", version: 2, source: "idstudio-demo-seed", elements, appState: { viewBackgroundColor: "#ffffff", gridSize: null }, files: {} });
+  JSON.stringify({ type: "excalidraw", version: 2, source: "tavoro-demo-seed", elements, appState: { viewBackgroundColor: "#ffffff", gridSize: null }, files: {} });
 
 // ── wipe ──────────────────────────────────────────────────────────────────────
 async function wipe(workspaceId: string) {
@@ -1094,7 +1094,7 @@ async function main() {
       by: "maya", ago: 0, body: "Marcus — can we get round 2 back by Thursday? Pilot recruiting starts next week.",
     },
   ]);
-  // Round 2 also went to outside counsel, who has no IDStudio account: a guest link.
+  // Round 2 also went to outside counsel, who has no Tavoro account: a guest link.
   await guestReviewer("dana", secR2, {
     name: "Dana Whitfield", email: "dana.whitfield@example.com", status: "in_review", seenHoursAgo: 5,
   });

@@ -4,8 +4,8 @@ export default function AddieSam() {
   return (
     <>
       <Lead>
-        Every IDStudio project runs on a <strong>methodology</strong> — the process you follow to
-        take a request from idea to launched learning. IDStudio ships with the two most common ones,
+        Every Tavoro project runs on a <strong>methodology</strong> — the process you follow to
+        take a request from idea to launched learning. Tavoro ships with the two most common ones,
         ADDIE and SAM, plus a Custom option. Here&rsquo;s what each is, when to reach for it, and how
         it shows up in the app.
       </Lead>
@@ -94,9 +94,9 @@ export default function AddieSam() {
         <Def term="Risk">ADDIE surfaces problems late; SAM surfaces them early, cheaply.</Def>
       </DefList>
 
-      <H2>How methodology works in IDStudio</H2>
+      <H2>How methodology works in Tavoro</H2>
       <P>
-        When you create a project, you choose ADDIE, SAM, or Custom. IDStudio seeds the matching
+        When you create a project, you choose ADDIE, SAM, or Custom. Tavoro seeds the matching
         phases so you start with a real structure instead of a blank page:
       </P>
       <DefList>

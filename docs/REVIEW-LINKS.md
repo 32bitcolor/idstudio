@@ -32,25 +32,25 @@ reviewers.
 
 The market gap is specific. Articulate Review 360 does contextual review well — for Articulate
 content only. zipBoard and similar are review-only tools disconnected from the project, the
-objectives and the board. IDStudio already owns the storyboard, the deliverable, the reviewer
+objectives and the board. Tavoro already owns the storyboard, the deliverable, the reviewer
 loop and the board where fixes happen; contextual review is the missing link between them.
 
 ## The boundary — read this first
 
-IDStudio removed a course-authoring module (`ab20824`) and an exam builder for crossing the
+Tavoro removed a course-authoring module (`ab20824`) and an exam builder for crossing the
 *"sits above the tools"* line. Review has its own version of that trap: **hosting and running
-courses.** Playing SCORM packages or Storyline output inside IDStudio means a SCORM runtime,
+courses.** Playing SCORM packages or Storyline output inside Tavoro means a SCORM runtime,
 iframe sandboxing of arbitrary uploaded JS, and an LMS-shaped feature nobody asked us to build.
 
-**Locked:** IDStudio reviews **artifacts it can render safely without executing them**:
+**Locked:** Tavoro reviews **artifacts it can render safely without executing them**:
 
 | Target | How it's reviewed | Anchor precision |
 |---|---|---|
-| **IDStudio storyboard** | Native, from a frozen snapshot | Screen → field → quoted text |
+| **Tavoro storyboard** | Native, from a frozen snapshot | Screen → field → quoted text |
 | **PDF** (exported Storyline/Rise, design docs) | In-browser PDF render | Page → point/region |
 | **Image** (mockups, screenshots) | Inline | Point/region |
 | **Video** (MP4 recordings of a course walkthrough) | HTML5 player | Timestamp (+ optional region) |
-| **External URL** (Rise/Review 360 share link) | Link out; comments stay in IDStudio | General, or a free-text "where" label |
+| **External URL** (Rise/Review 360 share link) | Link out; comments stay in Tavoro | General, or a free-text "where" label |
 
 No SCORM, no HTML5 packages, no uploaded JS — ever. "Record a walkthrough video or export a PDF"
 is the supported path for authoring-tool output, and it's what SMEs already receive today.

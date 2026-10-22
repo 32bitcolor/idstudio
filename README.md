@@ -1,4 +1,4 @@
-# IDStudio — the operating system for instructional-design teams
+# Tavoro — the operating system for instructional-design teams
 
 A self-hosted workspace that runs the whole instructional-design workflow in one place:
 intake the request, plan the project, design the learning, get SMEs to sign off, keep the team
@@ -28,7 +28,7 @@ L&D / enablement teams. Runs on your own server (a Proxmox VM is the documented 
 > Still to come: content lifecycle and reuse, and LMS integration
 > (see **[The vision](#the-vision)**).
 
-## Why IDStudio
+## Why Tavoro
 
 Instructional designers live in a fragmented toolchain:
 - authoring tools (Storyline, Rise, Captivate)
@@ -38,7 +38,7 @@ Instructional designers live in a fragmented toolchain:
 - an LMS
 
 There's **no single source of truth**, and switching between them all costs real time. Generic project tools don't speak
-"learning"; authoring tools don't do process, collaboration, or governance. IDStudio fills that
+"learning"; authoring tools don't do process, collaboration, or governance. Tavoro fills that
 gap: the connective tissue that makes an ID team run.
 
 The under-served needs it's built for:
@@ -61,12 +61,12 @@ The under-served needs it's built for:
 
 ## Where it fits
 
-IDStudio is deliberately **not** an authoring tool and **not** an LMS. It sits *above* them as the
+Tavoro is deliberately **not** an authoring tool and **not** an LMS. It sits *above* them as the
 system of record and collaboration hub. You keep building courses in Storyline, Rise or Captivate
-and delivering them in your LMS; IDStudio runs the work around them. Eventually it will also
+and delivering them in your LMS; Tavoro runs the work around them. Eventually it will also
 publish to the LMS and pull completion and impact data back.
 
-The same line applies to review: IDStudio shows what it can render safely, never running anything
+The same line applies to review: Tavoro shows what it can render safely, never running anything
 uploaded. That means storyboards, PDFs and images. For an eLearning build, publish it to PDF and
 review that.
 
@@ -149,7 +149,7 @@ review that.
   - **backup and restore**, including attachments and review files
   - workspace **labels**
   - a one-click **self-update** (pull, rebuild, migrate) from **Settings → Updates**
-- **AI assistants over MCP**: IDStudio is a Model Context Protocol server at `/api/mcp`.
+- **AI assistants over MCP**: Tavoro is a Model Context Protocol server at `/api/mcp`.
   - Claude.ai and Claude Desktop connect from just the URL. They sign in through OAuth, and you pick
     the workspace and read-only or read-and-change access.
   - Claude Code and other tools connect the same way, or with a personal token.
@@ -244,7 +244,7 @@ send to the board. The comment marked SEC-28 is already a card.
 
 ## The vision
 
-IDStudio is built around five pillars of an ID operating system. Three are live; two are next.
+Tavoro is built around five pillars of an ID operating system. Three are live; two are next.
 
 1. **Intake and demand management** ✅: structured request capture, triage, impact/effort scoring,
    and approve-to-project conversion.
@@ -262,7 +262,7 @@ IDStudio is built around five pillars of an ID operating system. Three are live;
 
 > **On scope:** a standalone exam builder and a course-authoring module were both removed as
 > off-strategy. Building courses and grading assessments is the job of the authoring tools and
-> the LMS. Assessment lives on in IDStudio as part of the alignment spine, not as a bespoke exam
+> the LMS. Assessment lives on in Tavoro as part of the alignment spine, not as a bespoke exam
 > engine.
 
 ## Tech stack
@@ -368,11 +368,11 @@ cp .env.example .env
 # 3. Start Postgres and MinIO from Compose, plus a local Redis
 #    (Compose keeps its Redis private, so run one for development)
 docker compose up -d postgres minio
-docker run -d --name idstudio-redis -p 6379:6379 redis:7-alpine
+docker run -d --name tavoro-redis -p 6379:6379 redis:7-alpine
 
 # 4. Apply the schema and seed the first admin
 npm run db:migrate            # create/apply migrations
-npm run db:seed               # creates admin@idstudio.local / changeme123
+npm run db:seed               # creates admin@tavoro.local / changeme123
 
 # 5. Run the app and (optionally) the worker
 npm run dev                   # http://localhost:3000

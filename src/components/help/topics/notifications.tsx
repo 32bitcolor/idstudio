@@ -4,7 +4,7 @@ export default function Notifications() {
   return (
     <>
       <Lead>
-        IDStudio keeps people in the loop by email — a card assigned to you, a comment on work
+        Tavoro keeps people in the loop by email — a card assigned to you, a comment on work
         you&rsquo;re an SME on, a review someone asked you to do. The guiding rule is simple: you&rsquo;re
         never emailed about your own actions, so notifications stay signal, not noise.
       </Lead>
@@ -12,7 +12,7 @@ export default function Notifications() {
       <H2>The one rule that shapes everything</H2>
       <P>
         Every notification is about something <em>someone else</em> did that affects <em>you</em>. If you
-        move a card, complete your own subtask, or comment on a thread, IDStudio won&rsquo;t email you about
+        move a card, complete your own subtask, or comment on a thread, Tavoro won&rsquo;t email you about
         it — the person who took the action is skipped, and only the other people who care get the message.
         That keeps your inbox honest: an email means something changed that you didn&rsquo;t already know
         about.
@@ -59,12 +59,12 @@ export default function Notifications() {
       <P>
         Notice how the audience is always the people connected to the work: a status change reaches the
         card&rsquo;s assignees and SMEs, a comment reaches the same circle, a review decision goes back to
-        whoever requested it. IDStudio figures out who to tell so you don&rsquo;t have to cc anyone.
+        whoever requested it. Tavoro figures out who to tell so you don&rsquo;t have to cc anyone.
       </P>
 
       <H2>Every email links straight back</H2>
       <P>
-        No notification asks you to go hunting. Each one ends with a <UI>View in IDStudio</UI> button that
+        No notification asks you to go hunting. Each one ends with a <UI>View in Tavoro</UI> button that
         deep-links to exactly the thing it&rsquo;s about — the specific card, the review, the project, or
         the intake request — so you land on the right screen in one click.
       </P>
@@ -117,7 +117,7 @@ export default function Notifications() {
 
       <H3>Turning types on and off</H3>
       <P>
-        Under <UI>What sends an email</UI>, each of the eight types has a toggle. Flip one off and IDStudio
+        Under <UI>What sends an email</UI>, each of the eight types has a toggle. Flip one off and Tavoro
         stops sending that category to <em>everyone</em>; flip it back on to resume. Changes save instantly
         — there&rsquo;s no separate save button — so you can quiet a chatty category the moment it becomes a
         distraction.
@@ -125,7 +125,7 @@ export default function Notifications() {
 
       <Callout tone="warning">
         These toggles are workspace-wide, not personal. Turning off <UI>Status changes</UI> silences status
-        emails for the whole team, not just for you. Use them to set the overall tone of what IDStudio emails
+        emails for the whole team, not just for you. Use them to set the overall tone of what Tavoro emails
         about.
       </Callout>
 
@@ -147,7 +147,7 @@ export default function Notifications() {
 
       <H2>How delivery is set up</H2>
       <P>
-        IDStudio sends through your workspace&rsquo;s own SMTP provider. Whoever runs your server sets the{" "}
+        Tavoro sends through your workspace&rsquo;s own SMTP provider. Whoever runs your server sets the{" "}
         <UI>SMTP_*</UI> environment variables — host, credentials, and the address mail goes out from — and
         restarts the app. Once those are in place, the status flips to <UI>SMTP configured</UI> and
         notifications start flowing. There&rsquo;s nothing to configure inside the app beyond the toggles;
@@ -155,7 +155,7 @@ export default function Notifications() {
       </P>
 
       <Callout tone="note" title="Nothing sends until SMTP is wired up">
-        If no SMTP host is set, IDStudio quietly sends nothing rather than failing loudly. If people say
+        If no SMTP host is set, Tavoro quietly sends nothing rather than failing loudly. If people say
         they&rsquo;re not getting emails, an admin should check the status indicator first and send a test.
       </Callout>
 

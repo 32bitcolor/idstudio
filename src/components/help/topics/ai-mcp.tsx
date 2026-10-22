@@ -4,7 +4,7 @@ export default function AiMcp() {
   return (
     <>
       <Lead>
-        IDStudio is an <strong>MCP server</strong>. MCP (Model Context Protocol) is how AI assistants such as Claude connect to the tools
+        Tavoro is an <strong>MCP server</strong>. MCP (Model Context Protocol) is how AI assistants such as Claude connect to the tools
         you use. Once connected, you can ask Claude to look things up and do the work in your workspace: &ldquo;What&rsquo;s waiting on
         me?&rdquo;, &ldquo;Turn Dana&rsquo;s review comments into cards&rdquo;, &ldquo;Draft three screens on phishing for the Module 1
         storyboard.&rdquo;
@@ -13,13 +13,13 @@ export default function AiMcp() {
       <H2>Connect Claude.ai or Claude Desktop</H2>
       <Steps>
         <>
-          In IDStudio, open <UI>Settings → AI &amp; MCP</UI> and copy the server URL. It ends in <code>/api/mcp</code>.
+          In Tavoro, open <UI>Settings → AI &amp; MCP</UI> and copy the server URL. It ends in <code>/api/mcp</code>.
         </>
         <>
           In Claude, open <UI>Settings → Connectors</UI>, choose <UI>Add custom connector</UI>, and paste the URL.
         </>
         <>
-          Click <UI>Connect</UI>. You&rsquo;re sent to IDStudio to sign in. Pick the <strong>workspace</strong> Claude may use and the{" "}
+          Click <UI>Connect</UI>. You&rsquo;re sent to Tavoro to sign in. Pick the <strong>workspace</strong> Claude may use and the{" "}
           <strong>access</strong> (read and change, or read only), then <UI>Allow</UI>.
         </>
       </Steps>
@@ -28,10 +28,10 @@ export default function AiMcp() {
       <P>
         In Claude Code, add the server and sign in through the browser with <code>/mcp</code>:
       </P>
-      <pre className="my-3 overflow-x-auto rounded-md bg-muted px-3 py-2 text-xs">claude mcp add --transport http idstudio https://your-idstudio/api/mcp</pre>
+      <pre className="my-3 overflow-x-auto rounded-md bg-muted px-3 py-2 text-xs">claude mcp add --transport http tavoro https://your-idstudio/api/mcp</pre>
       <P>
         Tools that can&rsquo;t sign in through a browser use a <strong>personal token</strong> instead: <UI>Settings → AI &amp; MCP → New
-        token</UI>, then send it as <code>Authorization: Bearer idst_…</code>. The token is shown once; store it like a password.
+        token</UI>, then send it as <code>Authorization: Bearer tav_…</code>. The token is shown once; store it like a password.
       </P>
 
       <H2>What an assistant can do</H2>
@@ -78,7 +78,7 @@ export default function AiMcp() {
       </UL>
 
       <Callout tone="tip">
-        Start a conversation with something like &ldquo;Use IDStudio: what&rsquo;s waiting on me this week?&rdquo; The assistant learns
+        Start a conversation with something like &ldquo;Use Tavoro: what&rsquo;s waiting on me this week?&rdquo; The assistant learns
         your workspace from there.
       </Callout>
 

@@ -3,7 +3,7 @@ import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
 import { currentPrincipal } from "@/lib/principal";
 
-export const SESSION_COOKIE = "idstudio_session";
+export const SESSION_COOKIE = "tavoro_session";
 const MAX_AGE_SECONDS = 60 * 60 * 24 * 7; // 7 days
 
 export type SessionPayload = { userId: string; activeWorkspaceId?: string };

@@ -15,7 +15,7 @@ import { Readable } from "node:stream";
 // plain HTTP on the LAN (mixed content). S3_ENDPOINT is the host the app uses
 // (http://minio:9000 under Compose).
 
-const BUCKET = process.env.S3_BUCKET ?? "idstudio";
+const BUCKET = process.env.S3_BUCKET ?? "tavoro";
 const REGION = process.env.S3_REGION ?? "us-east-1";
 const ACCESS = process.env.S3_ACCESS_KEY ?? "";
 const SECRET = process.env.S3_SECRET_KEY ?? "";

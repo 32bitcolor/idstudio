@@ -6,7 +6,7 @@ import { Role } from "@/generated/prisma/client";
 import { PageContainer, PageHeader } from "@/components/shared/page";
 import { WorkloadView, type MemberWorkload } from "@/components/team/workload-view";
 
-export const metadata = { title: "Team · IDStudio" };
+export const metadata = { title: "Team · Tavoro" };
 
 export default async function TeamPage() {
   const membership = await getActiveMembership();

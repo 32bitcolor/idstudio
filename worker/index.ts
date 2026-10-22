@@ -89,7 +89,7 @@ maintenanceQueue
 const maintenanceWorker = new Worker(
   "maintenance",
   async () => {
-    const r = await sweepReviewFiles(prisma, s3, process.env.S3_BUCKET ?? "idstudio");
+    const r = await sweepReviewFiles(prisma, s3, process.env.S3_BUCKET ?? "tavoro");
     console.log(`[worker] review-file sweep: ${r.unusedFiles} unused upload(s), ${r.orphanedObjects} orphaned object(s) removed`);
     const o = await sweepOAuth(prisma);
     console.log(`[worker] MCP credential sweep: ${o.codes} code(s), ${o.tokens} token(s), ${o.clients} unused client(s) removed`);

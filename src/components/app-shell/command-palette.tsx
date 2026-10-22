@@ -172,7 +172,7 @@ export function CommandPalette() {
           showCloseButton={false}
           className="top-[12vh] max-w-lg translate-y-0 gap-0 overflow-hidden rounded-xl bg-surface p-0 shadow-2xl"
         >
-          <DialogTitle className="sr-only">Search IDStudio</DialogTitle>
+          <DialogTitle className="sr-only">Search Tavoro</DialogTitle>
           <DialogDescription className="sr-only">
             Jump to a module, or search boards, cards, subtasks, projects, storyboards, and whiteboards.
           </DialogDescription>

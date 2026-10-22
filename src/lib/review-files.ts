@@ -1,7 +1,7 @@
 import "server-only";
 import { getObjectStream } from "@/lib/storage";
 
-// Files under review (docs/REVIEW-LINKS.md, phase 3). IDStudio reviews what it can
+// Files under review (docs/REVIEW-LINKS.md, phase 3). Tavoro reviews what it can
 // render WITHOUT executing it: PDFs (rendered by pdf.js into a canvas) and raster
 // images. No SVG (it can carry script), no HTML, no SCORM — ever.
 

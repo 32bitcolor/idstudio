@@ -9,7 +9,7 @@ import { hash } from "@node-rs/argon2";
 const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL ?? "" });
 const prisma = new PrismaClient({ adapter });
 
-const ADMIN_EMAIL = process.env.SEED_ADMIN_EMAIL ?? "admin@idstudio.local";
+const ADMIN_EMAIL = process.env.SEED_ADMIN_EMAIL ?? "admin@tavoro.local";
 const ADMIN_PASSWORD = process.env.SEED_ADMIN_PASSWORD ?? "changeme123";
 const WORKSPACE_NAME = process.env.SEED_WORKSPACE_NAME ?? "Demo Workspace";
 

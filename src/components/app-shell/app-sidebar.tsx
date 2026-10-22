@@ -29,6 +29,7 @@ import {
   SidebarRail,
   useSidebar,
 } from "@/components/ui/sidebar";
+import { TavoroMark, TavoroWordmark } from "@/components/shared/brand";
 
 function isActive(pathname: string, href: string) {
   if (href === "/dashboard") return pathname === href;
@@ -66,11 +67,9 @@ export function AppSidebar({
           <SidebarMenuItem>
             <SidebarMenuButton size="lg" asChild>
               <Link href="/dashboard">
-                <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-                  <span className="text-sm font-semibold">ID</span>
-                </div>
+                <TavoroMark />
                 <div className="grid flex-1 text-left leading-tight">
-                  <span className="truncate font-semibold">IDStudio</span>
+                  <TavoroWordmark className="truncate text-base" />
                   <span className="truncate text-xs text-muted-foreground">
                     {workspaceName}
                   </span>

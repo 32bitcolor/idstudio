@@ -1,6 +1,6 @@
 import { LoginForm } from "@/components/login-form";
 
-export const metadata = { title: "Sign in · IDStudio" };
+export const metadata = { title: "Sign in · Tavoro" };
 
 export default async function LoginPage({ searchParams }: { searchParams: Promise<{ next?: string }> }) {
   const { next } = await searchParams;

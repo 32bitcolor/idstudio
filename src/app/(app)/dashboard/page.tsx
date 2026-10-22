@@ -34,7 +34,7 @@ function tint(varName: string) {
   };
 }
 
-export const metadata = { title: "Dashboard · IDStudio" };
+export const metadata = { title: "Dashboard · Tavoro" };
 
 const PROJECT_STATUS_LABEL: Record<string, string> = {
   active: "Active",

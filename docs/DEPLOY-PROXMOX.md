@@ -1,6 +1,6 @@
-# Deploying IDStudio to Proxmox
+# Deploying Tavoro to Proxmox
 
-This guide gets IDStudio running on your Proxmox server over HTTPS using Docker Compose.
+This guide gets Tavoro running on your Proxmox server over HTTPS using Docker Compose.
 The whole app stack (Next.js app, background worker, Postgres, Redis, MinIO, Caddy) runs
 in a single Ubuntu VM.
 
@@ -41,8 +41,8 @@ Verify: `docker version` and `docker compose version`.
 Clone the repository onto the VM:
 
 ```bash
-git clone https://github.com/32bitcolor/idstudio.git
-cd idstudio
+git clone https://github.com/32bitcolor/tavoro.git
+cd tavoro
 ```
 
 > The repo is **private**, so the clone will ask you to authenticate. The easiest way
@@ -65,7 +65,7 @@ Set **real** values:
 
 - `SESSION_SECRET` — generate with `openssl rand -base64 32`
 - `POSTGRES_PASSWORD`, `MINIO_ROOT_PASSWORD` — strong unique passwords
-- `DOMAIN` — the public hostname you'll use, e.g. `idstudio.yourteam.com`
+- `DOMAIN` — the public hostname you'll use, e.g. `tavoro.yourteam.com`
 - `ACME_EMAIL` — your email (optional; for Let's Encrypt expiry notices)
 - `SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD` — the first admin login (change the password!)
 
@@ -130,10 +130,10 @@ limit on free plans.
 - **Database:** schedule a nightly dump.
   ```bash
   docker compose exec -T postgres pg_dump -U "$POSTGRES_USER" "$POSTGRES_DB" \
-    | gzip > "idstudio-$(date +%F).sql.gz"
+    | gzip > "tavoro-$(date +%F).sql.gz"
   ```
   Copy these off the VM (restic/borg to remote storage is ideal).
-- **Object storage:** back up the `idstudio_miniodata` volume (or `mc mirror` to remote).
+- **Object storage:** back up the `tavoro_miniodata` volume (or `mc mirror` to remote).
 - **Proxmox-level:** add this VM to your Proxmox **Backup** schedule as a second safety net.
 - **Test a restore** at least once — an untested backup isn't a backup.
 

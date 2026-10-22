@@ -39,7 +39,7 @@ export async function decideAuthorization(formData: FormData) {
     redirect(back.toString());
   }
 
-  const code = newSecret("idstc_");
+  const code = newSecret("tavc_");
   await prisma.oAuthCode.create({
     data: {
       codeHash: sha256(code),

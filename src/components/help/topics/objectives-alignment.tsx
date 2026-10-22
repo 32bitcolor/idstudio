@@ -6,7 +6,7 @@ export default function ObjectivesAlignment() {
     <>
       <Lead>
         Learning objectives are the spine of good design — they say what a learner should be able to
-        <em> do</em>, and everything else (content, assessment) should line up behind them. IDStudio
+        <em> do</em>, and everything else (content, assessment) should line up behind them. Tavoro
         makes that alignment a first-class, checkable thing instead of a spreadsheet you keep in your
         head.
       </Lead>
@@ -15,7 +15,7 @@ export default function ObjectivesAlignment() {
       <P>
         A strong objective is <strong>observable and measurable</strong> — it uses a verb you can
         actually see or score. &ldquo;Understand phishing&rdquo; isn&rsquo;t testable;
-        &ldquo;identify three signs of a phishing email&rdquo; is. IDStudio tags each objective with a
+        &ldquo;identify three signs of a phishing email&rdquo; is. Tavoro tags each objective with a
         level from <strong>Bloom&rsquo;s Revised Taxonomy</strong> and suggests strong verbs for that
         level, to nudge you away from fuzzy ones like &ldquo;know&rdquo; or &ldquo;understand.&rdquo;
       </P>
@@ -30,7 +30,7 @@ export default function ObjectivesAlignment() {
 
       <H2>The alignment spine</H2>
       <P>
-        Once objectives exist, two things attach to them — and IDStudio shows you the gaps:
+        Once objectives exist, two things attach to them — and Tavoro shows you the gaps:
       </P>
       <UL>
         <LI>
@@ -46,7 +46,7 @@ export default function ObjectivesAlignment() {
       </UL>
       <Callout tone="note">
         The assessment side is a lightweight <strong>question bank</strong>, not an exam engine —
-        IDStudio tracks what you&rsquo;re measuring and how it aligns, while the actual quiz lives in
+        Tavoro tracks what you&rsquo;re measuring and how it aligns, while the actual quiz lives in
         your authoring tool or LMS.
       </Callout>
 

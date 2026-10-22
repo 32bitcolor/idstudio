@@ -4,7 +4,7 @@ import { getBoardForUser } from "@/lib/authz";
 import { BoardView } from "@/components/board/board-view";
 import { loadProjectContext } from "@/lib/project-context";
 
-export const metadata = { title: "Board · IDStudio" };
+export const metadata = { title: "Board · Tavoro" };
 
 export default async function BoardPage({ params }: { params: Promise<{ boardId: string }> }) {
   const { boardId } = await params;

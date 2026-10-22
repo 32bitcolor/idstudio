@@ -2,7 +2,7 @@ import "server-only";
 import { createHash } from "node:crypto";
 import { SCOPES } from "@/lib/api-tokens";
 
-// OAuth 2.1 for MCP clients (docs/MCP.md): IDStudio is both the authorization server
+// OAuth 2.1 for MCP clients (docs/MCP.md): Tavoro is both the authorization server
 // and the resource server. Public clients only, PKCE (S256) required, dynamic client
 // registration (RFC 7591) so Claude.ai / Claude Desktop can connect from just the URL.
 
@@ -32,7 +32,7 @@ export function protectedResourceMetadata(req: Request) {
     authorization_servers: [base],
     scopes_supported: [...new Set(SCOPES.flatMap((s) => s.split(" ")))],
     bearer_methods_supported: ["header"],
-    resource_name: "IDStudio",
+    resource_name: "Tavoro",
     resource_documentation: `${base}/help/ai-mcp`,
   };
 }

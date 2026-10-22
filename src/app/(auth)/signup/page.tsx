@@ -1,6 +1,6 @@
 import { SignupForm } from "@/components/signup-form";
 
-export const metadata = { title: "Create account · IDStudio" };
+export const metadata = { title: "Create account · Tavoro" };
 
 export default function SignupPage() {
   return (
