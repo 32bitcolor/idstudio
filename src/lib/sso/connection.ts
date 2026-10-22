@@ -12,6 +12,7 @@ export const CONN_SELECT = {
   jitProvisioning: true,
   manageRoles: true,
   defaultRole: true,
+  scimEnabled: true,
 } as const;
 
 /** A connection by id, if it exists (enabled or not). */

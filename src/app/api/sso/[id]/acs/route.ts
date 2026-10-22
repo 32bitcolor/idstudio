@@ -31,7 +31,11 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   }
   if (!profile || !(await firstUse(profile))) return fail("invalid");
 
-  const { email, given, family, groups } = readProfile(profile, conn.groupAttribute);
+  const { email, given, family, groups: asserted } = readProfile(profile, conn.groupAttribute);
+  // No group attribute: with SCIM on, SCIM owns group membership, so leave it be. With
+  // SCIM off and roles from groups on, it means "no groups" (IdPs leave the attribute
+  // out rather than send it empty), or a removed admin would stay one.
+  const groups = asserted ?? (conn.manageRoles && !conn.scimEnabled ? [] : null);
   if (!email) return fail("noemail");
 
   // Known here already, or allowed to be created on first sign-in?
