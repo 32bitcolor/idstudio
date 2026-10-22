@@ -216,10 +216,9 @@ async function handle(req: Request, { params }: { params: Promise<{ path: string
     res = scimError(e);
     summary = e instanceof Error ? e.message : "error";
   }
-  // Discovery calls are noise in the log; everything else is worth seeing.
-  if (!["ServiceProviderConfig", "ResourceTypes", "Schemas"].includes(segs[0])) {
-    await logScim(conn.id, { method: req.method, path, status: res.status, summary, body });
-  }
+  // Everything is logged, discovery included: when a provider rejects a setup, what it
+  // asked for is the clue.
+  await logScim(conn.id, { method: req.method, path, status: res.status, summary, body });
   return res;
 }
 
