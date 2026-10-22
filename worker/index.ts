@@ -39,6 +39,11 @@ worker.on("failed", (job, err) => console.error(`[worker] job ${job?.id} failed:
 const emailWorker = new Worker(
   "email",
   async (job) => {
+    // A member the identity provider has deactivated everywhere gets no more mail
+    // (docs/SSO.md). Guests and requesters aren't members, so they're unaffected.
+    const to = String(job.data?.to ?? "").toLowerCase();
+    const user = to ? await prisma.user.findUnique({ where: { email: to }, select: { memberships: { select: { suspendedAt: true } } } }) : null;
+    if (user?.memberships.length && user.memberships.every((m) => m.suspendedAt)) return;
     await sendMail(job.data);
     return { ok: true };
   },

@@ -110,6 +110,7 @@ export default function AiMcp() {
           Admins can see and disconnect everyone&rsquo;s.
         </LI>
         <LI>Connected apps renew their access every hour, and stop after 30 days without use. Personal tokens expire when you chose.</LI>
+        <LI>If your identity provider deactivates you (see Single sign-on), every token and connection you made stops working at once.</LI>
       </UL>
 
       <Callout tone="tip">

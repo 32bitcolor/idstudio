@@ -35,8 +35,9 @@ export default function GettingStarted() {
       <UL>
         <LI>
           The <strong>left sidebar</strong> lists your modules — My Work, Intake, Boards, Projects,
-          Sprints, Storyboards, and Whiteboards. Collapse it with the toggle in the header when you
-          want more room.
+          Sprints, Storyboards, and Whiteboards, plus Team for admins and managers — with Help and
+          your account at the bottom. Collapse it with the toggle in the header when you want more
+          room.
         </LI>
         <LI>
           The <strong>breadcrumbs</strong> at the top show where you are and let you jump back up a
@@ -47,8 +48,9 @@ export default function GettingStarted() {
           active projects, what&rsquo;s awaiting your review, and upcoming milestones.
         </LI>
         <LI>
-          The header&rsquo;s <UI>Search</UI> box (or <UI>⌘K</UI>) jumps to any board, project,
-          storyboard, or card, and <UI>+ New</UI> spins up work from anywhere.
+          The header&rsquo;s <UI>Search</UI> box (or <UI>⌘K</UI> on a Mac, <UI>Ctrl K</UI> elsewhere)
+          jumps to any board, project, storyboard, or card, and <UI>New</UI> creates a board,
+          project, storyboard, or whiteboard from anywhere.
         </LI>
       </UL>
 
@@ -56,11 +58,16 @@ export default function GettingStarted() {
       <Steps>
         <>
           Open <strong>Settings → Account</strong> and change your password from whatever you were
-          given.
+          given. (If your workspace uses single sign-on, you sign in with your work account instead
+          and can skip this.)
         </>
         <>
-          If you&rsquo;re an admin, head to <strong>Settings → Members &amp; groups</strong> and add
-          your team.
+          If you&rsquo;re an admin, add your team in <strong>Settings → Members</strong> (or connect
+          your identity provider in{" "}
+          <Link href="/help/sso" className="font-medium text-accent underline underline-offset-2">
+            Settings → Single sign-on
+          </Link>
+          ), and organize them in <strong>Settings → Groups</strong>.
         </>
         <>
           Create your first <strong>Project</strong>, pick a methodology (

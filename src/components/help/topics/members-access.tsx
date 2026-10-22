@@ -1,4 +1,5 @@
-import { Lead, H2, H3, P, Steps, Callout, DefList, Def, UI } from "@/components/help/prose";
+import Link from "next/link";
+import { Lead, H2, H3, P, UL, LI, Steps, Callout, DefList, Def, UI } from "@/components/help/prose";
 
 export default function MembersAccess() {
   return (
@@ -7,11 +8,16 @@ export default function MembersAccess() {
         This is where admins run the workspace: add and remove people, hand out or revoke admin
         rights, reset passwords, and decide who can see which boards, projects, storyboards, and
         whiteboards. Everything here lives under <UI>Settings</UI> and is gated to administrators.
+        To have your identity provider manage members instead, see{" "}
+        <Link href="/help/sso" className="font-medium text-accent underline underline-offset-2">
+          Single sign-on &amp; provisioning
+        </Link>
+        .
       </Lead>
 
       <Callout tone="note">
-        Admin-only. The <UI>Members</UI> and <UI>Groups</UI> settings appear only for workspace
-        admins — members are redirected to their own <UI>Account</UI> page. Every workspace keeps at
+        Admin-only. The <UI>Members</UI>, <UI>Groups</UI>, and <UI>Single sign-on</UI> settings appear
+        only for workspace admins — members are redirected to their own <UI>Account</UI> page. Every workspace keeps at
         least one admin at all times.
       </Callout>
 
@@ -84,9 +90,34 @@ export default function MembersAccess() {
 
       <Callout tone="warning">
         Two guardrails you can&rsquo;t override: you can&rsquo;t remove yourself, and you can&rsquo;t
-        demote or remove the <strong>last remaining admin</strong>. Promote someone else to admin
-        first if you need to step back.
+        demote or remove the <strong>last remaining admin</strong> (suspended admins don&rsquo;t count).
+        Promote someone else to admin first if you need to step back.
       </Callout>
+
+      <H2>Members from your identity provider</H2>
+      <P>
+        If your workspace uses{" "}
+        <Link href="/help/sso" className="font-medium text-accent underline underline-offset-2">
+          single sign-on and provisioning
+        </Link>
+        , your identity provider can add members for you, and the member list shows it:
+      </P>
+      <UL>
+        <LI>
+          <UI>SSO</UI> marks a member linked to the identity provider. They sign in with their work
+          account; you don&rsquo;t need to give them a password.
+        </LI>
+        <LI>
+          <UI>Suspended</UI> marks a member the identity provider deactivated. They can&rsquo;t sign in and
+          their API tokens stop working, but their work stays. <UI>Restore access</UI> lets them back in
+          (the identity provider may suspend them again if it still has them deactivated).
+        </LI>
+        <LI>
+          With roles from groups on, a member&rsquo;s row says <em>Role comes from identity-provider
+          groups</em>. You can still change it here, but the next update from the identity provider sets
+          it back. Change the group instead.
+        </LI>
+      </UL>
 
       <H2>Organizing members into groups</H2>
       <P>

@@ -18,15 +18,16 @@ export default function Storyboards() {
 
       <Steps>
         <>
-          On the <UI>Storyboards</UI> page, type a name into <UI>New storyboard title…</UI> and click{" "}
-          <UI>Create storyboard</UI>.
+          Choose <UI>New storyboard</UI> on the <UI>Storyboards</UI> page (or <UI>New → Storyboard</UI>
+          in the header), type a name in <UI>Storyboard title…</UI>, and choose <UI>Create</UI>.
         </>
         <>
           Open it, then set the <UI>Status</UI> — <UI>Draft</UI>, <UI>In review</UI>, or{" "}
           <UI>Approved</UI> — and add a description to frame the course.
         </>
         <>
-          Build it out screen by screen (below). Rename the storyboard anytime by clicking its title.
+          Build it out screen by screen (below). Rename the storyboard anytime by clicking its title;{" "}
+          <UI>Delete storyboard</UI> removes it and its screens.
         </>
       </Steps>
 
@@ -38,22 +39,22 @@ export default function Storyboards() {
 
       <H2>Screens</H2>
       <P>
-        Screens are the ordered building blocks of the course. Add one with <UI>+ Add a screen</UI>,
+        Screens are the ordered building blocks of the course. Add one with <UI>Add a screen</UI>,
         give it a title, and it appears at the end of the list, numbered in sequence. Click a
-        screen&rsquo;s <UI>▸</UI> toggle to expand it and edit its fields; collapse it again to keep
-        the outline scannable.
+        screen&rsquo;s arrow to expand it and edit its fields; collapse it again to keep the outline
+        scannable.
       </P>
       <UL>
         <LI>
           <strong>Rename</strong> — click the screen title to edit it inline.
         </LI>
         <LI>
-          <strong>Reorder</strong> — use the <UI>↑</UI> / <UI>↓</UI> arrows to move a screen up or
-          down; the numbering updates to match.
+          <strong>Reorder</strong> — use the up and down arrows to move a screen; the numbering
+          updates to match.
         </LI>
         <LI>
-          <strong>Delete</strong> — the <UI>×</UI> removes a screen (you&rsquo;ll be asked to
-          confirm).
+          <strong>Delete</strong> — the screen&rsquo;s delete button removes it (you&rsquo;ll be asked
+          to confirm).
         </LI>
       </UL>
 
@@ -91,6 +92,14 @@ export default function Storyboards() {
           Build instructions for whoever assembles it in the authoring tool.
         </Def>
       </DefList>
+
+      <H3>Which objectives a screen teaches</H3>
+      <P>
+        On a storyboard linked to a project, each screen&rsquo;s <UI>Teaches</UI> control picks the
+        project&rsquo;s learning objectives it covers. That feeds the project&rsquo;s alignment view, so
+        you can see which objectives are taught and assessed, and which aren&rsquo;t yet. See{" "}
+        <em>Objectives &amp; alignment</em>.
+      </P>
 
       <Callout tone="tip">
         Keep <strong>On-screen text</strong> and <strong>Narration</strong> distinct — reviewers read
@@ -130,8 +139,8 @@ export default function Storyboards() {
 
       <Callout tone="note" title="Access">
         Storyboards are visible to all workspace members by default. An admin can restrict one to
-        specific groups from the workspace group settings, and access is enforced everywhere — the
-        list, the dashboard, and direct links alike.
+        specific groups in <UI>Settings → Groups</UI>, and access is enforced everywhere — the list,
+        the dashboard, and direct links alike. Admins and managers always see every storyboard.
       </Callout>
     </>
   );

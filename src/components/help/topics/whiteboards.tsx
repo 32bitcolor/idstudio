@@ -25,8 +25,8 @@ export default function Whiteboards() {
           There&rsquo;s no save button; just close the tab when you&rsquo;re done.
         </LI>
         <LI>
-          <strong>Delete</strong> — use <UI>Delete</UI> in the header to remove the whiteboard (you
-          &rsquo;ll be asked to confirm).
+          <strong>Delete</strong> — open the <UI>⋯</UI> (<UI>Whiteboard settings</UI>) menu in the
+          header and choose <UI>Delete whiteboard…</UI> (you&rsquo;ll be asked to confirm).
         </LI>
       </UL>
 
@@ -60,17 +60,18 @@ export default function Whiteboards() {
       <H3>Create a standalone whiteboard</H3>
       <Steps>
         <>
-          On the <UI>Whiteboards</UI> page, type a name into <UI>New whiteboard title…</UI>.
+          Choose <UI>New whiteboard</UI> on the <UI>Whiteboards</UI> page (or <UI>New → Whiteboard</UI>
+          in the header) and type a name in <UI>Whiteboard title…</UI>.
         </>
         <>
-          Click <UI>Create whiteboard</UI> and open it from the grid to start drawing.
+          Choose <UI>Create</UI>. The canvas opens straight away.
         </>
       </Steps>
 
       <H3>Change what a whiteboard is linked to</H3>
       <P>
-        On any whiteboard, the header has a <UI>Storyboard</UI> dropdown. Pick a storyboard to link it,
-        or choose <UI>— none —</UI> to detach it. That makes it easy to promote a standalone sketch
+        On any whiteboard, the header has a linked-storyboard dropdown. Pick a storyboard to link it,
+        or choose <UI>No linked storyboard</UI> to detach it. That makes it easy to promote a standalone sketch
         into a specific course&rsquo;s working set once you know where it belongs.
       </P>
 
@@ -90,8 +91,8 @@ export default function Whiteboards() {
 
       <Callout tone="note" title="Access">
         Whiteboards are visible to all workspace members by default. An admin can restrict one to
-        specific groups from the workspace group settings; once restricted, only those groups (and
-        admins) can open it, whether from the list or a direct link.
+        specific groups in <UI>Settings → Groups</UI>; once restricted, only those groups (plus admins
+        and managers) can open it, whether from the list or a direct link.
       </Callout>
     </>
   );

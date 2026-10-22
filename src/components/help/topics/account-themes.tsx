@@ -36,6 +36,12 @@ export default function AccountThemes() {
         current one. Once you&rsquo;re back in, change it to something only you know.
       </Callout>
 
+      <Callout tone="note">
+        Sign in with <UI>Sign in with SSO</UI>? Then your password lives with your company&rsquo;s identity
+        provider — change it there. A Tavoro password only matters if your workspace still allows password
+        sign-in.
+      </Callout>
+
       <Callout tone="tip">
         Because the current password is mandatory, pick a strong, unique passphrase — the flow is
         built so a walk-by can&rsquo;t change your password even at an unlocked screen without knowing

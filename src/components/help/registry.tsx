@@ -13,6 +13,7 @@ import {
   Users,
   Palette,
   Bot,
+  KeyRound,
   type LucideIcon,
 } from "lucide-react";
 
@@ -30,6 +31,7 @@ import Notifications from "@/components/help/topics/notifications";
 import MembersAccess from "@/components/help/topics/members-access";
 import AccountThemes from "@/components/help/topics/account-themes";
 import AiMcp from "@/components/help/topics/ai-mcp";
+import Sso from "@/components/help/topics/sso";
 
 export type HelpGroup = "Start here" | "Methodology" | "Modules";
 
@@ -139,6 +141,14 @@ export const HELP_TOPICS: HelpTopic[] = [
     icon: Bot,
     group: "Modules",
     Body: AiMcp,
+  },
+  {
+    slug: "sso",
+    title: "Single sign-on & provisioning",
+    summary: "Sign in through your identity provider, provision members with SCIM, and set roles from groups.",
+    icon: KeyRound,
+    group: "Modules",
+    Body: Sso,
   },
   {
     slug: "members-access",

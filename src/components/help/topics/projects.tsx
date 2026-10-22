@@ -20,11 +20,12 @@ export default function Projects() {
 
       <Steps>
         <>
-          On the <UI>Projects</UI> page, enter a name in <UI>New project name…</UI>.
+          Choose <UI>New project</UI> on the <UI>Projects</UI> page (or <UI>New → Project</UI> in the
+          header) and type a name in <UI>Project name…</UI>.
         </>
         <>
-          Choose <UI>ADDIE</UI>, <UI>SAM</UI>, or <UI>Custom (start empty)</UI> from the methodology
-          dropdown, then click <UI>Create project</UI>.
+          Pick <UI>ADDIE</UI>, <UI>SAM</UI>, or <UI>Custom (start empty)</UI> as the methodology, then
+          choose <UI>Create</UI>. The project opens straight away.
         </>
         <>
           Open the project to set its overall <UI>Status</UI> (<UI>Active</UI>, <UI>On hold</UI>, or{" "}
@@ -56,9 +57,8 @@ export default function Projects() {
           <strong>Set dates</strong> — fill in <UI>Start</UI> and <UI>End</UI> to plan the timeline.
         </LI>
         <LI>
-          <strong>Reorder or edit</strong> — use the <UI>↑</UI> / <UI>↓</UI> arrows to move a phase,
-          click its name to rename it, and <UI>×</UI> to delete it. Add more with{" "}
-          <UI>+ Add a phase</UI>.
+          <strong>Reorder or edit</strong> — use the up and down arrows to move a phase, click its name
+          to rename it, and its delete button to remove it. Add more with <UI>Add a phase</UI>.
         </LI>
       </UL>
 
@@ -66,6 +66,14 @@ export default function Projects() {
         The seeded phases are a starting point, not a cage. Add, rename, reorder, or remove them
         freely so the pipeline matches how this particular project actually runs.
       </Callout>
+
+      <H2>Boards</H2>
+      <P>
+        A project&rsquo;s <UI>Boards</UI> section lists the boards that carry its day-to-day work. Use{" "}
+        <UI>Add a board</UI> to create one inside the project, or <UI>Add existing board…</UI> to bring
+        in a standalone board. A project&rsquo;s boards show the project&rsquo;s phase, next milestone,
+        and objective alignment above their columns.
+      </P>
 
       <H2>Deliverables</H2>
       <P>
@@ -106,7 +114,7 @@ export default function Projects() {
 
       <Steps>
         <>
-          On a deliverable, click <UI>+ Request a review</UI> and choose what&rsquo;s being reviewed: the
+          On a deliverable, click <UI>Request a review</UI> and choose what&rsquo;s being reviewed: the
           linked storyboard, or a <strong>PDF or image</strong> you upload (for example, a Storyline or
           Rise export). Pick reviewers from your workspace, and/or add <strong>guests</strong> by name and
           email for SMEs who don&rsquo;t have an account. Set a due date and click <UI>Start round 1</UI>.
@@ -189,7 +197,7 @@ export default function Projects() {
       <H2>Milestones and time tracking</H2>
       <P>
         <strong>Milestones</strong> are the dated checkpoints that matter — a kickoff, a pilot, a
-        go-live. Add one with <UI>+ Add a milestone</UI>, give it a due date, and check it off when
+        go-live. Add one with <UI>Add a milestone</UI>, give it a due date, and check it off when
         it&rsquo;s hit; overdue, uncompleted milestones show their date in red. Upcoming milestones
         also surface on your home dashboard and in My Work.
       </P>
@@ -212,10 +220,10 @@ export default function Projects() {
         guide for how sprints work end to end.
       </P>
 
-      <Callout tone="note" title="Access">
+      <Callout tone="note">
         Projects are visible to all workspace members by default. An admin can restrict a project to
-        specific groups from the workspace group settings; once restricted, only those groups (and
-        admins) can see it in the list, on the dashboard, or via a direct link.
+        specific groups in <UI>Settings → Groups</UI>; once restricted, only those groups (plus admins
+        and managers) can see it in the list, on the dashboard, or via a direct link.
       </Callout>
     </>
   );

@@ -1,4 +1,4 @@
-import { Lead, H2, H3, P, UL, LI, Steps, Callout, DefList, Def, UI } from "@/components/help/prose";
+import { Lead, H2, H3, P, Steps, Callout, DefList, Def, UI } from "@/components/help/prose";
 
 export default function Notifications() {
   return (
@@ -52,7 +52,8 @@ export default function Notifications() {
           Welcome emails for new members and password-reset notices.
         </Def>
         <Def term="Due-date reminders">
-          A nudge the day before a card or milestone is due.
+          A nudge the day before something is due: cards (to their assignees), milestones (to admins),
+          and reviews not yet decided (to the reviewer, guests included).
         </Def>
       </DefList>
 

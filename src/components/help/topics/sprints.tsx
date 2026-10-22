@@ -63,16 +63,16 @@ export default function Sprints() {
       <P>
         Click <UI>Open board</UI> on any sprint to see its cards laid out as a Kanban view. Instead
         of the columns a single board uses, the sprint board groups every card by your
-        workspace&rsquo;s canonical statuses &mdash; <UI>Backlog</UI>, <UI>To do</UI>,{" "}
+        workspace&rsquo;s statuses &mdash; by default <UI>Backlog</UI>, <UI>To do</UI>,{" "}
         <UI>In progress</UI>, <UI>In review</UI>, and <UI>Done</UI> &mdash; so a mix of cards from
         different boards reads as one shared picture of progress.
       </P>
       <P>
         Each card shows its key, title, home project, labels, due date, and assignees. Click a card
-        to open the same full card drawer you use on a board &mdash; description, checklist,
-        comments, attachments, and all. Filter the view by <UI>All projects</UI>,{" "}
-        <UI>All assignees</UI>, or <UI>All labels</UI> at the top, with a live{" "}
-        <em>visible / total</em> count beside them. Filtering by label works across projects because
+        to open the same full card drawer you use on a board &mdash; description, subtasks,
+        comments, attachments, and all. Filter the view with the <UI>Project</UI>,{" "}
+        <UI>Assignee</UI>, and <UI>Label</UI> pickers at the top; while a filter is on, the bar shows{" "}
+        <em>N of M cards</em> and <UI>Clear</UI> resets it. Filtering by label works across projects because
         labels belong to the workspace, not to a single board. Keep a combination you use often by
         opening <UI>Views</UI> → <UI>Save current filters…</UI>; sprint views are personal to you and
         available on every sprint board.
@@ -82,8 +82,7 @@ export default function Sprints() {
       <P>
         Drag a card from one status column to another and it updates that card&rsquo;s canonical
         status everywhere &mdash; this is the same status the card carries on its home board, not a
-        sprint-only setting. You can also change it from the small status dropdown on the card face.
-        Because it&rsquo;s a real status change, it sends the usual status-change notification to
+        sprint-only setting. Because it&rsquo;s a real status change, it sends the usual status-change notification to
         people watching the card.
       </P>
 

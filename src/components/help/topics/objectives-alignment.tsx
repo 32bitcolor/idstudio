@@ -58,12 +58,12 @@ export default function ObjectivesAlignment() {
           level.
         </>
         <>
-          In the project&rsquo;s storyboards, expand a screen and use the <UI>Teaches:</UI> chips
+          In the project&rsquo;s storyboards, expand a screen and use the <UI>Teaches</UI> chips
           (O1, O2, …) to mark which objectives that screen covers.
         </>
         <>
           Back on the project, add <strong>assessment items</strong> and toggle which objectives each
-          one <UI>Assesses</UI>.
+          one <UI>Assesses:</UI>.
         </>
         <>
           Read the coverage summary at the top: any objective flagged <UI>Not yet taught</UI> or{" "}

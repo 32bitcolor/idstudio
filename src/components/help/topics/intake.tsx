@@ -1,4 +1,4 @@
-import { Lead, H2, H3, P, UL, LI, Steps, Callout, DefList, Def, UI } from "@/components/help/prose";
+import { Lead, H2, H3, P, Steps, Callout, DefList, Def, UI } from "@/components/help/prose";
 
 export default function Intake() {
   return (
@@ -44,8 +44,8 @@ export default function Intake() {
 
       <Callout tone="note" title="Spam protection">
         The form has a hidden honeypot field that real people never see &mdash; if it&rsquo;s filled
-        in, the submission is silently dropped. There&rsquo;s also a per-network rate limit, so a bot
-        (or an over-eager tab) can&rsquo;t flood your queue.
+        in, the submission is silently dropped. Each network can also submit only five requests an
+        hour, so a bot (or an over-eager tab) can&rsquo;t flood your queue.
       </Callout>
 
       <H2>The triage queue</H2>
@@ -124,8 +124,8 @@ export default function Intake() {
         When a request is worth doing, use <UI>Approve &amp; create project</UI>. Tavoro spins up a
         new <strong>ADDIE</strong> project from the request&rsquo;s title, marks the request as{" "}
         <UI>Converted</UI>, and links the two so you can jump between them. You&rsquo;ll be dropped
-        straight onto the new project to start planning. (Approving asks you to confirm first, since
-        it creates real work.)
+        straight onto the new project to start planning. You can also choose <UI>Approve</UI> right on
+        the queue row. (Approving asks you to confirm first, since it creates real work.)
       </P>
       <P>
         When a request isn&rsquo;t a fit, click <UI>Reject</UI>, add a short reason (optional, but
@@ -144,8 +144,8 @@ export default function Intake() {
 
       <H3>How Intake fits</H3>
       <P>
-        Intake is the first pillar of the Tavoro roadmap and the top of the funnel: it&rsquo;s where
-        demand enters, gets weighed, and turns into committed work. Approved requests flow directly
+        Intake is the top of the funnel: it&rsquo;s where demand enters, gets weighed, and turns into
+        committed work. Approved requests flow directly
         into <em>Projects</em>, where the ADDIE methodology carries them from analysis through
         evaluation. Think of Intake as deciding <em>whether</em> and <em>what</em>, and Projects as
         running the <em>how</em>.

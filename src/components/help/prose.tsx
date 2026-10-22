@@ -118,3 +118,33 @@ export function UI({ children }: { children: React.ReactNode }) {
     </span>
   );
 }
+
+/** A small reference table: a header row, then rows of cells. Scrolls sideways on phones. */
+export function Table({ head, rows }: { head: React.ReactNode[]; rows: React.ReactNode[][] }) {
+  return (
+    <div className="my-5 overflow-x-auto rounded-xl border border-border">
+      <table className="w-full text-left text-sm">
+        <thead className="bg-muted/60 text-foreground">
+          <tr>
+            {head.map((h, i) => (
+              <th key={i} className="px-4 py-2.5 font-semibold">
+                {h}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-border text-muted-foreground">
+          {rows.map((r, i) => (
+            <tr key={i}>
+              {r.map((c, k) => (
+                <td key={k} className="px-4 py-2.5 align-top leading-relaxed">
+                  {c}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
