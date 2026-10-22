@@ -14,5 +14,6 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   const next = new URL(req.url).searchParams.get("next") ?? "";
   const relay = next.startsWith("/") && !next.startsWith("//") && next.length <= 1000 ? next : "";
   const url = await samlFor(conn).getAuthorizeUrlAsync(relay, undefined, {});
+  console.info(`[sso] ${conn.id}: sent a sign-in to the identity provider`);
   return Response.redirect(url, 303);
 }
