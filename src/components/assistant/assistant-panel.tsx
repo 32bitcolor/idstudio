@@ -302,6 +302,7 @@ function AssistantPanel({ status, onClose }: { status: Status; onClose: () => vo
 
   const newChat = () => {
     abortRef.current?.abort();
+    setMenu(null);
     setConversationId(null);
     setItems([]);
     setPending([]);
