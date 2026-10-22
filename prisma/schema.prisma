@@ -43,8 +43,6 @@ model User {
   assignedIntakeRequests  IntakeRequest[]   @relation("IntakeAssignee")
   savedViews              SavedView[]
   apiTokens               ApiToken[]
-  assistantConnection     AssistantConnection?
-  assistantConversations  AssistantConversation[]
   oauthCodes              OAuthCode[]
 }
 
@@ -54,7 +52,6 @@ model Workspace {
   slug                 String            @unique
   intakeEnabled        Boolean           @default(true) // admin on/off toggle for the public intake form
   notificationSettings Json? // admin per-type email toggles; null/absent key = enabled (opt-out). See src/lib/notifications.ts
-  assistantEnabled     Boolean           @default(true) // admin on/off for the in-app assistant (docs/ASSISTANT.md)
   createdAt            DateTime          @default(now())
   updatedAt            DateTime          @updatedAt
   members              Membership[]
@@ -70,7 +67,6 @@ model Workspace {
   savedViews           SavedView[]
   reviewFiles          ReviewFile[]
   apiTokens            ApiToken[]
-  assistantConversations AssistantConversation[]
 }
 
 // Workspace/team-level, time-boxed grouping of work — independent of a project's
@@ -824,47 +820,4 @@ model OAuthCode {
   createdAt     DateTime    @default(now())
   client        OAuthClient @relation(fields: [clientId], references: [id], onDelete: Cascade)
   user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-}
-
-// The in-app assistant (docs/ASSISTANT.md). Each member connects their own OpenRouter
-// account; the key OpenRouter issues is stored encrypted (AES-256-GCM, key derived
-// from SESSION_SECRET) and only ever used server-side, for that member's chats.
-model AssistantConnection {
-  userId    String   @id
-  provider  String   @default("openrouter")
-  keyCipher String
-  keyHint   String // last few characters, to recognise it in OpenRouter's key list
-  model     String? // the member's chosen model; null = the default
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-}
-
-// One chat. Messages are stored in the OpenAI chat format OpenRouter speaks
-// (system prompt excluded), so a conversation can be resumed exactly, including tool
-// calls still waiting for the member's approval.
-model AssistantConversation {
-  id          String             @id @default(cuid())
-  userId      String
-  workspaceId String
-  title       String             @default("New chat")
-  createdAt   DateTime           @default(now())
-  updatedAt   DateTime           @updatedAt
-  user        User               @relation(fields: [userId], references: [id], onDelete: Cascade)
-  workspace   Workspace          @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  messages    AssistantMessage[]
-
-  @@index([userId, workspaceId, updatedAt])
-}
-
-model AssistantMessage {
-  id             String                @id @default(cuid())
-  conversationId String
-  role           String // user | assistant | tool
-  data           Json // the message as sent to the model
-  usage          Json? // tokens and cost reported for an assistant turn
-  createdAt      DateTime              @default(now())
-  conversation   AssistantConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
-
-  @@index([conversationId, createdAt])
 }

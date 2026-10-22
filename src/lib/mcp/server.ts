@@ -16,7 +16,7 @@ import { registerDocumentTools } from "@/lib/mcp/documents";
 // resources for reading one thing by URI, and prompts for common ID workflows. Built
 // fresh per request, inside runAsPrincipal(), so every tool runs as the token's user.
 
-export const INSTRUCTIONS = `Tavoro is an instructional-design team workspace: projects (ADDIE/SAM phases, deliverables, milestones, learning objectives), boards of cards, storyboards (screens with on-screen text, narration, visuals, interaction and developer notes), SME review rounds with pinned comments, intake requests and sprints.
+const INSTRUCTIONS = `Tavoro is an instructional-design team workspace: projects (ADDIE/SAM phases, deliverables, milestones, learning objectives), boards of cards, storyboards (screens with on-screen text, narration, visuals, interaction and developer notes), SME review rounds with pinned comments, intake requests and sprints.
 
 Start with get_workspace to learn who you are acting as, your access level, and the members, statuses, labels and sprints other tools accept. Use search to find things by name; fetch returns any result as a full Markdown document, and the get_* tools return structured detail. Cards can be referred to by key (e.g. SEC-12). Rich text (descriptions, comments, storyboard fields) is Markdown in both directions. Dates are YYYY-MM-DD.
 

@@ -135,7 +135,7 @@ export const HELP_TOPICS: HelpTopic[] = [
   {
     slug: "ai-mcp",
     title: "AI assistants (MCP)",
-    summary: "The built-in assistant, and connecting Claude, ChatGPT and other assistants.",
+    summary: "Connect Claude and other assistants to your workspace.",
     icon: Bot,
     group: "Modules",
     Body: AiMcp,

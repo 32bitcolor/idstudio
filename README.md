@@ -149,10 +149,6 @@ review that.
   - **backup and restore**, including attachments and review files
   - workspace **labels**
   - a one-click **self-update** (pull, rebuild, migrate) from **Settings → Updates**
-- **A built-in assistant**: a chat panel beside every page that knows what you have open. Members sign
-  in with their own OpenRouter account and pick a model (Claude, GPT, Gemini and more). It looks things
-  up on its own and asks before every change, with an approval card. Admins can turn it off.
-  ([docs/ASSISTANT.md](docs/ASSISTANT.md))
 - **AI assistants over MCP**: Tavoro is a Model Context Protocol server at `/api/mcp`.
   - Claude.ai, Claude Desktop and ChatGPT connect from just the URL. They sign in through OAuth, and
     you pick the workspace and read-only or read-and-change access.

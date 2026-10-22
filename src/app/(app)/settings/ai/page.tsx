@@ -3,9 +3,6 @@ import { getActiveMembership, requireUser } from "@/lib/dal";
 import { appUrl } from "@/lib/app-url";
 import { Role } from "@/generated/prisma/client";
 import { AiSettings, type ConnectionRow } from "@/components/settings/ai-settings";
-import { AssistantSettings } from "@/components/settings/assistant-settings";
-import { openSecret } from "@/lib/assistant/crypto";
-import { DEFAULT_MODEL, keyInfo } from "@/lib/assistant/openrouter";
 
 export const metadata = { title: "AI & MCP · Tavoro" };
 
@@ -49,32 +46,12 @@ export default async function AiSettingsPage() {
     expiresAt: r.kind === "oauth" ? null : (r.expiresAt?.toISOString() ?? null),
     owner: r.user.id === me.id ? null : (r.user.name ?? r.user.email),
   });
-  const assistant = await prisma.assistantConnection.findUnique({ where: { userId: me.id } });
-  const key = assistant ? openSecret(assistant.keyCipher) : null;
-  const info = key ? await keyInfo(key) : null;
   return (
-    <div className="flex flex-col gap-8">
-      <AssistantSettings
-        enabled={membership.workspace.assistantEnabled}
-        isAdmin={isAdmin}
-        connection={
-          assistant
-            ? {
-                keyHint: assistant.keyHint,
-                model: assistant.model ?? DEFAULT_MODEL,
-                connectedAt: assistant.createdAt.toISOString(),
-                usage: info?.usage ?? null,
-                limitRemaining: info?.limitRemaining ?? null,
-              }
-            : null
-        }
-      />
-      <AiSettings
+    <AiSettings
       mcpUrl={appUrl("/api/mcp") ?? "/api/mcp"}
       workspaceName={membership.workspace.name}
       mine={rows.filter((r) => r.user.id === me.id).map(toRow)}
       others={isAdmin ? rows.filter((r) => r.user.id !== me.id).map(toRow) : null}
-      />
-    </div>
+    />
   );
 }

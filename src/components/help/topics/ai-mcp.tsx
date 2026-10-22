@@ -10,31 +10,6 @@ export default function AiMcp() {
         storyboard.&rdquo;
       </Lead>
 
-      <H2>The built-in assistant</H2>
-      <P>
-        The <UI>Assistant</UI> button (the sparkle in the top bar) opens a chat beside whatever page you&rsquo;re on. It knows what you have open, so
-        &ldquo;summarize this round&rdquo; or &ldquo;split this card into subtasks&rdquo; just work.
-      </P>
-      <Steps>
-        <>
-          Open the assistant and choose <UI>Sign in with OpenRouter</UI>. OpenRouter is one account for many AI models (Claude, GPT, Gemini and
-          more); usage is billed to your OpenRouter account.
-        </>
-        <>Approve the connection on OpenRouter. You&rsquo;re brought back to the page you were on.</>
-        <>Ask away. Pick a different model from the menu at the top of the panel any time.</>
-      </Steps>
-      <UL>
-        <LI>
-          Looking things up happens straight away. <strong>Every change asks first</strong>: an approval card shows exactly what will be created,
-          changed or deleted, and nothing happens until you choose <UI>Approve</UI>.
-        </LI>
-        <LI>Your chats are saved, private to you. Open past ones from the clock icon; start fresh with the plus.</LI>
-        <LI>
-          <UI>Settings → AI &amp; MCP</UI> shows your connection and what you&rsquo;ve spent, and disconnects it. Admins can turn the assistant off
-          for the workspace there.
-        </LI>
-      </UL>
-
       <H2>Connect Claude.ai or Claude Desktop</H2>
       <Steps>
         <>
