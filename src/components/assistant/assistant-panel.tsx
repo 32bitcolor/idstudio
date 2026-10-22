@@ -34,7 +34,7 @@ import type { ModelOption } from "@/lib/assistant/openrouter";
 // The in-app assistant (docs/ASSISTANT.md): a panel docked beside every page. It knows
 // the page you're on, reads freely, and asks before every change.
 
-type Status = { enabled: boolean; connected: boolean; isAdmin: boolean };
+type Status = { enabled: boolean; connected: boolean; isAdmin: boolean; model: string };
 
 const Ctx = createContext<{ open: boolean; setOpen: (v: boolean) => void } | null>(null);
 const OPEN_KEY = "tavoro-assistant-open";
@@ -245,6 +245,10 @@ function AssistantPanel({ status, onClose }: { status: Status; onClose: () => vo
   const [input, setInput] = useState("");
   const [menu, setMenu] = useState<null | "models" | "history">(null);
   const [models, setModels] = useState<{ recommended: ModelOption[]; all: ModelOption[]; current: string } | null>(null);
+  const [model, setModel] = useState(status.model);
+  // The panel only renders in the browser, so localStorage is safe here. Until the last
+  // chat is back, sending would start a second one.
+  const [ready, setReady] = useState(() => !(status.connected && read(CONV_KEY)));
   const [modelFilter, setModelFilter] = useState("");
   const [history, setHistory] = useState<{ id: string; title: string; updatedAt: Date }[] | null>(null);
   const abortRef = useRef<AbortController | null>(null);
@@ -279,7 +283,9 @@ function AssistantPanel({ status, onClose }: { status: Status; onClose: () => vo
     const last = read(CONV_KEY);
     if (!last || !status.connected) return;
     let live = true;
-    void loadAssistantConversation(last).then((res) => live && show(last, res));
+    void loadAssistantConversation(last)
+      .then((res) => live && show(last, res))
+      .finally(() => live && setReady(true));
     return () => {
       live = false;
     };
@@ -305,7 +311,7 @@ function AssistantPanel({ status, onClose }: { status: Status; onClose: () => vo
   };
 
   const send = async (body: { message?: string; decisions?: Record<string, "approve" | "decline"> }) => {
-    if (streaming) return;
+    if (streaming || !ready) return;
     setError(null);
     setStreaming(true);
     changedRef.current = false;
@@ -386,12 +392,11 @@ function AssistantPanel({ status, onClose }: { status: Status; onClose: () => vo
 
   const submit = () => {
     const text = input.trim();
-    if (!text || streaming) return;
+    if (!text || streaming || !ready) return;
     setInput("");
     void send({ message: text });
   };
 
-  const currentModel = models?.current;
   const filtered = useMemo(() => {
     if (!models) return [];
     const q = modelFilter.trim().toLowerCase();
@@ -399,7 +404,7 @@ function AssistantPanel({ status, onClose }: { status: Status; onClose: () => vo
   }, [models, modelFilter]);
   const pickModel = async (id: string) => {
     await setAssistantModel(id);
-    setModels((m) => (m ? { ...m, current: id } : m));
+    setModel(id);
     setMenu(null);
     setModelFilter("");
   };
@@ -416,7 +421,7 @@ function AssistantPanel({ status, onClose }: { status: Status; onClose: () => vo
         {status.enabled && status.connected && (
           <>
             <Button variant="ghost" size="sm" className="text-xs text-muted-foreground" onClick={() => setMenu(menu === "models" ? null : "models")}>
-              <span className="max-w-32 truncate">{currentModel ? currentModel.split("/")[1] : "Model"}</span>
+              <span className="max-w-32 truncate">{model.split("/").pop()}</span>
               <ChevronDown className="size-3" />
             </Button>
             <Button variant="ghost" size="icon-sm" title="Past chats" onClick={() => setMenu(menu === "history" ? null : "history")}>
@@ -443,7 +448,7 @@ function AssistantPanel({ status, onClose }: { status: Status; onClose: () => vo
                     <button key={m.id} type="button" onClick={() => pickModel(m.id)} className="flex w-full flex-col rounded-md px-2 py-1.5 text-left hover:bg-muted">
                       <span className="flex items-center gap-1.5">
                         {m.name}
-                        {m.id === models.current && <Check className="size-3.5 text-primary" />}
+                        {m.id === model && <Check className="size-3.5 text-primary" />}
                       </span>
                       <span className="text-xs text-muted-foreground">{price(m)}</span>
                     </button>
@@ -535,7 +540,9 @@ function AssistantPanel({ status, onClose }: { status: Status; onClose: () => vo
       ) : (
         <>
           <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto px-4 py-4" onClick={() => setMenu(null)}>
-            {items.length === 0 && !streaming ? (
+            {!ready ? (
+              <Loader2 className="mt-6 size-4 animate-spin text-muted-foreground" aria-label="Loading" />
+            ) : items.length === 0 && !streaming ? (
               <div className="flex flex-col gap-2 pt-6 text-sm">
                 <p className="text-muted-foreground">Ask about this page, or anything in your workspace.</p>
                 {suggestionsFor(path).map((s) => (
@@ -591,7 +598,8 @@ function AssistantPanel({ status, onClose }: { status: Status; onClose: () => vo
                   }
                 }}
                 rows={Math.min(6, Math.max(1, input.split("\n").length))}
-                placeholder="Ask the assistant…"
+                placeholder={ready ? "Ask the assistant…" : "Loading your last chat…"}
+                disabled={!ready}
                 aria-label="Message the assistant"
                 className="max-h-40 min-h-6 flex-1 resize-none bg-transparent py-1 text-sm outline-none placeholder:text-muted-foreground"
               />

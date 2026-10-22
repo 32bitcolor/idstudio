@@ -12,6 +12,7 @@ import { readUpdateStatus } from "@/lib/updater";
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
 import { AssistantButton, AssistantProvider } from "@/components/assistant/assistant-panel";
+import { DEFAULT_MODEL } from "@/lib/assistant/openrouter";
 
 export default async function AppLayout({
   children,
@@ -58,9 +59,14 @@ export default async function AppLayout({
         })
       : Promise.resolve(0),
     isAdmin ? readUpdateStatus() : Promise.resolve(null),
-    prisma.assistantConnection.findUnique({ where: { userId: user.id }, select: { userId: true } }),
+    prisma.assistantConnection.findUnique({ where: { userId: user.id }, select: { model: true } }),
   ]);
-  const assistantStatus = { enabled: membership?.workspace.assistantEnabled ?? false, connected: !!assistantConnection, isAdmin };
+  const assistantStatus = {
+    enabled: membership?.workspace.assistantEnabled ?? false,
+    connected: !!assistantConnection,
+    isAdmin,
+    model: assistantConnection?.model ?? DEFAULT_MODEL,
+  };
 
   return (
     <SidebarProvider>
