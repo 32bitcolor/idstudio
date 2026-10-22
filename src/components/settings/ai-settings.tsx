@@ -73,9 +73,9 @@ export function AiSettings({
   return (
     <div className="flex flex-col gap-8">
       <section>
-        <SectionHeader>Connect an AI assistant</SectionHeader>
+        <SectionHeader>Connect an outside AI assistant</SectionHeader>
         <p className="mb-3 max-w-2xl text-sm text-muted-foreground">
-          Tavoro is an MCP server. Claude and other assistants that speak MCP can look things up and do work in{" "}
+          Tavoro is also an MCP server, so Claude and other assistants that speak MCP can look things up and do work in{" "}
           <span className="font-medium text-foreground">{workspaceName}</span> as you: read projects, boards, storyboards and reviews, create
           and update cards, draft screens, answer review comments and more. They see only what you can see.
         </p>

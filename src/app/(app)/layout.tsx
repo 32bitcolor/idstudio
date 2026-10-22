@@ -11,6 +11,7 @@ import { UpdatePill } from "@/components/app-shell/update-pill";
 import { readUpdateStatus } from "@/lib/updater";
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
+import { AssistantButton, AssistantProvider } from "@/components/assistant/assistant-panel";
 
 export default async function AppLayout({
   children,
@@ -31,7 +32,7 @@ export default async function AppLayout({
   // but doesn't get ADMIN's user/group/workspace-settings management.
   const canViewTeam = isAdmin || membership?.role === "MANAGER";
 
-  const [awaitingReviewCount, needsTriageCount, myOpenSubtasksCount, updateStatus] = await Promise.all([
+  const [awaitingReviewCount, needsTriageCount, myOpenSubtasksCount, updateStatus, assistantConnection] = await Promise.all([
     membership
       ? prisma.reviewCycle.count({
           where: {
@@ -57,7 +58,9 @@ export default async function AppLayout({
         })
       : Promise.resolve(0),
     isAdmin ? readUpdateStatus() : Promise.resolve(null),
+    prisma.assistantConnection.findUnique({ where: { userId: user.id }, select: { userId: true } }),
   ]);
+  const assistantStatus = { enabled: membership?.workspace.assistantEnabled ?? false, connected: !!assistantConnection, isAdmin };
 
   return (
     <SidebarProvider>
@@ -71,27 +74,30 @@ export default async function AppLayout({
         workspaces={memberships.map((m) => ({ id: m.workspaceId, name: m.workspace.name }))}
         activeWorkspaceId={membership?.workspaceId ?? null}
       />
-      <SidebarInset>
-        <PageTitleProvider>
-          <header className="sticky top-0 z-10 flex h-14 shrink-0 items-center gap-2 border-b border-border bg-background px-4">
-            <SidebarTrigger className="-ml-1" />
-            <Separator orientation="vertical" className="mr-2 h-4" />
-            {/* Phones show the page title in the page itself; the crumbs would only
-                crowd the header past the viewport. */}
-            <div className="hidden min-w-0 flex-1 overflow-hidden sm:block">
-              <Breadcrumbs />
-            </div>
-            <div className="ml-auto flex shrink-0 items-center gap-2">
-              {updateStatus && <UpdatePill initialCount={updateStatus.behind} />}
-              <CommandPalette />
-              <IntakeBadge count={needsTriageCount} />
-              <NotificationsBadge count={awaitingReviewCount + myOpenSubtasksCount} />
-              <QuickCreate />
-            </div>
-          </header>
-          <div className="min-w-0 flex-1">{children}</div>
-        </PageTitleProvider>
-      </SidebarInset>
+      <AssistantProvider status={assistantStatus}>
+        <SidebarInset>
+          <PageTitleProvider>
+            <header className="sticky top-0 z-10 flex h-14 shrink-0 items-center gap-2 border-b border-border bg-background px-4">
+              <SidebarTrigger className="-ml-1" />
+              <Separator orientation="vertical" className="mr-2 h-4" />
+              {/* Phones show the page title in the page itself; the crumbs would only
+                  crowd the header past the viewport. */}
+              <div className="hidden min-w-0 flex-1 overflow-hidden sm:block">
+                <Breadcrumbs />
+              </div>
+              <div className="ml-auto flex shrink-0 items-center gap-2">
+                {updateStatus && <UpdatePill initialCount={updateStatus.behind} />}
+                <CommandPalette />
+                <IntakeBadge count={needsTriageCount} />
+                <NotificationsBadge count={awaitingReviewCount + myOpenSubtasksCount} />
+                <AssistantButton />
+                <QuickCreate />
+              </div>
+            </header>
+            <div className="min-w-0 flex-1">{children}</div>
+          </PageTitleProvider>
+        </SidebarInset>
+      </AssistantProvider>
     </SidebarProvider>
   );
 }
