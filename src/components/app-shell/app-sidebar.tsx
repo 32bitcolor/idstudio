@@ -67,7 +67,10 @@ export function AppSidebar({
           <SidebarMenuItem>
             <SidebarMenuButton size="lg" asChild>
               <Link href="/dashboard">
-                <TavoroMark />
+                {/* Wrapped: the menu button shrinks any direct <svg> child to icon size. */}
+                <span className="flex size-8 shrink-0">
+                  <TavoroMark />
+                </span>
                 <div className="grid flex-1 text-left leading-tight">
                   <TavoroWordmark className="truncate text-base" />
                   <span className="truncate text-xs text-muted-foreground">
