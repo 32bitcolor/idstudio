@@ -20,7 +20,7 @@ export function sha256(s: string): string {
   return createHash("sha256").update(s).digest("hex");
 }
 
-export function newSecret(prefix: "tav_" | "tavo_" | "tavr_" | "tavc_"): string {
+export function newSecret(prefix: "tav_" | "tavo_" | "tavr_" | "tavc_" | "tavs_"): string {
   return prefix + randomBytes(32).toString("base64url");
 }
 

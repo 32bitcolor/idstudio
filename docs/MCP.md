@@ -30,31 +30,48 @@ as a signed-in member. This doc records what was built and why.
    database and Markdown in tools (`lib/markdown.ts`, both directions: headings, lists (nested),
    quotes, code, bold/italic/strike/code, links, hard breaks). Mentions become `@Name` text; MCP
    writes don't send mention emails.
-6. **OAuth 2.1 built in, public clients only.** Tavoro is both the authorization server and the
-   resource server:
+6. **OAuth 2.1 built in.** Tavoro is both the authorization server and the resource server:
    - RFC 9728 protected-resource metadata and RFC 8414 server metadata, at the `/.well-known/…` paths
      through `next.config.ts` rewrites (the App Router can't route a dot-folder);
+   - **Client ID Metadata Documents** (the MCP spec's preferred registration, and ChatGPT's first
+     choice): a client_id that is an https URL is fetched (`lib/oauth-cimd.ts`; public addresses
+     only, no redirects, 5 s, 64 KB), checked (`client_id` must equal the URL, redirect URIs must
+     pass the same rules as registration, `none` auth), stored as a client and refreshed hourly;
    - RFC 7591 dynamic registration (open, throttled to 20/hour per IP; redirect URIs must be https,
-     loopback http, or an app scheme, never `javascript:`/`data:`/`file:`);
+     loopback http, or an app scheme, never `javascript:`/`data:`/`file:`). Public clients (`none`,
+     PKCE) by default; `client_secret_basic` / `client_secret_post` clients get a `tavs_` secret,
+     stored hashed, and must present it at the token endpoint;
+   - loopback redirects (`localhost`, `127.0.0.1`, `[::1]`) match on any port (RFC 8252), since
+     desktop clients and CLIs pick a free one at run time;
+   - RFC 9207 `iss` on every authorization response, and RFC 8707 `resource` checked on the
+     authorize and token requests (it must name this server or `/api/mcp`);
    - authorization-code flow with **PKCE S256 required** and a consent page at `/oauth/authorize`
      where the member picks the workspace and access level;
    - 10-minute single-use codes, 1-hour access tokens, 30-day refresh tokens rotated on every use
      (the old refresh and access tokens die immediately); RFC 7009 revocation.
 
-   The 401 from `/api/mcp` carries `WWW-Authenticate: Bearer resource_metadata=…`, which is how
-   Claude.ai and Claude Desktop discover all of this from just the URL.
-7. **People stay in control.** Settings → **AI & MCP** shows each connection with last use, and
+   The 401 from `/api/mcp` carries `WWW-Authenticate: Bearer resource_metadata=…, scope="read write"`,
+   which is how clients discover all of this from just the URL.
+7. **Lenient where clients differ.** A POST missing `application/json` or `text/event-stream` in
+   `Accept` is served anyway (some clients send only one). Tools that return objects also return
+   them as `structuredContent`, and `search`/`fetch` declare output schemas.
+8. **`search` + `fetch`, the document pair.** `search(query)` returns `{ results: [{ id, title, url }] }`
+   and `fetch(id)` returns `{ id, title, text, url, metadata }` with the item as a full Markdown
+   document (`lib/mcp/documents.ts`). That's the shape ChatGPT's deep research and company knowledge
+   require, and it suits any assistant that wants to read rather than navigate. Ids are
+   `card:…`, `project:…`, `deliverable:…`, `board:…`, `storyboard:…`, `review:…`, `intake:…`.
+9. **People stay in control.** Settings → **AI & MCP** shows each connection with last use, and
    revokes it at once. Admins see and can revoke everyone's in their workspace. Tokens can only be
    created from the browser, never through MCP. Login now honours `?next=` (same-site paths only),
    so signing in mid-flow returns to the consent page.
 
 ## What's exposed
 
-**Tools (49 with read and write access, 16 read-only):**
+**Tools (50 with read and write access, 17 read-only):**
 
 | Area | Read | Write |
 | ---- | ---- | ----- |
-| Workspace | `get_workspace` (you, access, members, statuses, labels, sprints), `search`, `get_my_work` | |
+| Workspace | `get_workspace` (you, access, members, statuses, labels, sprints), `search`, `fetch`, `get_my_work` | |
 | Boards & cards | `list_boards`, `get_board`, `get_card` (by id or key, e.g. SEC-12) | `create_board`, `create_column`, `create_card`, `update_card` (title, Markdown description, due, column, assignees, SMEs, labels, sprint), `add_card_comment`, `add_subtasks`, `set_subtask_done`, `delete_card`* |
 | Projects | `list_projects`, `get_project` | `create_project`, `update_project`, `delete_project`*, `add_phase`, `update_phase`, `create_deliverable`, `update_deliverable`, `create_milestone`, `update_milestone`, `add_objective`, `add_assessment_item`, `log_time` |
 | Storyboards | `list_storyboards`, `get_storyboard` | `create_storyboard`, `update_storyboard`, `add_screens`, `update_screen` (fields, position, objectives), `delete_screen`* |
@@ -69,6 +86,19 @@ as a signed-in member. This doc records what was built and why.
 **Prompts:** `status_report`, `summarize_feedback`, `draft_storyboard`, `triage_intake`,
 `plan_sprint`. Each one embeds the relevant data and asks the model to confirm before changing
 anything.
+
+## Connecting other assistants
+
+| Client | How |
+| ------ | --- |
+| Claude.ai / Claude Desktop | Settings → Connectors → Add custom connector → `https://<host>/api/mcp`. OAuth via dynamic registration. |
+| Claude Code | `claude mcp add --transport http tavoro https://<host>/api/mcp` (OAuth), or add `--header "Authorization: Bearer tav_…"`. |
+| ChatGPT | Settings → Apps → Advanced → Developer mode → Create app → URL `https://<host>/api/mcp`, auth OAuth. Signs in with its metadata document (`https://chatgpt.com/oauth/client.json`). Deep research and company knowledge use `search`/`fetch`; the other tools work in developer-mode chats. |
+| Codex CLI | `~/.codex/config.toml`: `[mcp_servers.tavoro]` `url = "https://<host>/api/mcp"`, then `codex mcp login tavoro`; or `bearer_token_env_var = "TAVORO_TOKEN"` with a personal token. |
+| Cursor | `.cursor/mcp.json`: `{"mcpServers":{"tavoro":{"url":"https://<host>/api/mcp"}}}`; OAuth on first use, or add `"headers":{"Authorization":"Bearer tav_…"}`. |
+| VS Code (Copilot) | `.vscode/mcp.json`: `{"servers":{"tavoro":{"type":"http","url":"https://<host>/api/mcp"}}}`. |
+| Gemini CLI | `~/.gemini/settings.json`: `{"mcpServers":{"tavoro":{"httpUrl":"https://<host>/api/mcp"}}}`, then `/mcp auth tavoro`; or `"headers"` with a personal token. |
+| Anything else | Any Streamable-HTTP MCP client, with OAuth or `Authorization: Bearer tav_…`. |
 
 ## Not exposed (on purpose)
 

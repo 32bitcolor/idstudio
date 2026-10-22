@@ -3,6 +3,8 @@ import { prisma } from "@/lib/db";
 import { requireUser } from "@/lib/dal";
 import { decideAuthorization } from "@/app/actions/oauth";
 import { normaliseScope } from "@/lib/api-tokens";
+import { findClient } from "@/lib/oauth-cimd";
+import { baseUrl, redirectAllowed, resourceAllowed } from "@/lib/oauth";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
 
@@ -17,27 +19,33 @@ export default async function AuthorizePage({ searchParams }: { searchParams: Pr
   const me = await requireUser();
   const clientId = one(sp.client_id);
   const redirectUri = one(sp.redirect_uri);
-  const client = clientId ? await prisma.oAuthClient.findUnique({ where: { id: clientId }, select: { name: true, redirectUris: true } }) : null;
+  const found = await findClient(clientId);
+  const client = "error" in found ? null : found;
 
   // A bad client or redirect URI is shown here, never redirected to (RFC 6749 §4.1.2.1).
-  if (!client || !client.redirectUris.includes(redirectUri)) {
+  if (!client || !redirectAllowed(client.redirectUris, redirectUri)) {
     return (
       <div className="flex flex-col gap-2 text-sm">
         <h2 className="text-lg font-medium">Can&apos;t connect</h2>
         <p className="text-muted-foreground">
-          This connection request is invalid: the app isn&apos;t registered, or it asked to return somewhere it didn&apos;t register. Start
+          This connection request is invalid: {"error" in found ? found.error : "the app asked to return somewhere it didn't register."} Start
           again from the app.
         </p>
       </div>
     );
   }
-  if (one(sp.response_type) !== "code" || one(sp.code_challenge_method) !== "S256" || !one(sp.code_challenge)) {
+  const fail = (error: string, description: string) => {
     const back = new URL(redirectUri);
-    back.searchParams.set("error", "invalid_request");
-    back.searchParams.set("error_description", "response_type=code with a PKCE S256 code_challenge is required");
+    back.searchParams.set("error", error);
+    back.searchParams.set("error_description", description);
     if (one(sp.state)) back.searchParams.set("state", one(sp.state));
+    back.searchParams.set("iss", baseUrl()); // RFC 9207: errors carry the issuer too
     redirect(back.toString());
+  };
+  if (one(sp.response_type) !== "code" || one(sp.code_challenge_method) !== "S256" || !one(sp.code_challenge)) {
+    fail("invalid_request", "response_type=code with a PKCE S256 code_challenge is required");
   }
+  if (!resourceAllowed(one(sp.resource))) fail("invalid_target", "resource must be this server's MCP endpoint");
 
   const memberships = await prisma.membership.findMany({
     where: { userId: me.id },

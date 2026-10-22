@@ -4,7 +4,8 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { getCurrentUser } from "@/lib/dal";
 import { newSecret, normaliseScope, sha256 } from "@/lib/api-tokens";
-import { baseUrl, CODE_TTL_MS } from "@/lib/oauth";
+import { baseUrl, CODE_TTL_MS, redirectAllowed, resourceAllowed } from "@/lib/oauth";
+import { findClient } from "@/lib/oauth-cimd";
 
 /** The consent screen's answer. Everything is checked again here: the form is just
  *  the browser repeating what /oauth/authorize was asked. */
@@ -18,9 +19,9 @@ export async function decideAuthorization(formData: FormData) {
   const clientId = get("client_id");
   const redirectUri = get("redirect_uri");
   const state = get("state");
-  const client = await prisma.oAuthClient.findUnique({ where: { id: clientId }, select: { redirectUris: true } });
+  const client = await findClient(clientId);
   // Never redirect anywhere the client didn't register.
-  if (!client || !client.redirectUris.includes(redirectUri)) redirect("/dashboard");
+  if ("error" in client || !redirectAllowed(client.redirectUris, redirectUri)) redirect("/dashboard");
 
   const back = new URL(redirectUri);
   if (state) back.searchParams.set("state", state);
@@ -34,7 +35,7 @@ export async function decideAuthorization(formData: FormData) {
   const workspaceId = get("workspace_id");
   const member = await prisma.membership.findFirst({ where: { userId: me.id, workspaceId }, select: { id: true } });
   const challenge = get("code_challenge");
-  if (!member || !/^[A-Za-z0-9_-]{43}$/.test(challenge)) {
+  if (!member || !/^[A-Za-z0-9_-]{43}$/.test(challenge) || !resourceAllowed(get("resource"))) {
     back.searchParams.set("error", "invalid_request");
     redirect(back.toString());
   }

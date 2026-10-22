@@ -3,8 +3,9 @@ import { createHash } from "node:crypto";
 import { SCOPES } from "@/lib/api-tokens";
 
 // OAuth 2.1 for MCP clients (docs/MCP.md): Tavoro is both the authorization server
-// and the resource server. Public clients only, PKCE (S256) required, dynamic client
-// registration (RFC 7591) so Claude.ai / Claude Desktop can connect from just the URL.
+// and the resource server. PKCE (S256) always; clients identify themselves with a
+// Client ID Metadata Document URL (ChatGPT, newer clients) or register dynamically
+// (RFC 7591), so any MCP client can connect from just the URL.
 
 export const CODE_TTL_MS = 10 * 60 * 1000;
 export const MCP_PATH = "/api/mcp";
@@ -47,10 +48,15 @@ export function authorizationServerMetadata(req: Request) {
     registration_endpoint: `${base}/api/oauth/register`,
     revocation_endpoint: `${base}/api/oauth/revoke`,
     response_types_supported: ["code"],
+    response_modes_supported: ["query"],
     grant_types_supported: ["authorization_code", "refresh_token"],
     code_challenge_methods_supported: ["S256"],
-    token_endpoint_auth_methods_supported: ["none"],
-    revocation_endpoint_auth_methods_supported: ["none"],
+    token_endpoint_auth_methods_supported: ["none", "client_secret_basic", "client_secret_post"],
+    revocation_endpoint_auth_methods_supported: ["none", "client_secret_basic", "client_secret_post"],
+    // RFC 9207: every authorization response, errors included, carries `iss`.
+    authorization_response_iss_parameter_supported: true,
+    // MCP 2025-11-25: a client_id may be the URL of its metadata document.
+    client_id_metadata_document_supported: true,
     scopes_supported: ["read", "write"],
     service_documentation: `${base}/help/ai-mcp`,
   };
@@ -70,6 +76,39 @@ export function isAllowedRedirectUri(raw: string): boolean {
   if (["javascript", "data", "file", "vbscript", "blob", "about"].includes(scheme)) return false;
   if (scheme === "http") return ["localhost", "127.0.0.1", "[::1]"].includes(u.hostname);
   return true;
+}
+
+const LOOPBACK = new Set(["localhost", "127.0.0.1", "[::1]"]);
+
+/** Whether a requested redirect_uri is one the client registered. Exact match, except
+ *  that a loopback http redirect may use any port (RFC 8252 §7.3): native clients like
+ *  VS Code, Cursor and Codex pick a free port at sign-in time. */
+export function redirectAllowed(registered: string[], requested: string): boolean {
+  if (registered.includes(requested)) return true;
+  let r: URL;
+  try {
+    r = new URL(requested);
+  } catch {
+    return false;
+  }
+  if (r.protocol !== "http:" || !LOOPBACK.has(r.hostname)) return false;
+  return registered.some((u) => {
+    try {
+      const g = new URL(u);
+      return g.protocol === "http:" && g.hostname === r.hostname && g.pathname === r.pathname && g.search === r.search;
+    } catch {
+      return false;
+    }
+  });
+}
+
+/** RFC 8707: a `resource` a client asks for must be this server (the MCP endpoint, or
+ *  its origin). Absent is fine. */
+export function resourceAllowed(resource: string | null | undefined, req?: Request): boolean {
+  if (!resource) return true;
+  const strip = (u: string) => u.replace(/\/+$/, "");
+  const r = strip(resource);
+  return r === strip(resourceUrl(req)) || r === strip(baseUrl(req));
 }
 
 /** PKCE S256: base64url(sha256(verifier)) must equal the challenge. */

@@ -790,12 +790,18 @@ model ApiToken {
 // An OAuth client that registered itself (RFC 7591 dynamic client registration).
 // Public clients only (PKCE, no secret), as the MCP authorization spec expects.
 model OAuthClient {
-  id           String      @id // the client_id handed out at registration
-  name         String
-  redirectUris String[]
-  createdAt    DateTime    @default(now())
-  tokens       ApiToken[]
-  codes        OAuthCode[]
+  id                String      @id // the client_id: issued at registration, or a CIMD document URL
+  name              String
+  redirectUris      String[]
+  // "none" (public client, PKCE only) unless the client registered as confidential:
+  // "client_secret_basic" / "client_secret_post", with the secret's SHA-256 here.
+  authMethod        String      @default("none")
+  secretHash        String?
+  // Client ID Metadata Document clients: when the document was last fetched.
+  metadataFetchedAt DateTime?
+  createdAt         DateTime    @default(now())
+  tokens            ApiToken[]
+  codes             OAuthCode[]
 }
 
 // A one-time authorization code, valid for ten minutes.

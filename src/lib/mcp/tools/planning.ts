@@ -23,7 +23,7 @@ async function resolveIntake(ref: string) {
   return req.id;
 }
 
-async function loadIntake(id: string) {
+export async function loadIntake(id: string) {
   const r = await prisma.intakeRequest.findUniqueOrThrow({
     where: { id },
     select: {

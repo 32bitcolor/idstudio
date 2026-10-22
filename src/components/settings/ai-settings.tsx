@@ -83,7 +83,7 @@ export function AiSettings({
           <code className="rounded-md bg-muted px-3 py-1.5 font-mono text-sm">{mcpUrl}</code>
           <CopyButton text={mcpUrl} label="Copy URL" />
         </div>
-        <div className="mt-4 grid gap-3 md:grid-cols-2">
+        <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
           <div className="rounded-lg border border-border bg-surface p-4 text-sm">
             <h3 className="mb-1 flex items-center gap-1.5 font-semibold">
               <Plug className="size-4" aria-hidden="true" /> Claude.ai or Claude Desktop
@@ -98,6 +98,20 @@ export function AiSettings({
           </div>
           <div className="rounded-lg border border-border bg-surface p-4 text-sm">
             <h3 className="mb-1 flex items-center gap-1.5 font-semibold">
+              <Plug className="size-4" aria-hidden="true" /> ChatGPT
+            </h3>
+            <ol className="list-decimal space-y-1 pl-5 text-muted-foreground">
+              <li>
+                <span className="text-foreground">Settings → Apps → Advanced settings</span>: turn on Developer mode.
+              </li>
+              <li>
+                <span className="text-foreground">Create app</span>, paste the URL above, and choose OAuth.
+              </li>
+              <li>Sign in here, then pick the workspace and access.</li>
+            </ol>
+          </div>
+          <div className="rounded-lg border border-border bg-surface p-4 text-sm">
+            <h3 className="mb-1 flex items-center gap-1.5 font-semibold">
               <KeyRound className="size-4" aria-hidden="true" /> Claude Code and other tools
             </h3>
             <p className="mb-2 text-muted-foreground">Sign in through the browser:</p>
@@ -106,6 +120,9 @@ export function AiSettings({
               Then run <span className="font-mono text-foreground">/mcp</span> in Claude Code to sign in. Or use a personal token (below):
             </p>
             <Code>{`claude mcp add --transport http tavoro ${mcpUrl} \\\n  --header "Authorization: Bearer <token>"`}</Code>
+            <p className="mt-2 text-muted-foreground">
+              Cursor, VS Code, Codex, Gemini CLI and other MCP clients take the same URL. See Help → AI assistants (MCP).
+            </p>
           </div>
         </div>
       </section>

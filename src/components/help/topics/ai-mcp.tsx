@@ -4,8 +4,8 @@ export default function AiMcp() {
   return (
     <>
       <Lead>
-        Tavoro is an <strong>MCP server</strong>. MCP (Model Context Protocol) is how AI assistants such as Claude connect to the tools
-        you use. Once connected, you can ask Claude to look things up and do the work in your workspace: &ldquo;What&rsquo;s waiting on
+        Tavoro is an <strong>MCP server</strong>. MCP (Model Context Protocol) is how AI assistants such as Claude, ChatGPT and Cursor connect to the tools
+        you use. Once connected, you can ask your assistant to look things up and do the work in your workspace: &ldquo;What&rsquo;s waiting on
         me?&rdquo;, &ldquo;Turn Dana&rsquo;s review comments into cards&rdquo;, &ldquo;Draft three screens on phishing for the Module 1
         storyboard.&rdquo;
       </Lead>
@@ -24,15 +24,50 @@ export default function AiMcp() {
         </>
       </Steps>
 
+      <H2>Connect ChatGPT</H2>
+      <Steps>
+        <>
+          In ChatGPT, open <UI>Settings → Apps → Advanced settings</UI> and turn on <strong>Developer mode</strong> (your plan and
+          workspace admin decide whether it&rsquo;s available).
+        </>
+        <>
+          Choose <UI>Create app</UI>, paste the Tavoro URL, and set authentication to <strong>OAuth</strong>.
+        </>
+        <>
+          ChatGPT sends you to Tavoro to sign in. Pick the workspace and access, then <UI>Allow</UI>.
+        </>
+      </Steps>
+      <P>
+        In a chat, pick the Tavoro app from the tools menu. Deep research can also read from Tavoro: it uses the <code>search</code> and{" "}
+        <code>fetch</code> tools, which return whole cards, projects, storyboards and review rounds as documents.
+      </P>
+
       <H2>Connect Claude Code or another tool</H2>
       <P>
         In Claude Code, add the server and sign in through the browser with <code>/mcp</code>:
       </P>
-      <pre className="my-3 overflow-x-auto rounded-md bg-muted px-3 py-2 text-xs">claude mcp add --transport http tavoro https://your-idstudio/api/mcp</pre>
+      <pre className="my-3 overflow-x-auto rounded-md bg-muted px-3 py-2 text-xs">claude mcp add --transport http tavoro https://your-tavoro/api/mcp</pre>
       <P>
         Tools that can&rsquo;t sign in through a browser use a <strong>personal token</strong> instead: <UI>Settings → AI &amp; MCP → New
         token</UI>, then send it as <code>Authorization: Bearer tav_…</code>. The token is shown once; store it like a password.
       </P>
+      <DefList>
+        <Def term="Cursor">
+          <code>.cursor/mcp.json</code>: <code>{`{"mcpServers": {"tavoro": {"url": "https://your-tavoro/api/mcp"}}}`}</code>. Cursor signs in
+          on first use.
+        </Def>
+        <Def term="VS Code (Copilot)">
+          <code>.vscode/mcp.json</code>: <code>{`{"servers": {"tavoro": {"type": "http", "url": "https://your-tavoro/api/mcp"}}}`}</code>.
+        </Def>
+        <Def term="Codex">
+          <code>~/.codex/config.toml</code>: a <code>[mcp_servers.tavoro]</code> table with <code>url = &quot;https://your-tavoro/api/mcp&quot;</code>,
+          then <code>codex mcp login tavoro</code>. Or set <code>bearer_token_env_var</code> to a variable holding a personal token.
+        </Def>
+        <Def term="Gemini CLI">
+          <code>~/.gemini/settings.json</code>: <code>{`{"mcpServers": {"tavoro": {"httpUrl": "https://your-tavoro/api/mcp"}}}`}</code>, then{" "}
+          <code>/mcp auth tavoro</code>.
+        </Def>
+      </DefList>
 
       <H2>What an assistant can do</H2>
       <DefList>

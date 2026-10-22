@@ -150,10 +150,12 @@ review that.
   - workspace **labels**
   - a one-click **self-update** (pull, rebuild, migrate) from **Settings → Updates**
 - **AI assistants over MCP**: Tavoro is a Model Context Protocol server at `/api/mcp`.
-  - Claude.ai and Claude Desktop connect from just the URL. They sign in through OAuth, and you pick
-    the workspace and read-only or read-and-change access.
-  - Claude Code and other tools connect the same way, or with a personal token.
-  - 49 tools cover search, My Work, boards and cards, projects, storyboards, review rounds, intake and
+  - Claude.ai, Claude Desktop and ChatGPT connect from just the URL. They sign in through OAuth, and
+    you pick the workspace and read-only or read-and-change access.
+  - Claude Code, Codex, Cursor, VS Code, Gemini CLI and other tools connect the same way, or with a
+    personal token.
+  - 50 tools cover search and fetch (whole items as Markdown documents, the shape ChatGPT's deep
+    research reads), My Work, boards and cards, projects, storyboards, review rounds, intake and
     sprints, with rich text as Markdown. There are also resources for each project, board, storyboard,
     card and round, and prompts for status reports, review-feedback summaries, storyboard drafts,
     intake triage and sprint planning.
@@ -276,7 +278,7 @@ Tavoro is built around five pillars of an ID operating system. Three are live; t
 | Whiteboards   | Excalidraw |
 | PDF review    | pdf.js, drawing pages to canvas with a selectable text layer (no scripts, no forms) |
 | Database      | PostgreSQL 16 + Prisma 7 (`@prisma/adapter-pg` driver adapter) |
-| Auth          | Email/password with argon2 (`@node-rs/argon2`), signed-JWT sessions (`jose`) and a Data Access Layer; per-workspace roles. Guest reviewers use separate HMAC-signed links, not accounts. MCP clients use OAuth 2.1 (PKCE, dynamic registration) or personal tokens |
+| Auth          | Email/password with argon2 (`@node-rs/argon2`), signed-JWT sessions (`jose`) and a Data Access Layer; per-workspace roles. Guest reviewers use separate HMAC-signed links, not accounts. MCP clients use OAuth 2.1 (PKCE, client metadata documents, dynamic registration) or personal tokens |
 | MCP           | `@modelcontextprotocol/sdk`, Streamable HTTP (stateless) |
 | Validation    | Zod 4 |
 | Background    | BullMQ + Redis worker: queued email (nodemailer), daily due-date reminders, and a nightly clean-up of unused review files and stale MCP credentials |

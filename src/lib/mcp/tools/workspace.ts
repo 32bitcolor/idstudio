@@ -1,17 +1,9 @@
 import "server-only";
-import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { prisma } from "@/lib/db";
 import { getCurrentUser } from "@/lib/dal";
-import {
-  boardVisibilityWhere,
-  projectVisibilityWhere,
-  storyboardVisibilityWhere,
-  whiteboardVisibilityWhere,
-  resolveCardKey,
-} from "@/lib/authz";
+import { boardVisibilityWhere, projectVisibilityWhere } from "@/lib/authz";
 import { isDecided } from "@/lib/methodology";
-import { ticketLabel } from "@/lib/intake";
 import { day, link, principal, tool } from "@/lib/mcp/util";
 
 export function cardHref(boardId: string, cardId: string) {
@@ -55,68 +47,6 @@ export function registerWorkspaceTools(server: McpServer) {
         statuses,
         labels,
         sprints: sprints.map((s) => ({ ...s, startDate: day(s.startDate), endDate: day(s.endDate) })),
-      };
-    },
-  );
-
-  tool(
-    server,
-    "search",
-    {
-      title: "Search the workspace",
-      description:
-        "Find cards (by title or key like SEC-12), boards, projects, deliverables, storyboards, whiteboards and intake requests by name. Returns ids to pass to the get_* tools.",
-      input: { query: z.string().min(2).describe("Words to look for, or a card key such as SEC-12"), limit: z.number().int().min(1).max(50).default(10) },
-      kind: "read",
-    },
-    async ({ query, limit }) => {
-      const wsId = principal().workspaceId;
-      const contains = { contains: query.trim(), mode: "insensitive" as const };
-      const [boardVis, projectVis, storyboardVis, whiteboardVis] = await Promise.all([
-        boardVisibilityWhere(),
-        projectVisibilityWhere(),
-        storyboardVisibilityWhere(),
-        whiteboardVisibilityWhere(),
-      ]);
-      const key = /^([A-Za-z][A-Za-z0-9]{0,9})-(\d+)$/.exec(query.trim());
-      const onBoard = { board: { workspaceId: wsId, ...boardVis } };
-      const [keyHit, cards, boards, projects, deliverables, storyboards, whiteboards, intake] = await Promise.all([
-        key ? resolveCardKey(key[1], Number(key[2])) : null,
-        prisma.card.findMany({
-          where: { title: contains, OR: [{ column: onBoard }, { parentCard: { column: onBoard } }] },
-          take: limit,
-          orderBy: { updatedAt: "desc" },
-          select: { id: true, title: true, parentCardId: true, column: { select: { boardId: true, name: true } }, parentCard: { select: { column: { select: { boardId: true } } } } },
-        }),
-        prisma.board.findMany({ where: { workspaceId: wsId, name: contains, ...boardVis }, take: limit, select: { id: true, name: true } }),
-        prisma.project.findMany({ where: { workspaceId: wsId, name: contains, ...projectVis }, take: limit, select: { id: true, name: true, status: true } }),
-        prisma.deliverable.findMany({
-          where: { name: contains, project: { workspaceId: wsId, ...projectVis } },
-          take: limit,
-          select: { id: true, name: true, status: true, project: { select: { id: true, name: true } } },
-        }),
-        prisma.storyboard.findMany({ where: { workspaceId: wsId, title: contains, ...storyboardVis }, take: limit, select: { id: true, title: true } }),
-        prisma.whiteboard.findMany({ where: { workspaceId: wsId, title: contains, ...whiteboardVis }, take: limit, select: { id: true, title: true } }),
-        prisma.intakeRequest.findMany({ where: { workspaceId: wsId, title: contains }, take: limit, select: { id: true, number: true, title: true, status: true } }),
-      ]);
-      const cardHits = cards.filter((c) => c.id !== keyHit?.cardId);
-      return {
-        cards: [
-          ...(keyHit ? [{ id: keyHit.cardId, title: keyHit.title, subtask: keyHit.isSubtask, url: cardHref(keyHit.boardId, keyHit.cardId) }] : []),
-          ...cardHits.map((c) => ({
-            id: c.id,
-            title: c.title,
-            subtask: !!c.parentCardId,
-            column: c.column?.name,
-            url: cardHref(c.column?.boardId ?? c.parentCard!.column!.boardId, c.id),
-          })),
-        ],
-        boards: boards.map((b) => ({ ...b, url: link(`/boards/${b.id}`) })),
-        projects: projects.map((x) => ({ ...x, url: link(`/projects/${x.id}`) })),
-        deliverables: deliverables.map((d) => ({ id: d.id, name: d.name, status: d.status, project: d.project })),
-        storyboards: storyboards.map((s) => ({ ...s, url: link(`/storyboards/${s.id}`) })),
-        whiteboards: whiteboards.map((w) => ({ ...w, url: link(`/whiteboards/${w.id}`) })),
-        intakeRequests: intake.map((r) => ({ id: r.id, ticket: ticketLabel(r.number), title: r.title, status: r.status })),
       };
     },
   );

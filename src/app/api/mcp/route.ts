@@ -20,10 +20,21 @@ function unauthorized(req: Request, description: string) {
       headers: {
         ...CORS,
         "Access-Control-Expose-Headers": "WWW-Authenticate",
-        "WWW-Authenticate": `Bearer resource_metadata="${baseUrl(req)}/.well-known/oauth-protected-resource/api/mcp", error="invalid_token", error_description="${description}"`,
+        "WWW-Authenticate": `Bearer resource_metadata="${baseUrl(req)}/.well-known/oauth-protected-resource/api/mcp", scope="read write", error="invalid_token", error_description="${description}"`,
       },
     },
   );
+}
+
+/** The SDK answers 406 unless Accept lists both application/json and text/event-stream,
+ *  as the spec asks clients to. Some clients send only one; since this server always
+ *  replies with plain JSON, accept them rather than turn them away. */
+function lenientAccept(req: Request): Request {
+  const accept = req.headers.get("accept") ?? "";
+  if (accept.includes("application/json") && accept.includes("text/event-stream")) return req;
+  const headers = new Headers(req.headers);
+  headers.set("accept", "application/json, text/event-stream");
+  return new Request(req.url, { method: req.method, headers, body: req.body, duplex: "half" } as RequestInit);
 }
 
 async function handle(req: Request) {
@@ -39,7 +50,7 @@ async function handle(req: Request) {
     const server = buildMcpServer();
     const transport = new WebStandardStreamableHTTPServerTransport({ sessionIdGenerator: undefined, enableJsonResponse: true });
     await server.connect(transport);
-    const res = await transport.handleRequest(req);
+    const res = await transport.handleRequest(lenientAccept(req));
     const headers = new Headers(res.headers);
     for (const [k, v] of Object.entries(CORS)) headers.set(k, v);
     return new Response(res.body, { status: res.status, headers });

@@ -22,8 +22,12 @@ export function link(path: string): string {
   return appUrl(path) ?? path;
 }
 
+/** A result as text (every client shows it) and, for objects, as structuredContent
+ *  (clients that read structured output, ChatGPT among them, use that). */
 export function ok(data: unknown): CallToolResult {
-  return { content: [{ type: "text", text: typeof data === "string" ? data : JSON.stringify(data, null, 2) }] };
+  const text = typeof data === "string" ? data : JSON.stringify(data, null, 2);
+  const structured = data && typeof data === "object" && !Array.isArray(data) ? (data as Record<string, unknown>) : undefined;
+  return { content: [{ type: "text", text }], ...(structured ? { structuredContent: structured } : {}) };
 }
 
 export function fail(message: string): CallToolResult {
@@ -51,6 +55,8 @@ type ToolSpec<S extends Shape> = {
   kind: "read" | "write" | "destructive";
   /** Calling it twice with the same input changes nothing more (set status, rename…). */
   idempotent?: boolean;
+  /** Declared result shape: clients can validate structuredContent against it. */
+  output?: Shape;
 };
 
 /** Register a tool. Write tools are left out entirely for read-only connections, so
@@ -68,6 +74,7 @@ export function tool<S extends Shape>(
       title: spec.title,
       description: spec.description,
       inputSchema: spec.input,
+      ...(spec.output ? { outputSchema: spec.output } : {}),
       annotations: {
         title: spec.title,
         readOnlyHint: spec.kind === "read",
