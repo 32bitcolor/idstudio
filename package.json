@@ -13,7 +13,9 @@
     "db:migrate": "prisma migrate dev",
     "db:deploy": "prisma migrate deploy",
     "db:seed": "tsx prisma/seed.ts",
-    "worker": "tsx worker/index.ts"
+    "worker": "tsx worker/index.ts",
+    "help:export": "tsx --tsconfig tsconfig.json scripts/export-help.tsx",
+    "help:check": "tsx --tsconfig tsconfig.json scripts/export-help.tsx --check"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1073.0",
