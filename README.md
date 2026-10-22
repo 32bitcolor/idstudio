@@ -149,6 +149,10 @@ review that.
   - **backup and restore**, including attachments and review files
   - workspace **labels**
   - a one-click **self-update** (pull, rebuild, migrate) from **Settings → Updates**
+- **Single sign-on and provisioning**: connect a SAML 2.0 identity provider (tested with JumpCloud) so
+  people sign in with their work account, provision and deactivate members over SCIM 2.0, and give
+  Tavoro roles from the provider's groups. Deactivated members are suspended, and their work stays.
+  ([docs/SSO.md](docs/SSO.md))
 - **AI assistants over MCP**: Tavoro is a Model Context Protocol server at `/api/mcp`.
   - Claude.ai, Claude Desktop and ChatGPT connect from just the URL. They sign in through OAuth, and
     you pick the workspace and read-only or read-and-change access.

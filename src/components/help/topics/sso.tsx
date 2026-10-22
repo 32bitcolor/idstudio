@@ -143,6 +143,23 @@ export default function Sso() {
         In JumpCloud, access is granted through user groups: people get Tavoro by being in a group bound to the app. Removing someone from
         every bound group deactivates them in Tavoro.
       </Callout>
+      <DefList>
+        <Def term="The app tile says “JumpCloud could not connect to your application”">
+          JumpCloud couldn&rsquo;t sign the response, which its documentation puts down to a damaged key pair. On the app, choose{" "}
+          <UI>Actions → Regenerate Certificate</UI> and save, then download the new certificate (or export the metadata again) and paste it
+          into step 2 in Tavoro.
+        </Def>
+        <Def term="The tile opens a “Not Found” page">
+          The app&rsquo;s IdP URL isn&rsquo;t a full address. On the <UI>SSO</UI> tab it should read{" "}
+          <code>https://sso.jumpcloud.com/saml2/&lt;your-name&gt;</code>. Tavoro refuses metadata whose sign-in URL is incomplete, so export
+          it again after fixing this.
+        </Def>
+        <Def term="The test user stays in Tavoro">
+          JumpCloud&rsquo;s activation test creates and then deletes its <UI>Test User Email</UI>. Tavoro keeps a deleted user as{" "}
+          <UI>Suspended</UI> rather than erasing them; remove them in <UI>Settings → Members</UI>, or add them to a bound group to give
+          them access for real.
+        </Def>
+      </DefList>
 
       <H3>Adding another provider</H3>
       <P>

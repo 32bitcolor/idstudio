@@ -44,8 +44,14 @@ export function parseIdpMetadata(xml: string): IdpMetadata | { error: string } {
   const services = select("md:SingleSignOnService", idp as unknown as Node) as Element[];
   const sso = services.find((s) => s.getAttribute("Binding") === REDIRECT) ?? services.find((s) => s.getAttribute("Binding") === POST);
   if (!sso?.getAttribute("Location")) return { error: "No sign-in URL (SingleSignOnService) in that metadata." };
+  const location = sso.getAttribute("Location")!.trim();
+  // An app whose IdP URL isn't set properly exports a bare name here (JumpCloud does);
+  // saving it would send every sign-in nowhere.
+  if (!/^https:\/\/[^\s/]+\.[^\s/]+(\/|$)/.test(location)) {
+    return { error: `The sign-in URL in that metadata ("${location.slice(0, 80)}") isn't a full https:// address. Fix the app's IdP URL in your identity provider, then export the metadata again.` };
+  }
   const keys = select("md:KeyDescriptor[not(@use) or @use='signing']//ds:X509Certificate", idp as unknown as Node) as Element[];
   const certs = [...new Set(keys.map((k) => (k.textContent ?? "").replace(/\s+/g, "")).filter(Boolean))].map(toPem);
   if (!certs.length) return { error: "No signing certificate in that metadata." };
-  return { entityId: entity.getAttribute("entityID") ?? "", ssoUrl: sso.getAttribute("Location")!, certs };
+  return { entityId: entity.getAttribute("entityID") ?? "", ssoUrl: location, certs };
 }
