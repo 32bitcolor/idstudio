@@ -96,12 +96,12 @@ export async function getCardDetail(cardId: string) {
       select: { id: true, name: true, color: true },
     }),
     prisma.user.findMany({
-      where: { memberships: { some: { workspaceId: board.workspaceId } } },
+      where: { memberships: { some: { workspaceId: board.workspaceId, suspendedAt: null } } },
       orderBy: { email: "asc" },
       select: { id: true, name: true, email: true },
     }),
     prisma.membership.findFirst({
-      where: { userId: me.id, workspaceId: board.workspaceId },
+      where: { userId: me.id, workspaceId: board.workspaceId, suspendedAt: null },
       select: { role: true },
     }),
     prisma.sprint.findMany({
@@ -120,9 +120,9 @@ export async function getCardDetail(cardId: string) {
       ? members
       : await prisma.user.findMany({
           where: {
-            memberships: { some: { workspaceId: board.workspaceId } },
+            memberships: { some: { workspaceId: board.workspaceId, suspendedAt: null } },
             OR: [
-              { memberships: { some: { workspaceId: board.workspaceId, role: "ADMIN" } } },
+              { memberships: { some: { workspaceId: board.workspaceId, role: "ADMIN", suspendedAt: null } } },
               { groupMemberships: { some: { groupId: { in: groupIds } } } },
             ],
           },
@@ -241,7 +241,7 @@ export async function updateCardDescription(cardId: string, description: string 
   if (!board) return;
   if (!(await notificationsEnabled(board.workspaceId, "mention"))) return;
   const mentions = await prisma.user.findMany({
-    where: { id: { in: newIds, not: me?.id }, memberships: { some: { workspaceId: board.workspaceId } } },
+    where: { id: { in: newIds, not: me?.id }, memberships: { some: { workspaceId: board.workspaceId, suspendedAt: null } } },
     select: { name: true, email: true },
   });
   const link = appUrl(`/boards/${card.boardId}?card=${cardId}`);
@@ -415,7 +415,7 @@ export async function toggleCardAssignee(cardId: string, userId: string, on: boo
 
   // only workspace members may be assigned
   const member = await prisma.membership.findFirst({
-    where: { userId, workspaceId: board.workspaceId },
+    where: { userId, workspaceId: board.workspaceId, suspendedAt: null },
     select: { id: true },
   });
   if (!member) return { error: "Not a workspace member." };
@@ -495,7 +495,7 @@ export async function toggleCardSme(cardId: string, userId: string, on: boolean)
   if (!board) return { error: "Board not found." };
 
   const member = await prisma.membership.findFirst({
-    where: { userId, workspaceId: board.workspaceId },
+    where: { userId, workspaceId: board.workspaceId, suspendedAt: null },
     select: { id: true },
   });
   if (!member) return { error: "Not a workspace member." };
@@ -639,7 +639,7 @@ export async function addComment(cardId: string, body: string) {
   const mentionIds = extractMentionIds(parsed.data);
   if (mentionIds.length && boardRow && (await notificationsEnabled(boardRow.workspaceId, "mention"))) {
     const mentions = await prisma.user.findMany({
-      where: { id: { in: mentionIds }, memberships: { some: { workspaceId: boardRow.workspaceId } } },
+      where: { id: { in: mentionIds }, memberships: { some: { workspaceId: boardRow.workspaceId, suspendedAt: null } } },
       select: { id: true, name: true, email: true },
     });
     for (const m of mentions) {
@@ -689,7 +689,7 @@ export async function deleteComment(commentId: string) {
   let allowed = comment.authorId === user.id;
   if (!allowed && board) {
     const membership = await prisma.membership.findFirst({
-      where: { userId: user.id, workspaceId: board.workspaceId },
+      where: { userId: user.id, workspaceId: board.workspaceId, suspendedAt: null },
       select: { role: true },
     });
     allowed = membership?.role === "ADMIN";

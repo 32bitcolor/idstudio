@@ -48,7 +48,7 @@ export default async function AuthorizePage({ searchParams }: { searchParams: Pr
   if (!resourceAllowed(one(sp.resource))) fail("invalid_target", "resource must be this server's MCP endpoint");
 
   const memberships = await prisma.membership.findMany({
-    where: { userId: me.id },
+    where: { userId: me.id, suspendedAt: null },
     orderBy: { createdAt: "asc" },
     select: { role: true, workspace: { select: { id: true, name: true } } },
   });

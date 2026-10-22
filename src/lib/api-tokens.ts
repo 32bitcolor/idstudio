@@ -20,7 +20,7 @@ export function sha256(s: string): string {
   return createHash("sha256").update(s).digest("hex");
 }
 
-export function newSecret(prefix: "tav_" | "tavo_" | "tavr_" | "tavc_" | "tavs_"): string {
+export function newSecret(prefix: "tav_" | "tavo_" | "tavr_" | "tavc_" | "tavs_" | "tavscim_"): string {
   return prefix + randomBytes(32).toString("base64url");
 }
 
@@ -95,7 +95,7 @@ export async function authenticateBearer(req: Request): Promise<Principal | null
   });
   if (!row || row.revokedAt || (row.expiresAt && row.expiresAt.getTime() <= Date.now())) return null;
   const member = await prisma.membership.findFirst({
-    where: { userId: row.userId, workspaceId: row.workspaceId },
+    where: { userId: row.userId, workspaceId: row.workspaceId, suspendedAt: null },
     select: { id: true },
   });
   if (!member) return null;

@@ -16,7 +16,7 @@ export default async function IntakeRequestPage({ params }: { params: Promise<{ 
   if (!request) notFound();
 
   const members = await prisma.membership.findMany({
-    where: { workspaceId: membership.workspaceId },
+    where: { workspaceId: membership.workspaceId, suspendedAt: null },
     select: { user: { select: { id: true, name: true, email: true } } },
   });
 

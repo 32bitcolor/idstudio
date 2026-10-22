@@ -10,6 +10,7 @@ import { slugify } from "@/lib/slug";
 import { workspaceStatusSeedData } from "@/lib/status";
 import { Role } from "@/generated/prisma/client";
 import type { AuthState } from "@/lib/form-state";
+import { connectionForEmail } from "@/lib/sso/connection";
 
 async function uniqueWorkspaceSlug(name: string): Promise<string> {
   const base = slugify(name);
@@ -92,7 +93,18 @@ export async function login(_prev: AuthState, formData: FormData): Promise<AuthS
     return { error: "Invalid email or password." };
   }
 
-  await createSession(user.id);
+  // Suspended everywhere, or only in workspaces that require single sign-on?
+  const memberships = await prisma.membership.findMany({
+    where: { userId: user.id },
+    orderBy: { createdAt: "asc" },
+    select: { workspaceId: true, role: true, suspendedAt: true, workspace: { select: { ssoConnection: { select: { enabled: true, requireSso: true } } } } },
+  });
+  const active = memberships.filter((m) => !m.suspendedAt);
+  if (memberships.length && !active.length) return { error: "Your access has been turned off. Ask your workspace admin." };
+  const open = active.filter((m) => m.role === Role.ADMIN || !(m.workspace.ssoConnection?.enabled && m.workspace.ssoConnection.requireSso));
+  if (active.length && !open.length) return { error: "Your workspace signs in with single sign-on. Choose “Sign in with SSO”." };
+
+  await createSession(user.id, open[0]?.workspaceId, { sso: false });
   redirect(safeNext(formData.get("next")) ?? "/dashboard");
 }
 
@@ -101,6 +113,16 @@ export async function login(_prev: AuthState, formData: FormData): Promise<AuthS
 function safeNext(raw: FormDataEntryValue | null): string | null {
   if (typeof raw !== "string" || !raw.startsWith("/") || raw.startsWith("//") || raw.startsWith("/\\")) return null;
   return raw.length <= 2000 ? raw : null;
+}
+
+/** "Sign in with SSO": the identity provider for the email's domain. */
+export async function startSso(_prev: AuthState, formData: FormData): Promise<AuthState> {
+  const email = String(formData.get("email") ?? "").trim();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { fieldErrors: { email: ["Enter your work email first."] } };
+  const conn = await connectionForEmail(email);
+  if (!conn) return { error: "Single sign-on isn't set up for that email's domain." };
+  const next = safeNext(formData.get("next"));
+  redirect(`/api/sso/${conn.id}/login${next ? `?next=${encodeURIComponent(next)}` : ""}`);
 }
 
 export async function logout(): Promise<void> {

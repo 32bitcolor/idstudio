@@ -27,7 +27,7 @@ export function registerWorkspaceTools(server: McpServer) {
       const [ws, members, statuses, labels, sprints] = await Promise.all([
         prisma.workspace.findUniqueOrThrow({ where: { id: p.workspaceId }, select: { id: true, name: true, slug: true } }),
         prisma.membership.findMany({
-          where: { workspaceId: p.workspaceId },
+          where: { workspaceId: p.workspaceId, suspendedAt: null },
           orderBy: { createdAt: "asc" },
           select: { role: true, user: { select: { id: true, name: true, email: true } } },
         }),

@@ -61,7 +61,7 @@ async function resolveReviewers(workspaceId: string, raw: unknown) {
 
   if (guestsByEmail.size) {
     const existing = await prisma.user.findMany({
-      where: { email: { in: [...guestsByEmail.keys()], mode: "insensitive" }, memberships: { some: { workspaceId } } },
+      where: { email: { in: [...guestsByEmail.keys()], mode: "insensitive" }, memberships: { some: { workspaceId, suspendedAt: null } } },
       select: { id: true, email: true },
     });
     for (const u of existing) {
@@ -70,7 +70,7 @@ async function resolveReviewers(workspaceId: string, raw: unknown) {
     }
   }
   if (memberIds.size) {
-    const ok = await prisma.membership.count({ where: { userId: { in: [...memberIds] }, workspaceId } });
+    const ok = await prisma.membership.count({ where: { userId: { in: [...memberIds] }, workspaceId, suspendedAt: null } });
     if (ok !== memberIds.size) return { error: "Every member reviewer must belong to this workspace." } as const;
   }
   if (memberIds.size + guestsByEmail.size === 0) return { error: "Add at least one reviewer." } as const;
@@ -497,7 +497,7 @@ export async function addReviewComment(roundId: string, anchorRaw: unknown, body
   if (ids.length && (await notificationsEnabled(r.deliverable.project.workspaceId, "mention"))) {
     const [people, deliverable] = await Promise.all([
       prisma.user.findMany({
-        where: { id: { in: ids }, memberships: { some: { workspaceId: r.deliverable.project.workspaceId } } },
+        where: { id: { in: ids }, memberships: { some: { workspaceId: r.deliverable.project.workspaceId, suspendedAt: null } } },
         select: { name: true, email: true },
       }),
       prisma.deliverable.findUnique({ where: { id: r.deliverableId }, select: { name: true, project: { select: { name: true } } } }),

@@ -24,6 +24,7 @@
     "@excalidraw/excalidraw": "^0.18.1",
     "@modelcontextprotocol/sdk": "^1.32.1",
     "@node-rs/argon2": "^2.0.2",
+    "@node-saml/node-saml": "5.1.0",
     "@prisma/adapter-pg": "^7.8.0",
     "@prisma/client": "^7.8.0",
     "@tiptap/extension-mention": "^3.27.1",
@@ -31,6 +32,7 @@
     "@tiptap/react": "^3.27.1",
     "@tiptap/starter-kit": "^3.27.1",
     "@tiptap/suggestion": "^3.27.1",
+    "@xmldom/xmldom": "0.9.12",
     "bullmq": "^5.79.1",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
@@ -47,6 +49,7 @@
     "react-dom": "19.2.4",
     "server-only": "^0.0.1",
     "tailwind-merge": "^3.6.0",
+    "xpath": "0.0.35",
     "zod": "^4.4.3"
   },
   "devDependencies": {

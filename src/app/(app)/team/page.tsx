@@ -19,7 +19,7 @@ export default async function TeamPage() {
 
   const [members, cards, subtasks] = await Promise.all([
     prisma.membership.findMany({
-      where: { workspaceId: wsId },
+      where: { workspaceId: wsId, suspendedAt: null },
       orderBy: { createdAt: "asc" },
       select: { role: true, user: { select: { id: true, name: true, email: true } } },
     }),

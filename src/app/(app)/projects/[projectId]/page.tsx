@@ -106,7 +106,7 @@ export default async function ProjectPage({ params }: { params: Promise<{ projec
   if (!project) notFound();
 
   const members = await prisma.user.findMany({
-    where: { memberships: { some: { workspaceId: access.workspaceId } } },
+    where: { memberships: { some: { workspaceId: access.workspaceId, suspendedAt: null } } },
     orderBy: { email: "asc" },
     select: { id: true, name: true, email: true },
   });

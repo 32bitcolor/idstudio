@@ -44,6 +44,8 @@ model User {
   savedViews              SavedView[]
   apiTokens               ApiToken[]
   oauthCodes              OAuthCode[]
+  ssoIdentities           SsoIdentity[]
+  idpGroupMemberships     IdpGroupMember[]
 }
 
 model Workspace {
@@ -67,6 +69,7 @@ model Workspace {
   savedViews           SavedView[]
   reviewFiles          ReviewFile[]
   apiTokens            ApiToken[]
+  ssoConnection        SsoConnection?
 }
 
 // Workspace/team-level, time-boxed grouping of work — independent of a project's
@@ -95,6 +98,9 @@ model Membership {
   userId      String
   workspaceId String
   role        Role      @default(MEMBER)
+  // Set when the identity provider deactivates the member (docs/SSO.md): they can't
+  // sign in or use the workspace, but everything they made stays attributed to them.
+  suspendedAt DateTime?
   createdAt   DateTime  @default(now())
   user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
@@ -820,4 +826,107 @@ model OAuthCode {
   createdAt     DateTime    @default(now())
   client        OAuthClient @relation(fields: [clientId], references: [id], onDelete: Cascade)
   user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// ── Single sign-on and provisioning (docs/SSO.md) ────────────────────────────
+// One SAML identity provider per workspace (JumpCloud first), with SCIM 2.0
+// provisioning and roles derived from the provider's groups.
+
+model SsoConnection {
+  id              String           @id @default(cuid())
+  workspaceId     String           @unique
+  provider        String           @default("jumpcloud")
+  enabled         Boolean          @default(false)
+  // The identity provider, from its SAML metadata.
+  idpEntityId     String?
+  idpSsoUrl       String?
+  idpCert         String? // PEM; may hold several certificates during a rollover
+  // Email domains whose sign-in goes to this provider ("Sign in with SSO").
+  domains         String[]
+  groupAttribute  String           @default("memberOf")
+  jitProvisioning Boolean          @default(true) // create members on first sign-in
+  requireSso      Boolean          @default(false) // members (not admins) can't use a password
+  // Roles from groups: the highest role any mapped group grants; defaultRole otherwise.
+  manageRoles     Boolean          @default(false)
+  defaultRole     Role             @default(MEMBER)
+  // SCIM: a bearer token, stored hashed like API tokens.
+  scimEnabled     Boolean          @default(false)
+  scimTokenHash   String?          @unique
+  scimTokenHint   String?
+  lastScimAt      DateTime?
+  lastLoginAt     DateTime?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  workspace       Workspace        @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  identities      SsoIdentity[]
+  groups          IdpGroup[]
+  roleMappings    SsoRoleMapping[]
+  scimLogs        ScimLog[]
+}
+
+// A member as the identity provider knows them. Its id is the SCIM user id.
+model SsoIdentity {
+  id           String        @id @default(cuid())
+  connectionId String
+  userId       String
+  externalId   String?
+  userName     String
+  active       Boolean       @default(true)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  connection   SsoConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([connectionId, userId])
+  @@index([connectionId, externalId])
+}
+
+// A group pushed by SCIM or named in a SAML assertion. Its id is the SCIM group id.
+model IdpGroup {
+  id           String           @id @default(cuid())
+  connectionId String
+  displayName  String
+  externalId   String?
+  fromScim     Boolean          @default(false)
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+  connection   SsoConnection    @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  members      IdpGroupMember[]
+
+  @@unique([connectionId, displayName])
+}
+
+model IdpGroupMember {
+  groupId String
+  userId  String
+  group   IdpGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([groupId, userId])
+  @@index([userId])
+}
+
+model SsoRoleMapping {
+  id           String        @id @default(cuid())
+  connectionId String
+  groupName    String // matched case-insensitively against the provider's group name
+  role         Role
+  connection   SsoConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+
+  @@unique([connectionId, groupName])
+}
+
+// Recent SCIM requests, for the admin's troubleshooting view (the last 200 are kept).
+model ScimLog {
+  id           String        @id @default(cuid())
+  connectionId String
+  method       String
+  path         String
+  status       Int
+  summary      String
+  request      Json?
+  createdAt    DateTime      @default(now())
+  connection   SsoConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+
+  @@index([connectionId, createdAt])
 }

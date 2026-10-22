@@ -9,6 +9,7 @@ const TABS = [
   { href: "/settings/ai", label: "AI & MCP", adminOnly: false },
   { href: "/settings/members", label: "Members", adminOnly: true },
   { href: "/settings/groups", label: "Groups", adminOnly: true },
+  { href: "/settings/sso", label: "Single sign-on", adminOnly: true },
   { href: "/settings/labels", label: "Labels", adminOnly: true },
   { href: "/settings/backup", label: "Backup", adminOnly: true },
   { href: "/settings/intake", label: "Intake", adminOnly: true },

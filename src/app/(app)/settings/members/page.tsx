@@ -14,8 +14,13 @@ export default async function MembersPage() {
   const rows = await prisma.membership.findMany({
     where: { workspaceId: membership.workspaceId },
     orderBy: { createdAt: "asc" },
-    select: { role: true, user: { select: { id: true, email: true, name: true } } },
+    select: {
+      role: true,
+      suspendedAt: true,
+      user: { select: { id: true, email: true, name: true, ssoIdentities: { where: { connection: { workspaceId: membership.workspaceId } }, select: { id: true } } } },
+    },
   });
+  const sso = await prisma.ssoConnection.findUnique({ where: { workspaceId: membership.workspaceId }, select: { manageRoles: true } });
 
   const members = rows.map((r) => ({
     id: r.user.id,
@@ -23,6 +28,10 @@ export default async function MembersPage() {
     name: r.user.name,
     role: r.role,
     isSelf: r.user.id === membership.userId,
+    sso: r.user.ssoIdentities.length > 0,
+    suspended: !!r.suspendedAt,
+    // Roles from identity-provider groups overwrite manual changes on the next sync.
+    roleManaged: !!sso?.manageRoles && r.user.ssoIdentities.length > 0,
   }));
 
   return <MembersManager members={members} />;

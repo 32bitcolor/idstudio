@@ -26,7 +26,7 @@ const getAccessContext = cache(async () => {
   const workspaceId = currentPrincipal()?.workspaceId ?? null;
   const [memberships, groups] = await Promise.all([
     prisma.membership.findMany({
-      where: { userId: user.id, ...(workspaceId ? { workspaceId } : {}) },
+      where: { userId: user.id, suspendedAt: null, ...(workspaceId ? { workspaceId } : {}) },
       select: { workspaceId: true, role: true },
     }),
     prisma.groupMembership.findMany({ where: { userId: user.id }, select: { groupId: true } }),

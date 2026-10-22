@@ -6,7 +6,9 @@ import { currentPrincipal } from "@/lib/principal";
 export const SESSION_COOKIE = "tavoro_session";
 const MAX_AGE_SECONDS = 60 * 60 * 24 * 7; // 7 days
 
-export type SessionPayload = { userId: string; activeWorkspaceId?: string };
+// `sso`: this session began with a single sign-on assertion, which workspaces that
+// require SSO insist on (docs/SSO.md).
+export type SessionPayload = { userId: string; activeWorkspaceId?: string; sso?: boolean };
 
 function getKey(): Uint8Array {
   const secret = process.env.SESSION_SECRET;
@@ -31,15 +33,22 @@ export async function decrypt(token?: string): Promise<SessionPayload | null> {
     const { payload } = await jwtVerify(token, getKey(), { algorithms: ["HS256"] });
     if (typeof payload.userId !== "string") return null;
     const active = typeof payload.activeWorkspaceId === "string" ? payload.activeWorkspaceId : undefined;
-    return { userId: payload.userId, activeWorkspaceId: active };
+    return { userId: payload.userId, activeWorkspaceId: active, ...(payload.sso === true ? { sso: true } : {}) };
   } catch {
     return null;
   }
 }
 
-export async function createSession(userId: string, activeWorkspaceId?: string): Promise<void> {
-  const token = await encrypt({ userId, ...(activeWorkspaceId ? { activeWorkspaceId } : {}) });
+/** `sso` says how this sign-in happened; left out (switching workspace, say), the
+ *  current session's answer carries over for the same user. */
+export async function createSession(userId: string, activeWorkspaceId?: string, opts: { sso?: boolean } = {}): Promise<void> {
   const cookieStore = await cookies();
+  let sso = opts.sso;
+  if (sso === undefined) {
+    const current = await decrypt(cookieStore.get(SESSION_COOKIE)?.value);
+    sso = current?.userId === userId && current.sso === true;
+  }
+  const token = await encrypt({ userId, ...(activeWorkspaceId ? { activeWorkspaceId } : {}), ...(sso ? { sso: true } : {}) });
   cookieStore.set(SESSION_COOKIE, token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",

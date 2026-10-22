@@ -91,7 +91,7 @@ export async function setUserRole(userId: string, role: string) {
 
   if (membership.role === Role.ADMIN && parsed.data !== "ADMIN") {
     const admins = await prisma.membership.count({
-      where: { workspaceId: admin.workspaceId, role: Role.ADMIN },
+      where: { workspaceId: admin.workspaceId, role: Role.ADMIN, suspendedAt: null },
     });
     if (admins <= 1) return { error: "You can't demote the last admin." };
   }
@@ -158,7 +158,7 @@ export async function removeUser(userId: string) {
 
   if (membership.role === Role.ADMIN) {
     const admins = await prisma.membership.count({
-      where: { workspaceId: admin.workspaceId, role: Role.ADMIN },
+      where: { workspaceId: admin.workspaceId, role: Role.ADMIN, suspendedAt: null },
     });
     if (admins <= 1) return { error: "You can't remove the last admin." };
   }
@@ -169,5 +169,14 @@ export async function removeUser(userId: string) {
   const remaining = await prisma.membership.count({ where: { userId } });
   if (remaining === 0) await prisma.user.delete({ where: { id: userId } });
 
+  revalidatePath("/settings/members");
+}
+
+/** Admin: lift a suspension (one set by the identity provider, typically). */
+export async function restoreUser(userId: string) {
+  const admin = await adminGuard();
+  if (!admin) return { error: "You must be a workspace admin." };
+  const updated = await prisma.membership.updateMany({ where: { userId, workspaceId: admin.workspaceId }, data: { suspendedAt: null } });
+  if (!updated.count) return { error: "User not found in this workspace." };
   revalidatePath("/settings/members");
 }

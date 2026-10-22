@@ -10,7 +10,7 @@ export async function switchWorkspace(workspaceId: string): Promise<void> {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
   const membership = await prisma.membership.findFirst({
-    where: { userId: user.id, workspaceId },
+    where: { userId: user.id, workspaceId, suspendedAt: null },
     select: { id: true },
   });
   if (!membership) return;

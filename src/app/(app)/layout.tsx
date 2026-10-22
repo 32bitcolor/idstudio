@@ -21,7 +21,7 @@ export default async function AppLayout({
   const user = await requireUser();
   const membership = await getActiveMembership();
   const memberships = await prisma.membership.findMany({
-    where: { userId: user.id },
+    where: { userId: user.id, suspendedAt: null },
     orderBy: { createdAt: "asc" },
     select: { workspaceId: true, workspace: { select: { name: true } } },
   });

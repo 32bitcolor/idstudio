@@ -61,7 +61,7 @@ export async function POST(req: Request) {
     if (code.clientId !== auth.client.id) return oauthError("invalid_grant", "The code was issued to another client.");
     if (p.redirect_uri && p.redirect_uri !== code.redirectUri) return oauthError("invalid_grant", "redirect_uri doesn't match.");
     if (!pkceMatches(p.code_verifier, code.codeChallenge)) return oauthError("invalid_grant", "PKCE verification failed.");
-    const member = await prisma.membership.findFirst({ where: { userId: code.userId, workspaceId: code.workspaceId }, select: { id: true } });
+    const member = await prisma.membership.findFirst({ where: { userId: code.userId, workspaceId: code.workspaceId, suspendedAt: null }, select: { id: true } });
     if (!member) return oauthError("invalid_grant", "You're no longer a member of that workspace.");
 
     const pair = newOAuthPair();

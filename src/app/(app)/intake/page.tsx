@@ -35,7 +35,7 @@ export default async function IntakePage() {
       },
     }),
     prisma.membership.findMany({
-      where: { workspaceId: membership.workspaceId },
+      where: { workspaceId: membership.workspaceId, suspendedAt: null },
       select: { user: { select: { id: true, name: true, email: true } } },
     }),
   ]);

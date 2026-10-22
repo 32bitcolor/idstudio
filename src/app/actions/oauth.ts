@@ -33,7 +33,7 @@ export async function decideAuthorization(formData: FormData) {
   }
 
   const workspaceId = get("workspace_id");
-  const member = await prisma.membership.findFirst({ where: { userId: me.id, workspaceId }, select: { id: true } });
+  const member = await prisma.membership.findFirst({ where: { userId: me.id, workspaceId, suspendedAt: null }, select: { id: true } });
   const challenge = get("code_challenge");
   if (!member || !/^[A-Za-z0-9_-]{43}$/.test(challenge) || !resourceAllowed(get("resource"))) {
     back.searchParams.set("error", "invalid_request");

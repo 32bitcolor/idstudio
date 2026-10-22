@@ -115,7 +115,7 @@ export async function submitIntakeRequest(
   const notifyAdmins = await notificationsEnabled(workspaceId, "intake");
   const admins = notifyAdmins
     ? await prisma.membership.findMany({
-        where: { workspaceId, role: Role.ADMIN },
+        where: { workspaceId, role: Role.ADMIN, suspendedAt: null },
         select: { user: { select: { email: true } } },
       })
     : [];
@@ -177,7 +177,7 @@ export async function assignIntakeRequest(
 
   if (userId) {
     const member = await prisma.membership.findFirst({
-      where: { userId, workspaceId: request.workspaceId },
+      where: { userId, workspaceId: request.workspaceId, suspendedAt: null },
       select: { id: true },
     });
     if (!member) return { error: "Must be a workspace member." };

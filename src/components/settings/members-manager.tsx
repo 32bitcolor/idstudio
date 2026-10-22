@@ -2,7 +2,7 @@
 
 import { useActionState, useEffect, useRef, useState, useTransition } from "react";
 import { KeyRound, Trash2, UserPlus } from "lucide-react";
-import { createUser, setUserRole, resetUserPassword, removeUser } from "@/app/actions/members";
+import { createUser, setUserRole, resetUserPassword, removeUser, restoreUser } from "@/app/actions/members";
 import type { FormState } from "@/lib/form-state";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -13,7 +13,7 @@ import { ROLE_DOT } from "@/lib/roles";
 import { SectionHeader } from "@/components/shared/page";
 import { ConfirmDelete } from "@/components/shared/confirm-delete";
 
-export type Member = { id: string; email: string; name: string | null; role: string; isSelf: boolean };
+export type Member = { id: string; email: string; name: string | null; role: string; isSelf: boolean; sso: boolean; suspended: boolean; roleManaged: boolean };
 
 export function MembersManager({ members }: { members: Member[] }) {
   return (
@@ -118,8 +118,11 @@ function MemberRow({ member }: { member: Member }) {
         <div className="flex items-center gap-2">
           <span className="truncate font-medium">{member.name ?? member.email}</span>
           {member.isSelf && <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">You</span>}
+          {member.sso && <span className="rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary" title="Linked to your identity provider">SSO</span>}
+          {member.suspended && <span className="rounded bg-destructive/10 px-1.5 py-0.5 text-[10px] font-medium text-destructive" title="Can't sign in; their work stays">Suspended</span>}
         </div>
         <div className="truncate text-sm text-muted-foreground">{member.email}</div>
+        {member.roleManaged && <div className="mt-0.5 text-xs text-muted-foreground">Role comes from identity-provider groups.</div>}
         {msg && <div className={msg.kind === "ok" ? "mt-1 text-xs text-success" : "mt-1 text-xs text-destructive"}>{msg.text}</div>}
       </div>
 
@@ -134,6 +137,7 @@ function MemberRow({ member }: { member: Member }) {
           disabled={pending}
           className="h-8 w-auto py-1"
           aria-label="Role"
+          title={member.roleManaged ? "Set by identity-provider groups; a change here lasts until the next sync" : undefined}
         >
           <option value="MEMBER">Member</option>
           <option value="MANAGER">Manager</option>
@@ -141,6 +145,22 @@ function MemberRow({ member }: { member: Member }) {
         </Select>
       </div>
 
+      {member.suspended && (
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={pending}
+          title="Let them sign in again. If your identity provider still has them deactivated, it may suspend them again."
+          onClick={() =>
+            startTransition(async () => {
+              const res = await restoreUser(member.id);
+              if (res?.error) setMsg({ kind: "err", text: res.error });
+            })
+          }
+        >
+          Restore access
+        </Button>
+      )}
       <Button variant="outline" size="sm" onClick={() => setShowReset((s) => !s)} disabled={pending}>
         <KeyRound className="size-4" /> Reset password
       </Button>

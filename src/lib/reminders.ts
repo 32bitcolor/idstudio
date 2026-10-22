@@ -74,7 +74,7 @@ export async function runDueReminders(prisma: PrismaClient, enqueue: Enqueue): P
   for (const m of milestones) {
     if (!(await remindersOn(m.project.workspaceId))) continue;
     const admins = await prisma.user.findMany({
-      where: { memberships: { some: { workspaceId: m.project.workspaceId, role: "ADMIN" } } },
+      where: { memberships: { some: { workspaceId: m.project.workspaceId, role: "ADMIN", suspendedAt: null } } },
       select: { name: true, email: true },
     });
     const link = appUrl(`/projects/${m.project.id}`);

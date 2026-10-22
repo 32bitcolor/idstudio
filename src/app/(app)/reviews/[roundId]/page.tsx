@@ -68,7 +68,7 @@ export default async function ReviewRoundPage({
       select: { number: true, snapshot: true, fileId: true, file: { select: { fileName: true } } },
     }),
     prisma.user.findMany({
-      where: { memberships: { some: { workspaceId: round.deliverable.project.workspaceId } } },
+      where: { memberships: { some: { workspaceId: round.deliverable.project.workspaceId, suspendedAt: null } } },
       orderBy: { name: "asc" },
       select: { id: true, name: true, email: true },
     }),

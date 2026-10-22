@@ -39,7 +39,7 @@ export async function resolveMember(ref: string): Promise<{ id: string; name: st
   const wsId = principal().workspaceId;
   const r = ref.trim();
   const members = await prisma.user.findMany({
-    where: { memberships: { some: { workspaceId: wsId } } },
+    where: { memberships: { some: { workspaceId: wsId, suspendedAt: null } } },
     select: { id: true, name: true, email: true },
   });
   const hit =
