@@ -40,7 +40,8 @@ Every member can see the queue and every request. Deciding is for admins and man
 | See requests | Yes | Yes | Yes |
 | See the requester’s email | Yes | No | No |
 | Score impact and effort | Yes | Yes | No |
-| Ask the requester a question | Yes | Yes | No |
+| Talk to the requester, add notes | Yes | Yes | No |
+| Copy or reset the status page link | Yes | Yes | No |
 | Assign | Yes | No | No |
 | Approve, reject, reopen | Yes | No | No |
 
@@ -72,16 +73,33 @@ A request moves through a small, honest set of statuses. Every one is visible on
 
 **Rejected** — Declined, with a reason captured for the record and for the requester. An admin or manager can reopen it.
 
-## Asking the requester for more
+## The requester’s status page
 
-Requests often arrive thin: no audience, no sense of what success looks like. Rather than guess, ask.
+![A requester's status page: the request title, a three-step progress bar, what they asked for, and the conversation with a reply box](../../public/help-shots/intake-status.png)
+*What the requester sees: progress, their request, and the conversation.*
 
-![A request's page showing Waiting on the requester with the question that was sent, and the Triage panel with scores, assignee, Approve, Ask the requester and Reject](../../public/help-shots/intake-request.png)
-*A request waiting on its requester.*
+Every request has its own private page for the person who sent it. The link is on the “thanks” screen after they submit, in their confirmation email, and in every email you send them. No account is needed: the link itself is the key, so it’s long and unguessable.
 
-1. On the request’s page, choose **Ask the requester…**, write your question, and **Send question**.
-2. The requester gets an email with your question. Their reply goes straight to *your* inbox (the email’s reply address is yours), and the request shows **Needs info** with the question on its page.
-3. When they’ve answered, choose **Answer received · back to triage**. The request returns to **Triaging** (or **Submitted**, if it hasn’t been scored yet). Paste anything worth keeping into the project description once it’s approved.
+**What they see** — Their request as they sent it, where it stands (*Submitted*, *Under review* or *Waiting on you*, then *Approved* or *Not going ahead* with your reason), and the conversation.
+
+**What they never see** — Internal notes, scores, who it’s assigned to, or the project it became.
+
+**Replying** — They can reply on the page at any time. Their reply appears in the request’s conversation, and the person it’s assigned to (or, if nobody, the workspace’s admins and managers) gets an email. If the request was waiting on them, it goes back to triage by itself.
+
+Admins, managers and the assigned member see **Copy link**, **View as requester** and **Reset…** under the requester’s name. Reset makes a new link and stops the old one, for when a link has been forwarded somewhere it shouldn’t be; send the new one to the requester yourself.
+
+## Talking to the requester
+
+![A request's page with the conversation: a question to the requester, their reply, and an internal note, above a box for writing a reply or note](../../public/help-shots/intake-request.png)
+*The conversation on a request: replies, and an internal note.*
+
+Requests often arrive thin: no audience, no sense of what success looks like. Rather than guess, ask. The **Conversation** on the request’s page holds two kinds of message:
+
+**Send to requester** — Emailed to the requester and shown on their status page. The email’s reply address is yours, so an answer by email reaches you rather than a no-reply inbox.
+
+**Add internal note** — For the team only: context, a phone call’s outcome, a pasted email answer. Notes show with a lock and a dashed border, and never reach the requester.
+
+Tick **It’s a question** before sending to mark the request **Needs info**. It waits there until the requester replies on their page, which puts it back in triage. If they answer by email or phone instead, add their answer as a note and choose **Back to triage without an answer**.
 
 ## Approving and rejecting
 
@@ -100,7 +118,7 @@ The request becomes **Converted**, records who approved it and when, and you lan
 
 When a request isn’t a fit, choose **Reject…**, add a short reason (optional, but kind; it’s emailed to the requester), and **Confirm reject**. The request records the reason, who rejected it and when. If it was a mistake, or things change, an admin or manager can **Reopen** it: it goes back to the queue without emailing the requester, who hears again when it’s decided. A converted request can’t be reopened; its project carries the work.
 
-> **Emails go out automatically.** The requester always gets a confirmation email the moment they submit, and a decision email when you approve or reject, and any question you send them — those are transactional and can’t be switched off. Workspace admins can also get a heads-up email on each new request; that one respects the **Intake** toggle in **Settings → Notifications**. See the Notifications article for the full picture.
+> **Emails go out automatically.** The requester always gets a confirmation email the moment they submit, a decision email when you approve or reject, and every reply you send them, each with a link to their status page — those are transactional and can’t be switched off. Workspace admins can also get a heads-up email on each new request; that one respects the **Intake** toggle in **Settings → Notifications**. See the Notifications article for the full picture.
 
 ### How Intake fits
 

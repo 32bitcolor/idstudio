@@ -9,6 +9,7 @@ import {
   approveIntakeRequest,
   askIntakeRequester,
   assignIntakeRequest,
+  postIntakeMessage,
   rejectIntakeRequest,
   reopenIntakeRequest,
   resumeIntakeTriage,
@@ -55,9 +56,11 @@ export async function loadIntake(id: string, showEmail?: boolean) {
       effortScore: true,
       status: true,
       rejectionReason: true,
-      infoQuestion: true,
-      infoRequestedAt: true,
       decidedAt: true,
+      messages: {
+        orderBy: { createdAt: "asc" },
+        select: { kind: true, fromRequester: true, body: true, createdAt: true, author: { select: { name: true, email: true } } },
+      },
       decidedBy: { select: { name: true, email: true } },
       createdAt: true,
       assignedTo: { select: { id: true, name: true, email: true } },
@@ -79,7 +82,13 @@ export async function loadIntake(id: string, showEmail?: boolean) {
     quadrant: quadrantLabel(r.impactScore, r.effortScore),
     assignedTo: r.assignedTo,
     rejectionReason: r.rejectionReason,
-    question: r.infoQuestion ? { text: r.infoQuestion, asked: day(r.infoRequestedAt) } : null,
+    // The conversation: "reply" messages are shared with the requester; "note" is internal.
+    conversation: r.messages.map((m) => ({
+      kind: m.kind,
+      from: m.fromRequester ? `${r.requesterName} (requester)` : m.author ? (m.author.name ?? m.author.email) : "The team",
+      at: m.createdAt.toISOString(),
+      body: m.body,
+    })),
     decided: r.decidedAt ? { on: day(r.decidedAt), by: r.decidedBy ? (r.decidedBy.name ?? r.decidedBy.email) : null } : null,
     project: r.convertedProject ? { ...r.convertedProject, url: link(`/projects/${r.convertedProject.id}`) } : null,
     submitted: day(r.createdAt),
@@ -122,13 +131,15 @@ export function registerPlanningTools(server: McpServer) {
     {
       title: "Triage an intake request",
       description:
-        "Work an intake request. Admins, managers and the assigned member can score it (impact and effort, 1–5), ask the requester a question (emailed; the request waits in needs_info) and resume triage once they answer. Only admins and managers can assign it (member id, email or name; empty string unassigns), approve it (creates a project carrying the request's details; optional project_name and methodology), reject it (with a reason, emailed to the requester) or reopen a rejected one.",
+        "Work an intake request. Admins, managers and the assigned member can score it (impact and effort, 1–5), ask the requester a question (emailed and shown on their status page; the request waits in needs_info until they reply there, or resume), reply to the requester, and add internal notes. Only admins and managers can assign it (member id, email or name; empty string unassigns), approve it (creates a project carrying the request's details; optional project_name and methodology), reject it (with a reason, emailed to the requester) or reopen a rejected one.",
       input: {
         request: z.string().min(1).describe("Request id or ticket such as REQ-4"),
         impact: z.number().int().min(1).max(5).optional(),
         effort: z.number().int().min(1).max(5).optional(),
         assign_to: z.string().optional(),
         decision: z.enum(["approve", "reject", "reopen", "ask", "resume"]).optional(),
+        reply_to_requester: z.string().max(5000).optional().describe("Emailed to the requester and shown on their status page"),
+        internal_note: z.string().max(5000).optional().describe("Added to the conversation for the team only"),
         rejection_reason: z.string().max(500).optional(),
         question: z.string().max(2000).optional().describe("For decision 'ask': the question emailed to the requester"),
         project_name: z.string().max(120).optional().describe("For 'approve': defaults to the request title"),
@@ -151,6 +162,8 @@ export function registerPlanningTools(server: McpServer) {
       if (a.decision === "reopen") check(await reopenIntakeRequest(id));
       if (a.decision === "ask") check(await askIntakeRequester(id, a.question ?? ""));
       if (a.decision === "resume") check(await resumeIntakeTriage(id));
+      if (a.reply_to_requester) check(await postIntakeMessage(id, { body: a.reply_to_requester, kind: "reply" }));
+      if (a.internal_note) check(await postIntakeMessage(id, { body: a.internal_note, kind: "note" }));
       return loadIntake(id);
     },
   );

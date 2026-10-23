@@ -2,13 +2,12 @@
 
 import Link from "next/link";
 import { useState, useTransition } from "react";
-import { ArrowUpCircle, MessageCircleQuestion, RotateCcw, XCircle } from "lucide-react";
+import { ArrowUpCircle, RotateCcw, XCircle } from "lucide-react";
 import {
   scoreIntakeRequest,
   assignIntakeRequest,
   rejectIntakeRequest,
   reopenIntakeRequest,
-  askIntakeRequester,
   resumeIntakeTriage,
 } from "@/app/actions/intake";
 import {
@@ -29,6 +28,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { SectionHeader } from "@/components/shared/page";
 import { ApproveDialog } from "@/components/intake/approve-dialog";
+import { IntakeConversation, type IntakeMessageDTO } from "@/components/intake/intake-conversation";
+import { StatusLink } from "@/components/intake/status-link";
 import type { Viewer } from "@/components/intake/triage-queue";
 import { useSetPageTitle } from "@/components/app-shell/breadcrumbs";
 
@@ -49,8 +50,6 @@ export type DetailRequest = {
   assignedToId: string | null;
   rejectionReason: string | null;
   convertedProjectId: string | null;
-  infoQuestion: string | null;
-  infoRequestedAt: string | null;
   decidedAt: string | null;
   decidedBy: string | null;
   createdAt: string;
@@ -60,18 +59,32 @@ const fmt = (iso: string) => new Date(iso).toLocaleDateString(undefined, { month
 // Needed-by dates are calendar days stored as UTC midnight.
 const fmtDay = (iso: string) => new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" });
 
-export function RequestDetail({ request, members, viewer }: { request: DetailRequest; members: Member[]; viewer: Viewer }) {
+export function RequestDetail({
+  request,
+  members,
+  viewer,
+  messages,
+  statusUrl,
+}: {
+  request: DetailRequest;
+  members: Member[];
+  viewer: Viewer;
+  messages: IntakeMessageDTO[];
+  /** The requester's status page; only for those who can work the request. */
+  statusUrl: string | null;
+}) {
   useSetPageTitle(ticketLabel(request.number));
   const [pending, startTransition] = useTransition();
   const [impact, setImpact] = useState(request.impactScore);
   const [effort, setEffort] = useState(request.effortScore);
-  const [panel, setPanel] = useState<"none" | "reject" | "ask">("none");
+  const [panel, setPanel] = useState<"none" | "reject">("none");
   const [reason, setReason] = useState("");
-  const [question, setQuestion] = useState("");
   const [error, setError] = useState<string | null>(null);
 
   const resolved = isResolved(request.status);
-  const work = !resolved && canWorkIntake(viewer.role, viewer.id, request.assignedToId);
+  // The conversation stays open after a decision; triage controls don't.
+  const canTalk = canWorkIntake(viewer.role, viewer.id, request.assignedToId);
+  const work = !resolved && canTalk;
   const decide = !resolved && viewer.decide;
   const due = dueMeta(request.targetDate);
   const quadrant = quadrantLabel(impact, effort);
@@ -115,22 +128,17 @@ export function RequestDetail({ request, members, viewer }: { request: DetailReq
           )}
         </Card>
 
-        {request.infoQuestion && (
-          <Card className={request.status === "needs_info" ? "gap-2 border-warning/35 bg-warning/7 p-4" : "gap-2 p-4"}>
-            <p className="text-sm font-medium">
-              {request.status === "needs_info" ? "Waiting on the requester" : "Question asked"}
-              {request.infoRequestedAt && <span className="font-normal text-muted-foreground"> · {fmt(request.infoRequestedAt)}</span>}
+        {request.status === "needs_info" && (
+          <Card className="gap-2 border-warning/35 bg-warning/7 p-4">
+            <p className="text-sm font-medium">Waiting on the requester</p>
+            <p className="text-sm text-muted-foreground">
+              When they reply on their status page, the request goes back to triage by itself. An answer by email
+              reaches whoever asked.
             </p>
-            <p className="text-sm whitespace-pre-wrap text-muted-foreground">{request.infoQuestion}</p>
-            {request.status === "needs_info" && (
-              <>
-                <p className="text-xs text-muted-foreground">Their answer comes back by email to whoever asked.</p>
-                {work && (
-                  <Button size="sm" variant="outline" className="self-start" disabled={pending} onClick={() => run(() => resumeIntakeTriage(request.id))}>
-                    Answer received · back to triage
-                  </Button>
-                )}
-              </>
+            {work && (
+              <Button size="sm" variant="outline" className="self-start" disabled={pending} onClick={() => run(() => resumeIntakeTriage(request.id))}>
+                Back to triage without an answer
+              </Button>
             )}
           </Card>
         )}
@@ -163,6 +171,14 @@ export function RequestDetail({ request, members, viewer }: { request: DetailReq
           </Card>
         )}
         {error && resolved && <p className="text-sm text-destructive-ink">{error}</p>}
+
+        <IntakeConversation
+          requestId={request.id}
+          requesterName={request.requesterName}
+          messages={messages}
+          canPost={canTalk}
+          canAsk={!resolved}
+        />
       </div>
 
       <div className="flex flex-col gap-4">
@@ -170,6 +186,7 @@ export function RequestDetail({ request, members, viewer }: { request: DetailReq
           <SectionHeader>Requester</SectionHeader>
           <p className="text-sm font-medium">{request.requesterName}</p>
           {request.requesterEmail && <p className="text-sm text-muted-foreground">{request.requesterEmail}</p>}
+          {statusUrl && <StatusLink requestId={request.id} url={statusUrl} />}
         </Card>
 
         {!resolved && (
@@ -213,37 +230,6 @@ export function RequestDetail({ request, members, viewer }: { request: DetailReq
                   />
                 )}
 
-                {work && panel !== "ask" && (
-                  <Button variant="outline" disabled={pending} onClick={() => setPanel("ask")}>
-                    <MessageCircleQuestion className="size-4" /> Ask the requester…
-                  </Button>
-                )}
-                {panel === "ask" && (
-                  <div className="flex flex-col gap-2 rounded-lg border border-border p-3">
-                    <label htmlFor="intake-question" className="text-xs font-medium text-muted-foreground">
-                      Emailed to {request.requesterName}; they reply to you.
-                    </label>
-                    <Textarea
-                      id="intake-question"
-                      placeholder="What do you need to know?"
-                      value={question}
-                      onChange={(e) => setQuestion(e.target.value)}
-                      maxLength={2000}
-                      rows={4}
-                    />
-                    <div className="flex gap-2">
-                      <Button
-                        size="sm"
-                        disabled={pending || !question.trim()}
-                        onClick={() => run(() => askIntakeRequester(request.id, question), () => { setPanel("none"); setQuestion(""); })}
-                      >
-                        {pending ? "Sending…" : "Send question"}
-                      </Button>
-                      <Button variant="ghost" size="sm" disabled={pending} onClick={() => setPanel("none")}>Cancel</Button>
-                    </div>
-                  </div>
-                )}
-
                 {decide && panel !== "reject" && (
                   <Button variant="outline" disabled={pending} onClick={() => setPanel("reject")}>
                     <XCircle className="size-4" /> Reject…
@@ -266,7 +252,7 @@ export function RequestDetail({ request, members, viewer }: { request: DetailReq
               </div>
             )}
             {!work && !decide && (
-              <p className="text-xs text-muted-foreground">Admins and managers triage requests; whoever it&rsquo;s assigned to can score it and ask the requester questions.</p>
+              <p className="text-xs text-muted-foreground">Admins and managers triage requests; whoever it&rsquo;s assigned to can score it and talk to the requester.</p>
             )}
           </Card>
         )}

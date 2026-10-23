@@ -31,7 +31,7 @@ export const NOTIFICATION_TYPES = [
   {
     key: "intake",
     label: "Intake requests",
-    description: "New stakeholder requests land in an admin's inbox.",
+    description: "New stakeholder requests (to admins), and requesters' replies on their status page (to the assignee, or admins and managers).",
   },
   {
     key: "member",

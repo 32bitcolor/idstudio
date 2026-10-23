@@ -279,13 +279,27 @@ if (want("intake-form")) {
   await fresh.close();
 }
 
-if (want("intake-request")) {
-  // A request waiting on its requester: the question, and the triage panel.
+if (want("intake-request", "intake-status")) {
+  // A request with a conversation, and the requester's status page for it.
   await go("/intake");
   await page.getByRole("link", { name: new RegExp(SEED.needsInfoRequest) }).first().click();
   await page.waitForURL(/\/intake\/[a-z0-9]+/);
   await settle();
+  await page.getByText("Conversation", { exact: true }).scrollIntoViewIfNeeded();
   await shot("intake-request");
+  if (want("intake-status")) {
+    const href = await page.getByRole("link", { name: "View as requester" }).getAttribute("href");
+    const fresh = await browser.newContext({ viewport: { width: 1280, height: 800 }, colorScheme: "light" });
+    const p2 = await fresh.newPage();
+    await p2.goto(href);
+    await p2.waitForLoadState("networkidle");
+    await p2.evaluate(() => document.fonts.ready);
+    if (!ONLY.length || ONLY.includes("intake-status")) {
+      await p2.screenshot({ path: join(OUT, "intake-status.png"), fullPage: true });
+      console.log("✓ intake-status");
+    }
+    await fresh.close();
+  }
 }
 
 if (want("my-work")) {

@@ -16,10 +16,11 @@ import {
   intakeApprovedNotification,
   intakeRejectedNotification,
   intakeAssigned,
-  intakeInfoRequested,
+  intakeMessageToRequester,
   withLink,
 } from "@/lib/email-templates";
 import { appUrl } from "@/lib/app-url";
+import { newStatusNonce, statusPath, statusUrl } from "@/lib/intake-status";
 import { notificationsEnabled } from "@/lib/notify";
 
 const Requester = z.object({
@@ -50,7 +51,7 @@ async function adminGuard() {
 export async function submitIntakeRequest(
   workspaceId: string,
   formData: FormData,
-): Promise<{ ok: true; ticket: string } | { error: string }> {
+): Promise<{ ok: true; ticket: string; statusPath?: string } | { error: string }> {
   // Honeypot: real users never see/fill this field. Pretend success so bots
   // don't learn they were caught.
   if (typeof formData.get("website") === "string" && formData.get("website") !== "") {
@@ -102,7 +103,7 @@ export async function submitIntakeRequest(
             targetAudience: input.data.targetAudience || null,
             targetDate,
           },
-          select: { number: true },
+          select: { id: true, number: true, statusNonce: true },
         });
       },
       { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
@@ -124,7 +125,11 @@ export async function submitIntakeRequest(
   await Promise.all([
     enqueueEmail({
       to: requester.data.email,
-      ...intakeSubmittedConfirmation({ ticket, title: input.data.title, workspaceName: workspace.name }),
+      ...withLink(
+        intakeSubmittedConfirmation({ ticket, title: input.data.title, workspaceName: workspace.name }),
+        statusUrl(request),
+        "Track your request",
+      ),
     }),
     ...admins.map((m) =>
       enqueueEmail({
@@ -143,7 +148,7 @@ export async function submitIntakeRequest(
   ]);
 
   revalidateIntake();
-  return { ok: true as const, ticket };
+  return { ok: true as const, ticket, statusPath: statusPath(request) };
 }
 
 // ── Triage (authenticated) ──────────────────────────────────────────────────
@@ -269,7 +274,11 @@ export async function approveIntakeRequest(
 
   await enqueueEmail({
     to: r.requesterEmail,
-    ...intakeApprovedNotification({ ticket: ticketLabel(r.number), title: r.title, workspaceName: r.workspace.name }),
+    ...withLink(
+      intakeApprovedNotification({ ticket: ticketLabel(r.number), title: r.title, workspaceName: r.workspace.name }),
+      statusUrl(r),
+      "View your request",
+    ),
   });
 
   revalidateRequest(requestId);
@@ -293,12 +302,16 @@ export async function rejectIntakeRequest(
 
   await enqueueEmail({
     to: a.request.requesterEmail,
-    ...intakeRejectedNotification({
-      ticket: ticketLabel(a.request.number),
-      title: a.request.title,
-      workspaceName: a.request.workspace.name,
-      reason: rejectionReason,
-    }),
+    ...withLink(
+      intakeRejectedNotification({
+        ticket: ticketLabel(a.request.number),
+        title: a.request.title,
+        workspaceName: a.request.workspace.name,
+        reason: rejectionReason,
+      }),
+      statusUrl(a.request),
+      "View your request",
+    ),
   });
 
   revalidateRequest(requestId);
@@ -318,32 +331,67 @@ export async function reopenIntakeRequest(requestId: string): Promise<{ error: s
   revalidateRequest(requestId);
 }
 
-/** Email the requester a question; the request waits in "Needs info" until someone
- *  marks the answer received. Their reply comes back by email, to whoever asked. */
-export async function askIntakeRequester(requestId: string, question: string): Promise<{ error: string } | undefined> {
+const MessageBody = z.string().trim().min(1, "Write a message first.").max(5000, "Keep it under 5,000 characters.");
+
+/** Add to a request's conversation. A "reply" is emailed to the requester and shows on
+ *  their status page (with needsInfo, the request waits in Needs info until they
+ *  answer); a "note" is internal. Admins, managers and the assigned member. */
+export async function postIntakeMessage(
+  requestId: string,
+  input: { body: string; kind: "reply" | "note"; needsInfo?: boolean },
+): Promise<{ error: string } | undefined> {
   const a = await access(requestId);
   if (!a) return NOT_FOUND;
   if (!a.work) return WORK_ONLY;
-  if (isResolved(a.request.status)) return RESOLVED;
-  const q = question.trim().slice(0, 2000);
-  if (!q) return { error: "Write the question to send." };
+  const parsed = MessageBody.safeParse(input.body);
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid message." };
+  const needsInfo = input.kind === "reply" && !!input.needsInfo;
+  if (needsInfo && isResolved(a.request.status)) return RESOLVED;
 
-  await prisma.intakeRequest.update({
-    where: { id: requestId },
-    data: { status: "needs_info", infoQuestion: q, infoRequestedAt: new Date() },
+  await prisma.intakeMessage.create({
+    data: { requestId, kind: input.kind, authorId: a.me.id, body: parsed.data },
   });
-  await enqueueEmail({
-    to: a.request.requesterEmail,
-    replyTo: a.me.email,
-    ...intakeInfoRequested({
-      ticket: ticketLabel(a.request.number),
-      title: a.request.title,
-      workspaceName: a.request.workspace.name,
-      askerName: a.me.name ?? a.me.email,
-      question: q,
-    }),
+  if (needsInfo) await prisma.intakeRequest.update({ where: { id: requestId }, data: { status: "needs_info" } });
+
+  if (input.kind === "reply") {
+    await enqueueEmail({
+      to: a.request.requesterEmail,
+      // An email reply reaches the person who wrote, not a no-reply inbox.
+      replyTo: a.me.email,
+      ...withLink(
+        intakeMessageToRequester({
+          ticket: ticketLabel(a.request.number),
+          title: a.request.title,
+          workspaceName: a.request.workspace.name,
+          authorName: a.me.name ?? a.me.email,
+          body: parsed.data,
+          question: needsInfo,
+        }),
+        statusUrl(a.request),
+        "View and reply",
+      ),
+    });
+  }
+  revalidateRequest(requestId);
+}
+
+/** "Ask the requester": a reply that marks the request Needs info. */
+export async function askIntakeRequester(requestId: string, question: string): Promise<{ error: string } | undefined> {
+  return postIntakeMessage(requestId, { body: question, kind: "reply", needsInfo: true });
+}
+
+/** A new status-page link for the requester; the old one stops working. */
+export async function resetIntakeStatusLink(requestId: string): Promise<{ error: string } | { url: string }> {
+  const a = await access(requestId);
+  if (!a) return NOT_FOUND;
+  if (!a.work) return WORK_ONLY;
+  const updated = await prisma.intakeRequest.update({
+    where: { id: requestId },
+    data: { statusNonce: newStatusNonce() },
+    select: { id: true, statusNonce: true },
   });
   revalidateRequest(requestId);
+  return { url: statusUrl(updated) ?? statusPath(updated) };
 }
 
 /** The requester answered: back to triage. */

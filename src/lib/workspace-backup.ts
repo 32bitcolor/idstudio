@@ -12,7 +12,7 @@ import { newGuestNonce } from "@/lib/review-guest-token";
 // can be restored into the same instance (a copy) or a fresh one (disaster
 // recovery). Media re-uploads to object storage under new keys.
 
-export const BACKUP_FORMAT = 10; // bump when the shape changes
+export const BACKUP_FORMAT = 11; // bump when the shape changes
 
 const WS = "__ws";
 const USER = "__user";
@@ -64,7 +64,16 @@ const SPECS: Spec[] = [
     model: "intakeRequest",
     where: (w) => ({ workspaceId: w }),
     fks: { workspaceId: WS, convertedProjectId: "project", requestedById: USER, assignedToId: USER, decidedById: USER },
+    // Formats 9–10 kept the last question on the request; it's a conversation message now.
+    // The restored copy gets a fresh status link either way (the id changes).
+    prepare: async (d) => {
+      delete d.infoQuestion;
+      delete d.infoRequestedAt;
+      delete d.statusNonce;
+      return true;
+    },
   },
+  { key: "intakeMessage", model: "intakeMessage", where: (w) => ({ request: { workspaceId: w } }), fks: { requestId: "intakeRequest", authorId: USER } },
   { key: "column", model: "column", where: (w) => ({ board: { workspaceId: w } }), fks: { boardId: "board", statusId: "workspaceStatus" } },
   // A subtask is a Card with columnId null and parentCardId set — the OR clause
   // pulls both top-level cards (via their column) and subtask-cards (via their

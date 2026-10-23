@@ -86,7 +86,8 @@ export default function Intake() {
           ["See requests", "Yes", "Yes", "Yes"],
           ["See the requester\u2019s email", "Yes", "No", "No"],
           ["Score impact and effort", "Yes", "Yes", "No"],
-          ["Ask the requester a question", "Yes", "Yes", "No"],
+          ["Talk to the requester, add notes", "Yes", "Yes", "No"],
+          ["Copy or reset the status page link", "Yes", "Yes", "No"],
           ["Assign", "Yes", "No", "No"],
           ["Approve, reject, reopen", "Yes", "No", "No"],
         ]}
@@ -157,28 +158,55 @@ export default function Intake() {
         </Def>
       </DefList>
 
-      <H2>Asking the requester for more</H2>
+      <H2>The requester&rsquo;s status page</H2>
+      <Screenshot name="intake-status" alt="A requester's status page: the request title, a three-step progress bar, what they asked for, and the conversation with a reply box" caption="What the requester sees: progress, their request, and the conversation." />
       <P>
-        Requests often arrive thin: no audience, no sense of what success looks like. Rather than guess,
-        ask.
+        Every request has its own private page for the person who sent it. The link is on the
+        &ldquo;thanks&rdquo; screen after they submit, in their confirmation email, and in every email you send
+        them. No account is needed: the link itself is the key, so it&rsquo;s long and unguessable.
       </P>
-      <Screenshot name="intake-request" alt="A request's page showing Waiting on the requester with the question that was sent, and the Triage panel with scores, assignee, Approve, Ask the requester and Reject" caption="A request waiting on its requester." />
-      <Steps>
-        <>
-          On the request&rsquo;s page, choose <UI>Ask the requester…</UI>, write your question, and{" "}
-          <UI>Send question</UI>.
-        </>
-        <>
-          The requester gets an email with your question. Their reply goes straight to <em>your</em>{" "}
-          inbox (the email&rsquo;s reply address is yours), and the request shows <UI>Needs info</UI> with
-          the question on its page.
-        </>
-        <>
-          When they&rsquo;ve answered, choose <UI>Answer received · back to triage</UI>. The request returns
-          to <UI>Triaging</UI> (or <UI>Submitted</UI>, if it hasn&rsquo;t been scored yet). Paste anything
-          worth keeping into the project description once it&rsquo;s approved.
-        </>
-      </Steps>
+      <DefList>
+        <Def term="What they see">
+          Their request as they sent it, where it stands (<em>Submitted</em>, <em>Under review</em> or{" "}
+          <em>Waiting on you</em>, then <em>Approved</em> or <em>Not going ahead</em> with your reason), and
+          the conversation.
+        </Def>
+        <Def term="What they never see">
+          Internal notes, scores, who it&rsquo;s assigned to, or the project it became.
+        </Def>
+        <Def term="Replying">
+          They can reply on the page at any time. Their reply appears in the request&rsquo;s conversation, and
+          the person it&rsquo;s assigned to (or, if nobody, the workspace&rsquo;s admins and managers) gets an
+          email. If the request was waiting on them, it goes back to triage by itself.
+        </Def>
+      </DefList>
+      <P>
+        Admins, managers and the assigned member see <UI>Copy link</UI>, <UI>View as requester</UI> and{" "}
+        <UI>Reset…</UI> under the requester&rsquo;s name. Reset makes a new link and stops the old one, for when
+        a link has been forwarded somewhere it shouldn&rsquo;t be; send the new one to the requester yourself.
+      </P>
+
+      <H2>Talking to the requester</H2>
+      <Screenshot name="intake-request" alt="A request's page with the conversation: a question to the requester, their reply, and an internal note, above a box for writing a reply or note" caption="The conversation on a request: replies, and an internal note." />
+      <P>
+        Requests often arrive thin: no audience, no sense of what success looks like. Rather than guess, ask.
+        The <UI>Conversation</UI> on the request&rsquo;s page holds two kinds of message:
+      </P>
+      <DefList>
+        <Def term="Send to requester">
+          Emailed to the requester and shown on their status page. The email&rsquo;s reply address is yours, so
+          an answer by email reaches you rather than a no-reply inbox.
+        </Def>
+        <Def term="Add internal note">
+          For the team only: context, a phone call&rsquo;s outcome, a pasted email answer. Notes show with a lock
+          and a dashed border, and never reach the requester.
+        </Def>
+      </DefList>
+      <P>
+        Tick <UI>It&rsquo;s a question</UI> before sending to mark the request <UI>Needs info</UI>. It waits there
+        until the requester replies on their page, which puts it back in triage. If they answer by email or
+        phone instead, add their answer as a note and choose <UI>Back to triage without an answer</UI>.
+      </P>
 
       <H2>Approving and rejecting</H2>
       <Screenshot name="intake-approve" alt="The Approve and create a project dialog, with the project name and a methodology choice of ADDIE, SAM or Custom" caption="Approving: name the project and pick its methodology." />
@@ -214,9 +242,9 @@ export default function Intake() {
       </P>
 
       <Callout tone="note" title="Emails go out automatically">
-        The requester always gets a confirmation email the moment they submit, and a decision email
-        when you approve or reject, and any question you send them &mdash; those are transactional and
-        can&rsquo;t be switched off.
+        The requester always gets a confirmation email the moment they submit, a decision email when you
+        approve or reject, and every reply you send them, each with a link to their status page &mdash; those
+        are transactional and can&rsquo;t be switched off.
         Workspace admins can also get a heads-up email on each new request; that one respects the{" "}
         <UI>Intake</UI> toggle in <UI>Settings → Notifications</UI>. See the Notifications article for
         the full picture.

@@ -46,7 +46,8 @@ export default function Notifications() {
           Review requests, and decisions on reviews you requested.
         </Def>
         <Def term="Intake requests">
-          New stakeholder requests land in an admin&rsquo;s inbox.
+          New stakeholder requests land in an admin&rsquo;s inbox, and a requester&rsquo;s reply on their status
+          page goes to whoever the request is assigned to (or, if nobody, the admins and managers).
         </Def>
         <Def term="Member accounts">
           Welcome emails for new members and password-reset notices.

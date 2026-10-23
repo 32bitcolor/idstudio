@@ -12,6 +12,7 @@ export function IntakeForm({ workspaceId, workspaceName }: { workspaceId: string
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [ticket, setTicket] = useState<string | null>(null);
+  const [statusPath, setStatusPath] = useState<string | null>(null);
 
   async function onSubmit(formData: FormData) {
     setPending(true);
@@ -23,6 +24,7 @@ export function IntakeForm({ workspaceId, workspaceName }: { workspaceId: string
       return;
     }
     setTicket(result.ticket || "received");
+    setStatusPath(result.statusPath ?? null);
   }
 
   if (ticket) {
@@ -38,6 +40,16 @@ export function IntakeForm({ workspaceId, workspaceName }: { workspaceId: string
           )}
           The {workspaceName} team will be in touch.
         </p>
+        {statusPath && (
+          <>
+            <Button asChild className="mt-2">
+              <a href={statusPath}>Track your request</a>
+            </Button>
+            <p className="text-xs text-muted-foreground">
+              We&rsquo;ve also emailed you this link. On that page you can follow your request and reply to the team.
+            </p>
+          </>
+        )}
       </div>
     );
   }

@@ -43,9 +43,9 @@ export function intakeSubmittedConfirmation(params: { ticket: string; title: str
       "Thanks — your request is in",
       `<p>Reference: <strong>${esc(ticket)}</strong></p>
 <p>${esc(title)}</p>
-<p>The ${esc(workspaceName)} team will be in touch.</p>`,
+<p>The ${esc(workspaceName)} team will be in touch. You can follow your request, and talk to the team, on its page.</p>`,
     ),
-    text: `Reference: ${ticket}\n${title}\n\nThe ${workspaceName} team will be in touch.`,
+    text: `Reference: ${ticket}\n${title}\n\nThe ${workspaceName} team will be in touch. You can follow your request, and talk to the team, on its page.`,
   };
 }
 
@@ -118,24 +118,43 @@ export function intakeAssigned(params: {
   };
 }
 
-export function intakeInfoRequested(params: {
+/** A team reply to the requester (or a question, when it marks the request Needs info).
+ *  Pair with withLink(…, statusUrl, "View and reply"). */
+export function intakeMessageToRequester(params: {
   ticket: string;
   title: string;
   workspaceName: string;
-  askerName: string;
-  question: string;
+  authorName: string;
+  body: string;
+  question: boolean;
 }): Email {
-  const { ticket, title, workspaceName, askerName, question } = params;
+  const { ticket, title, workspaceName, authorName, body, question } = params;
+  const heading = question ? "A question about your request" : "A message about your request";
   return {
-    subject: `A question about your request — ${ticket}`,
+    subject: `${heading} — ${ticket}`,
     html: layout(
-      "A question about your request",
+      heading,
       `<p>Reference: <strong>${esc(ticket)}</strong> · ${esc(title)}</p>
-<p>${esc(askerName)} from the ${esc(workspaceName)} team asks:</p>
-<blockquote style="margin:12px 0;padding:8px 12px;border-left:3px solid #ccc;white-space:pre-wrap">${esc(question)}</blockquote>
-<p>Just reply to this email to answer.</p>`,
+<p>${esc(authorName)} from the ${esc(workspaceName)} team wrote:</p>
+<blockquote style="margin:12px 0;padding:8px 12px;border-left:3px solid #ccc;white-space:pre-wrap">${esc(body)}</blockquote>
+<p>Reply on your request page, or just reply to this email.</p>`,
     ),
-    text: `Reference: ${ticket} · ${title}\n\n${askerName} from the ${workspaceName} team asks:\n\n${question}\n\nJust reply to this email to answer.`,
+    text: `Reference: ${ticket} · ${title}\n\n${authorName} from the ${workspaceName} team wrote:\n\n${body}\n\nReply on your request page, or just reply to this email.`,
+  };
+}
+
+/** The requester replied on their status page. */
+export function intakeRequesterReplied(params: { ticket: string; title: string; requesterName: string; body: string }): Email {
+  const { ticket, title, requesterName, body } = params;
+  return {
+    subject: `${requesterName} replied — ${ticket}: ${title}`,
+    html: layout(
+      "The requester replied",
+      `<p><strong>${esc(ticket)}</strong> · ${esc(title)}</p>
+<p>${esc(requesterName)} wrote:</p>
+<blockquote style="margin:12px 0;padding:8px 12px;border-left:3px solid #ccc;white-space:pre-wrap">${esc(body)}</blockquote>`,
+    ),
+    text: `${ticket} · ${title}\n\n${requesterName} wrote:\n\n${body}`,
   };
 }
 

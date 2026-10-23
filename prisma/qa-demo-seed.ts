@@ -1429,7 +1429,10 @@ async function main() {
         impactScore: r.impact ?? null, effortScore: r.effort ?? null, status: r.status,
         assignedToId: r.assignee ? users[r.assignee].id : null, rejectionReason: r.reason ?? null,
         convertedProjectId: r.project ?? null, createdAt: day(-r.age, 10), updatedAt: day(-Math.max(r.age - 2, 0), 11),
-        infoQuestion: r.question ?? null, infoRequestedAt: r.question ? day(-Math.max(r.age - 3, 0), 9) : null,
+        // A question to the requester starts the conversation.
+        ...(r.question
+          ? { messages: { create: { kind: "reply", authorId: users[r.assignee ?? "maya"].id, body: r.question, createdAt: day(-Math.max(r.age - 3, 0), 9) } } }
+          : {}),
         ...(r.status === "converted" || r.status === "rejected" ? { decidedById: users.maya.id, decidedAt: day(-Math.max(r.age - 2, 0), 11) } : {}),
       },
     });

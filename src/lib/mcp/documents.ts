@@ -217,10 +217,13 @@ async function intakeDoc(id: string): Promise<Doc> {
       `Status: ${r.status} · From ${r.requester.name}${"email" in r.requester ? ` <${r.requester.email}>` : ""} · Submitted ${r.submitted}`,
       `Audience: ${r.targetAudience ?? "—"} · Target date: ${r.targetDate ?? "—"}`,
       `Impact ${r.impact ?? "?"} / Effort ${r.effort ?? "?"}${r.quadrant ? ` (${r.quadrant})` : ""}`,
-      r.question ? `Question to the requester (${r.question.asked}): ${r.question.text}` : "",
+
       r.decided ? `Decided ${r.decided.on}${r.decided.by ? ` by ${r.decided.by}` : ""}${r.rejectionReason ? `: ${r.rejectionReason}` : ""}` : "",
       "",
       r.description,
+      ...(r.conversation.length
+        ? ["", "## Conversation", ...r.conversation.map((m) => `- ${m.from}${m.kind === "note" ? " (internal note)" : ""}, ${m.at.slice(0, 10)}: ${m.body}`)]
+        : []),
     ),
   };
 }

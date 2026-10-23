@@ -48,6 +48,7 @@ model User {
   idpGroupMemberships     IdpGroupMember[]
   publicBoards            Board[]           @relation("BoardPublicSharer")
   intakeDecisions         IntakeRequest[]   @relation("IntakeDecider")
+  intakeMessages          IntakeMessage[]   @relation("IntakeMessageAuthor")
 }
 
 model Workspace {
@@ -499,21 +500,39 @@ model IntakeRequest {
   // Who approved or rejected it, and when (cleared when a rejected request is reopened).
   decidedById        String?
   decidedAt          DateTime?
-  // The last question sent to the requester ("Ask for info"); kept after triage resumes.
-  infoQuestion       String?
-  infoRequestedAt    DateTime?
+  // The requester's private status page: /status/<id>-<HMAC(SESSION_SECRET, nonce)>
+  // (lib/intake-status.ts). A new nonce ("Reset link") kills the old link.
+  statusNonce        String    @default(cuid())
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  workspace        Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  requestedBy      User?     @relation("IntakeRequester", fields: [requestedById], references: [id], onDelete: SetNull)
-  assignedTo       User?     @relation("IntakeAssignee", fields: [assignedToId], references: [id], onDelete: SetNull)
-  convertedProject Project?  @relation(fields: [convertedProjectId], references: [id], onDelete: SetNull)
-  decidedBy        User?     @relation("IntakeDecider", fields: [decidedById], references: [id], onDelete: SetNull)
+  workspace        Workspace       @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  requestedBy      User?           @relation("IntakeRequester", fields: [requestedById], references: [id], onDelete: SetNull)
+  assignedTo       User?           @relation("IntakeAssignee", fields: [assignedToId], references: [id], onDelete: SetNull)
+  convertedProject Project?        @relation(fields: [convertedProjectId], references: [id], onDelete: SetNull)
+  decidedBy        User?           @relation("IntakeDecider", fields: [decidedById], references: [id], onDelete: SetNull)
+  messages         IntakeMessage[]
 
   @@unique([workspaceId, number])
   @@index([workspaceId, status])
+}
+
+// The conversation on an intake request. "reply" messages are between the team and the
+// requester (emailed to them, shown on their status page); "note" messages are internal.
+// A message from the requester has no author.
+model IntakeMessage {
+  id            String        @id @default(cuid())
+  requestId     String
+  kind          String        @default("reply") // reply / note
+  fromRequester Boolean       @default(false)
+  authorId      String?
+  body          String
+  createdAt     DateTime      @default(now())
+  request       IntakeRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  author        User?         @relation("IntakeMessageAuthor", fields: [authorId], references: [id], onDelete: SetNull)
+
+  @@index([requestId, createdAt])
 }
 
 // ── Storyboarding (Phase 3) ──────────────────────────────────────────────────

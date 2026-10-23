@@ -24,7 +24,7 @@ There are eight categories of notification. Each one can be switched on or off f
 
 **Reviews** — Review requests, and decisions on reviews you requested.
 
-**Intake requests** — New stakeholder requests land in an admin’s inbox.
+**Intake requests** — New stakeholder requests land in an admin’s inbox, and a requester’s reply on their status page goes to whoever the request is assigned to (or, if nobody, the admins and managers).
 
 **Member accounts** — Welcome emails for new members and password-reset notices.
 
