@@ -72,7 +72,7 @@ export function ShareDialog({
         if (!o) setConfirmReset(false);
       }}
     >
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="min-w-0 sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Share this board publicly</DialogTitle>
           <DialogDescription>
@@ -85,7 +85,7 @@ export function ShareDialog({
         ) : !share.allowed && !share.url ? (
           <p className="text-sm text-muted-foreground">An admin has turned off public board links for this workspace.</p>
         ) : (
-          <div className="flex flex-col gap-4">
+          <div className="flex min-w-0 flex-col gap-4">
             {share.url ? (
               <>
                 <div className="flex items-center gap-2">
