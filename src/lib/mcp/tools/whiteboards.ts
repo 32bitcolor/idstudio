@@ -40,6 +40,7 @@ const itemInput = z.object({
   frame: z.string().optional().describe("Put it in this frame: the ref of a frame listed earlier in this call, or a frame's id"),
   from: z.string().optional().describe("Arrows and lines: the ref or id of the item it starts at"),
   to: z.string().optional().describe("Arrows and lines: the ref or id of the item it points to"),
+  via: z.array(z.tuple([z.number(), z.number()])).max(50).optional().describe("Attached arrows: absolute [x, y] points to bend through, e.g. to go around something"),
   points: z.array(z.tuple([z.number(), z.number()])).min(2).max(50).optional().describe("Arrows and lines not attached to items: absolute [x, y] points"),
 });
 

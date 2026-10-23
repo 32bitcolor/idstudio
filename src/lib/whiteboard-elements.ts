@@ -215,28 +215,28 @@ function edgePoint(e: SceneElement, to: { x: number; y: number }, gap: number) {
 
 const GAP = 8;
 
-/** Straight arrow between its bound ends (either end may be a fixed point instead). */
+/** Re-attach an arrow's bound ends to the edges of what they connect (either end may be
+ *  a fixed point instead). Points in between stay where they are. */
 function route(a: SceneElement, byId: Map<string, SceneElement>) {
-  const pts = (a.points as [number, number][]) ?? [[0, 0], [100, 0]];
+  const pts = ((a.points as [number, number][]) ?? [[0, 0], [100, 0]]).map(([x, y]) => ({ x: num(a.x) + x, y: num(a.y) + y }));
   const sb = a.startBinding as { elementId: string } | null;
   const eb = a.endBinding as { elementId: string } | null;
   const from = sb ? byId.get(sb.elementId) : undefined;
   const to = eb ? byId.get(eb.elementId) : undefined;
   if (!from && !to) return;
-  const fixedStart = { x: num(a.x) + pts[0][0], y: num(a.y) + pts[0][1] };
-  const fixedEnd = { x: num(a.x) + pts[pts.length - 1][0], y: num(a.y) + pts[pts.length - 1][1] };
-  const start = from ? edgePoint(from, to ? center(to) : fixedEnd, GAP) : fixedStart;
-  const end = to ? edgePoint(to, from ? center(from) : fixedStart, GAP) : fixedEnd;
+  const via = pts.slice(1, -1);
+  const fixedStart = pts[0];
+  const fixedEnd = pts[pts.length - 1];
+  const start = from ? edgePoint(from, via[0] ?? (to ? center(to) : fixedEnd), GAP) : fixedStart;
+  const end = to ? edgePoint(to, via.at(-1) ?? (from ? center(from) : fixedStart), GAP) : fixedEnd;
+  const all = [start, ...via, end];
   a.x = Math.round(start.x);
   a.y = Math.round(start.y);
-  const dx = Math.round(end.x - start.x);
-  const dy = Math.round(end.y - start.y);
-  a.points = [
-    [0, 0],
-    [dx, dy],
-  ];
-  a.width = Math.abs(dx);
-  a.height = Math.abs(dy);
+  a.points = all.map((p) => [Math.round(p.x - start.x), Math.round(p.y - start.y)]);
+  const xs = all.map((p) => p.x);
+  const ys = all.map((p) => p.y);
+  a.width = Math.round(Math.max(...xs) - Math.min(...xs));
+  a.height = Math.round(Math.max(...ys) - Math.min(...ys));
 }
 
 // ── Reading ───────────────────────────────────────────────────────────────────
@@ -319,6 +319,7 @@ export type ItemInput = {
   frame?: string;
   from?: string;
   to?: string;
+  via?: [number, number][];
   points?: [number, number][];
 };
 
@@ -332,6 +333,8 @@ const DEFAULT_SIZE: Record<string, [number, number]> = {
 // How much wider than its text a shape must be for the text to fit inside it.
 const SHAPE_FACTOR: Record<string, number> = { rectangle: 1, ellipse: Math.SQRT2, diamond: 2 };
 const ROW_WIDTH = 1400;
+// Gap between what's on the board and new items placed below it (room for a frame's name).
+const BELOW = 120;
 const SPACING = 60;
 
 function bounds(els: SceneElement[]) {
@@ -362,7 +365,7 @@ class Placer {
       const b = bounds(live);
       r = frame
         ? { x0: num(frame.x) + SPACING, maxX: num(frame.x) + num(frame.width) - SPACING, x: num(frame.x) + SPACING, y: b ? b.y2 + SPACING : num(frame.y) + SPACING + 20, rowH: 0 }
-        : { x0: b ? b.x1 : 0, maxX: (b ? b.x1 : 0) + ROW_WIDTH, x: b ? b.x1 : 0, y: b ? b.y2 + 80 : 0, rowH: 0 };
+        : { x0: b ? b.x1 : 0, maxX: (b ? b.x1 : 0) + ROW_WIDTH, x: b ? b.x1 : 0, y: b ? b.y2 + BELOW : 0, rowH: 0 };
       this.rows.set(key, r);
     }
     if (r.x > r.x0 && r.x + w > r.maxX) {
@@ -435,7 +438,8 @@ export function addItems(scene: Scene, items: ItemInput[]): { scene: Scene; adde
       const y0 = pts ? pts[0][1] : 0;
       el = element(it.kind, x0, y0, 0, 0, {
         strokeColor: stroke,
-        points: pts ? pts.map(([x, y]) => [x - x0, y - y0]) : [[0, 0], [1, 0]],
+        // Bound ends are placeholders until route() attaches them; `via` points are absolute.
+        points: pts ? pts.map(([x, y]) => [x - x0, y - y0]) : [[0, 0], ...(it.via ?? []), [1, 0]],
         lastCommittedPoint: null,
         startBinding: from ? { elementId: from.id, focus: 0, gap: GAP } : null,
         endBinding: to ? { elementId: to.id, focus: 0, gap: GAP } : null,
@@ -489,7 +493,7 @@ export function addItems(scene: Scene, items: ItemInput[]): { scene: Scene; adde
       const [dw, dh] = DEFAULT_SIZE[it.kind];
       let w = it.width ?? dw;
       // Grow a default-width shape for a long one-line label rather than wrapping it tall.
-      if (!it.width && it.text) w = Math.min(320, Math.max(w, (textWidth(it.text, size) + PADDING * 2 + 24) * SHAPE_FACTOR[type]));
+      if (!it.width && it.text && it.kind !== "note") w = Math.min(320, Math.max(w, (textWidth(it.text, size) + PADDING * 2 + 24) * SHAPE_FACTOR[type]));
       el = element(type, 0, 0, w, it.height ?? dh, {
         strokeColor: it.color ? stroke : "#1e1e1e",
         backgroundColor: fill,
@@ -716,7 +720,7 @@ export function diagramItems(scene: Scene, d: DiagramInput): ItemInput[] {
     const frame = d.frame ? scene.elements.find((e) => e.id === d.frame && !e.isDeleted) : undefined;
     if (d.frame && !frame) throw new ItemError(`Frame "${d.frame}" isn't on this whiteboard.`);
     const b = bounds(scene.elements.filter((e) => !e.isDeleted && (frame ? e.frameId === frame.id : true) && !(e.type === "text" && e.containerId)));
-    origin = frame ? { x: num(frame.x) + SPACING, y: b ? b.y2 + SPACING : num(frame.y) + SPACING + 20 } : { x: b ? b.x1 : 0, y: b ? b.y2 + 80 : 0 };
+    origin = frame ? { x: num(frame.x) + SPACING, y: b ? b.y2 + SPACING : num(frame.y) + SPACING + 20 } : { x: b ? b.x1 : 0, y: b ? b.y2 + BELOW : 0 };
   }
   let frameRef = d.frame;
   if (d.title) {
@@ -729,6 +733,15 @@ export function diagramItems(scene: Scene, d: DiagramInput): ItemInput[] {
     const [w, h] = dims.get(n.id)!;
     return { ref: `node:${n.id}`, kind: n.shape ?? "box", text: n.text, color: n.color, x: Math.round(origin.x + p.x - w / 2), y: Math.round(origin.y + p.y - h / 2), width: w, height: h, frame: frameRef };
   });
-  const edges: ItemInput[] = d.edges.map((e) => ({ kind: "arrow", from: `node:${e.from}`, to: `node:${e.to}`, text: e.text, dashed: e.dashed, frame: frameRef }));
+  // Follow dagre's route around the nodes, dropping bends that are really straight.
+  const edges: ItemInput[] = d.edges.map((e) => {
+    type Pt = { x: number; y: number };
+    const route: Pt[] = ((g.edge(e.from, e.to)?.points ?? []) as Pt[]).map((p) => ({ x: origin.x + p.x, y: origin.y + p.y }));
+    const [a, b] = [route[0], route.at(-1)];
+    const off = (p: Pt) =>
+      a && b ? Math.abs((b.x - a.x) * (a.y - p.y) - (a.x - p.x) * (b.y - a.y)) / (Math.hypot(b.x - a.x, b.y - a.y) || 1) : 0;
+    const via = route.slice(1, -1).filter((p) => off(p) > 4).map((p) => [Math.round(p.x), Math.round(p.y)] as [number, number]);
+    return { kind: "arrow", from: `node:${e.from}`, to: `node:${e.to}`, text: e.text, dashed: e.dashed, frame: frameRef, ...(via.length ? { via } : {}) };
+  });
   return [...frameItems, ...nodes, ...edges];
 }
