@@ -66,8 +66,8 @@ export default function MembersAccess() {
       </P>
       <DefList>
         <Def term="Admin">
-          Full control: manage members, groups, and workspace settings (intake, notifications, backup,
-          updates), plus see and edit every board, project, storyboard, and whiteboard. Restricting a
+          Full control: manage members, groups, and workspace settings (intake, sharing, notifications,
+          backup, updates), plus see and edit every board, project, storyboard, and whiteboard. Restricting a
           resource never locks out an admin.
         </Def>
         <Def term="Manager">
@@ -180,6 +180,12 @@ export default function MembersAccess() {
         Restriction is enforced, not merely hidden. A user without access can&rsquo;t reach the
         resource through lists, the dashboard, <em>or</em> a direct link — the access check runs on
         every request, so pasted URLs don&rsquo;t leak anything.
+      </Callout>
+
+      <Callout tone="note">
+        Groups decide who <em>in the workspace</em> sees a board. A public board link is separate: it
+        shows the board, minus private cards, to anyone with the link, even if the board is restricted to
+        a group. Admins see every shared board, and can turn links off, in <UI>Settings → Sharing</UI>.
       </Callout>
     </>
   );

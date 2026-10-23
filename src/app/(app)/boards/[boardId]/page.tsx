@@ -14,7 +14,7 @@ export default async function BoardPage({ params }: { params: Promise<{ boardId:
 
   const meta = await prisma.board.findUnique({
     where: { id: boardId },
-    select: { project: { select: { id: true, name: true } } },
+    select: { publicNonce: true, project: { select: { id: true, name: true } } },
   });
 
   const raw = await prisma.column.findMany({
@@ -34,6 +34,7 @@ export default async function BoardPage({ params }: { params: Promise<{ boardId:
           position: true,
           dueDate: true,
           keySeq: true,
+          private: true,
           labels: { select: { label: { select: { id: true, name: true, color: true } } } },
           assignees: { select: { user: { select: { id: true, name: true, email: true } } } },
           smes: { select: { user: { select: { id: true, name: true, email: true } } } },
@@ -68,6 +69,7 @@ export default async function BoardPage({ params }: { params: Promise<{ boardId:
         position: card.position,
         dueDate: card.dueDate ? card.dueDate.toISOString() : null,
         keySeq: card.keySeq,
+        private: card.private,
         labels: card.labels.map((l) => l.label),
         assignees: card.assignees.map((a) => a.user),
         smes: card.smes.map((s) => s.user),
@@ -87,6 +89,7 @@ export default async function BoardPage({ params }: { params: Promise<{ boardId:
       boardId={boardId}
       boardName={board.name}
       cardKeyPrefix={board.cardKeyPrefix}
+      publicShared={!!meta?.publicNonce}
       project={project}
       context={context}
       initialColumns={columns}

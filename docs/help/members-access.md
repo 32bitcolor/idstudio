@@ -29,7 +29,7 @@ People lock themselves out. On any member’s row, click **Reset password**, typ
 
 Use the role dropdown on a member’s row to switch them between the three roles. There are exactly three, from most to least privileged:
 
-**Admin** — Full control: manage members, groups, and workspace settings (intake, notifications, backup, updates), plus see and edit every board, project, storyboard, and whiteboard. Restricting a resource never locks out an admin.
+**Admin** — Full control: manage members, groups, and workspace settings (intake, sharing, notifications, backup, updates), plus see and edit every board, project, storyboard, and whiteboard. Restricting a resource never locks out an admin.
 
 **Manager** — An oversight role: the same “see everything” visibility as an admin across boards, projects, storyboards, and whiteboards — but *no* access to member, group, or workspace-settings management. Ideal for a team lead who needs the full picture without the admin keys.
 
@@ -77,6 +77,8 @@ You grant access from the group. Inside a group, the **Shared resources** sectio
 So to lock down a sensitive project, add the right people to a group and tick that project in the group’s **Shared resources**. To reopen it to the whole workspace, un-tick it everywhere — with zero grants, it’s public to members again.
 
 > **Tip.** Restriction is enforced, not merely hidden. A user without access can’t reach the resource through lists, the dashboard, *or* a direct link — the access check runs on every request, so pasted URLs don’t leak anything.
+
+> **Note.** Groups decide who *in the workspace* sees a board. A public board link is separate: it shows the board, minus private cards, to anyone with the link, even if the board is restricted to a group. Admins see every shared board, and can turn links off, in **Settings → Sharing**.
 
 ---
 

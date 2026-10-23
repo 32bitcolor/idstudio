@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { X, Check, MessageSquare, Paperclip, ArrowUp, ChevronUp, ChevronDown } from "lucide-react";
+import { X, Check, MessageSquare, Paperclip, ArrowUp, ChevronUp, ChevronDown, Globe, Lock } from "lucide-react";
 import { createWhiteboardForCard } from "@/app/actions/whiteboards";
 import {
   getCardDetail,
@@ -25,6 +25,7 @@ import {
 import { DescriptionEditor } from "@/components/board/description-editor";
 import { CommentComposer, CommentBody } from "@/components/board/comment-editor";
 import { assignCardToSprint } from "@/app/actions/sprints";
+import { setCardPrivate } from "@/app/actions/board-share";
 import { ConfirmDelete } from "@/components/shared/confirm-delete";
 import { CardReviewFeedback, type CardReviewComment } from "@/components/review/card-review-feedback";
 import { StatusBadge } from "@/components/shared/status-badge";
@@ -57,6 +58,7 @@ export type CardFacePatch = {
   assignees?: { id: string; name: string | null; email: string }[];
   smes?: { id: string; name: string | null; email: string }[];
   checklist?: { total: number; done: number };
+  private?: boolean;
   comments?: number;
   attachments?: number;
 };
@@ -101,6 +103,7 @@ export function CardDrawer({
   const [assigneeIds, setAssigneeIds] = useState<Set<string>>(new Set());
   const [smeIds, setSmeIds] = useState<Set<string>>(new Set());
   const [sprintId, setSprintId] = useState<string | null>(null);
+  const [isPrivate, setIsPrivate] = useState(false);
   const [sprints, setSprints] = useState<{ id: string; name: string }[]>([]);
   const [sprintsEnabled, setSprintsEnabled] = useState(false);
   const [workspaceLabels, setWorkspaceLabels] = useState<LabelT[]>([]);
@@ -136,6 +139,7 @@ export function CardDrawer({
       setAssigneeIds(new Set(d.card.assigneeIds));
       setSmeIds(new Set(d.card.smeIds));
       setSprintId(d.card.sprintId);
+      setIsPrivate(d.card.private);
       setSprints(d.sprints);
       setSprintsEnabled(d.sprintsEnabled);
       setWorkspaceLabels(d.workspaceLabels);
@@ -177,6 +181,18 @@ export function CardDrawer({
   function saveDescription(json: string | null) {
     setDescription(json);
     updateCardDescription(cardId, json);
+  }
+
+  function togglePrivate() {
+    const next = !isPrivate;
+    setIsPrivate(next);
+    onPatch(cardId, { private: next });
+    setCardPrivate(cardId, next).then((res) => {
+      if (res && "error" in res) {
+        setIsPrivate(!next);
+        onPatch(cardId, { private: !next });
+      }
+    });
   }
 
   function changeDueDate(value: string) {
@@ -530,6 +546,25 @@ export function CardDrawer({
                         <option key={s.id} value={s.id}>{s.name}</option>
                       ))}
                     </Select>
+                  </Field>
+                )}
+
+                {!isSubtask && (
+                  <Field label="Visibility">
+                    <button
+                      type="button"
+                      aria-pressed={isPrivate}
+                      onClick={() => togglePrivate()}
+                      className={`inline-flex h-8 items-center gap-1.5 rounded-md border px-2.5 text-xs font-semibold outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 ${
+                        isPrivate ? "border-accent/40 bg-accent/10 text-foreground" : "border-border text-muted-foreground hover:bg-hover hover:text-foreground"
+                      }`}
+                    >
+                      {isPrivate ? <Lock className="size-3.5" aria-hidden="true" /> : <Globe className="size-3.5" aria-hidden="true" />}
+                      {isPrivate ? "Private" : "Not private"}
+                    </button>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {isPrivate ? "Hidden from the board\u2019s public link." : "Shown on the board\u2019s public link, if it has one."}
+                    </p>
                   </Field>
                 )}
 

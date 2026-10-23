@@ -28,9 +28,11 @@ import {
   ArrowRight,
   Columns3,
   FileCheck2,
+  Globe,
   Hash,
   List,
   ListChecks,
+  Lock,
   MessageSquare,
   MoreHorizontal,
   Paperclip,
@@ -51,6 +53,7 @@ import {
   setBoardCardKeyPrefix,
 } from "@/app/actions/boards";
 import { CardDrawer, type CardFacePatch } from "@/components/board/card-drawer";
+import { ShareDialog } from "@/components/board/share-dialog";
 import { ProjectContextStrip, type ProjectContext } from "@/components/board/project-context-strip";
 import type { SavedViewDTO } from "@/app/actions/saved-views";
 import type { BoardFilters } from "@/lib/saved-views";
@@ -89,6 +92,7 @@ type Card = {
   position: string;
   dueDate: string | null;
   keySeq: number | null;
+  private: boolean;
   labels: Label[];
   assignees: Member[];
   smes: Member[];
@@ -104,6 +108,7 @@ export function BoardView({
   boardId,
   boardName,
   cardKeyPrefix,
+  publicShared,
   project,
   context,
   initialColumns,
@@ -111,6 +116,7 @@ export function BoardView({
   boardId: string;
   boardName: string;
   cardKeyPrefix: string | null;
+  publicShared: boolean;
   project: { id: string; name: string } | null;
   context: ProjectContext | null;
   initialColumns: Column[];
@@ -338,6 +344,7 @@ export function BoardView({
         position: res.card.position,
         dueDate: null,
         keySeq: res.card.keySeq,
+        private: false,
         labels: [],
         assignees: [],
         smes: [],
@@ -426,6 +433,7 @@ export function BoardView({
         boardId={boardId}
         boardName={boardName}
         cardKeyPrefix={cardKeyPrefix}
+        publicShared={publicShared}
         project={project}
         view={view}
         onView={changeView}
@@ -524,6 +532,7 @@ function BoardHeader({
   boardId,
   boardName,
   cardKeyPrefix,
+  publicShared,
   project,
   view,
   onView,
@@ -533,6 +542,7 @@ function BoardHeader({
   boardId: string;
   boardName: string;
   cardKeyPrefix: string | null;
+  publicShared: boolean;
   project: { id: string; name: string } | null;
   view: ViewMode;
   onView: (v: ViewMode) => void;
@@ -541,6 +551,8 @@ function BoardHeader({
 }) {
   const [name, setName] = useState(boardName);
   const [prefixOpen, setPrefixOpen] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
+  const [shared, setShared] = useState(publicShared);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [, startTransition] = useTransition();
   // A project's board reads "Projects / <project> / <board>" in the header crumbs,
@@ -569,6 +581,16 @@ function BoardHeader({
         />
       </div>
       <div className="flex shrink-0 flex-wrap items-center gap-2">
+        {shared && (
+          <button
+            type="button"
+            onClick={() => setShareOpen(true)}
+            className="inline-flex h-7 items-center gap-1.5 rounded-full bg-accent/10 px-2.5 text-xs font-semibold text-accent outline-none hover:bg-accent/15 focus-visible:ring-[3px] focus-visible:ring-ring/50"
+          >
+            <Globe className="size-3.5" aria-hidden="true" />
+            Public link on
+          </button>
+        )}
         <div role="group" aria-label="View" className="flex rounded-md bg-muted p-0.5">
           <ViewToggle active={view === "board"} onClick={() => onView("board")} icon={<Columns3 className="size-4" />}>
             Board
@@ -589,6 +611,10 @@ function BoardHeader({
               <Hash className="size-4" />
               Card prefix{cardKeyPrefix ? ` · ${cardKeyPrefix}` : "…"}
             </DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => setShareOpen(true)}>
+              <Globe className="size-4" />
+              {shared ? "Public link…" : "Share publicly…"}
+            </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem variant="destructive" onSelect={() => setDeleteOpen(true)}>
               <Trash2 className="size-4" />
@@ -604,6 +630,7 @@ function BoardHeader({
       </div>
 
       <PrefixDialog boardId={boardId} current={cardKeyPrefix} open={prefixOpen} onOpenChange={setPrefixOpen} />
+      <ShareDialog boardId={boardId} open={shareOpen} onOpenChange={setShareOpen} onShared={setShared} />
       <ConfirmDelete
         open={deleteOpen}
         onOpenChange={setDeleteOpen}
@@ -899,9 +926,12 @@ function CardShell({
         dragging ? "rotate-1 shadow-md" : "cursor-pointer active:cursor-grabbing",
       )}
     >
-      {(key || onDelete) && (
+      {(key || onDelete || card.private) && (
         <div className="flex items-center justify-between gap-2">
-          {key ? <span className="font-mono text-[11px] font-medium text-muted-foreground">{key}</span> : <span />}
+          <span className="flex items-center gap-1.5">
+            {key && <span className="font-mono text-[11px] font-medium text-muted-foreground">{key}</span>}
+            {card.private && <PrivateTag />}
+          </span>
           {onDelete && (
             <ConfirmDelete
               onConfirm={onDelete}
@@ -1065,6 +1095,7 @@ function ListView({
                   </td>
                   <td className="px-4 py-2">
                     <span className="flex flex-wrap gap-1 overflow-hidden">
+                      {card.private && <PrivateTag />}
                       {card.labels.map((l) => (
                         <LabelPill key={l.id} label={l} />
                       ))}
@@ -1194,5 +1225,15 @@ function AddColumn({ onAdd }: { onAdd: (name: string) => void }) {
         <Button size="xs" variant="ghost" onClick={() => { setValue(""); setOpen(false); }}>Cancel</Button>
       </div>
     </div>
+  );
+}
+
+/** Private cards are left off the board's public link. */
+function PrivateTag() {
+  return (
+    <span className="inline-flex h-5 items-center gap-1 rounded-full bg-muted px-1.5 text-[11px] font-semibold text-muted-foreground">
+      <Lock className="size-3" aria-hidden="true" />
+      Private
+    </span>
   );
 }

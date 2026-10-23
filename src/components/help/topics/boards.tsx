@@ -34,8 +34,9 @@ export default function Boards() {
         </>
         <>
           Rename the board by clicking its title. The <UI>⋯</UI> (<UI>Board settings</UI>) menu beside
-          the view switch sets the <UI>Card prefix</UI> and holds <UI>Delete board…</UI>, which
-          permanently deletes every column and card on it.
+          the view switch sets the <UI>Card prefix</UI>, shares the board publicly (see{" "}
+          <em>Sharing a board publicly</em> below), and holds <UI>Delete board…</UI>, which permanently
+          deletes every column and card on it.
         </>
       </Steps>
 
@@ -98,6 +99,11 @@ export default function Boards() {
           The column the card is in. Changing it here moves the card. Each column maps to one of the
           workspace&rsquo;s statuses (to do, in progress, done and so on), which drive the sprint board and
           cross-board views; a status change notifies the card&rsquo;s assignees and SMEs.
+        </Def>
+        <Def term="Visibility">
+          <UI>Private</UI> leaves the card off the board&rsquo;s public link, if it has one. A private card
+          shows a <UI>Private</UI> tag on the board; members still see it as usual. Subtasks follow their
+          card.
         </Def>
         <Def term="Due date">
           Pick a date, or <UI>Clear</UI> it. Due dates drive the due-date filter, the overdue chip, and
@@ -166,6 +172,54 @@ export default function Boards() {
         board. Saving over a name you&rsquo;ve already used updates that view, and changing a filter by
         hand detaches the view so the menu never names one while showing something else. The team
         sprint board has its own <UI>Views</UI> menu that works the same way.
+      </P>
+
+      <H2>Sharing a board publicly</H2>
+      <P>
+        A public link lets people outside the workspace (a stakeholder, a client, the rest of the
+        company) follow a board without an account. They see it read-only: they can&rsquo;t change
+        anything, and the link never leads anywhere else in Tavoro.
+      </P>
+      <Steps>
+        <>
+          Open the board&rsquo;s <UI>⋯</UI> (<UI>Board settings</UI>) menu and choose{" "}
+          <UI>Share publicly…</UI>, then <UI>Create public link</UI>.
+        </>
+        <>
+          <UI>Copy</UI> the link and send it. While it&rsquo;s on, the board header shows{" "}
+          <UI>Public link on</UI>; click it to come back to these settings.
+        </>
+        <>
+          Mark any card that shouldn&rsquo;t be seen <UI>Private</UI>, in its drawer under{" "}
+          <UI>Visibility</UI>.
+        </>
+      </Steps>
+      <DefList>
+        <Def term="What visitors see">
+          The columns, and each card that isn&rsquo;t private: its key, title, labels, due date, subtask
+          progress, and description (mentions show as plain names). Click a card to read its description.
+          The page shows the board as it is now, so a refresh picks up changes.
+        </Def>
+        <Def term="What they never see">
+          Private cards, comments, attachments, subtask titles, SMEs, review feedback, whiteboards, and
+          email addresses. Assignees only when you tick <UI>Show who&rsquo;s assigned</UI>, and then by
+          name only.
+        </Def>
+        <Def term="Reset link and Stop sharing">
+          <UI>Reset link…</UI> makes a new link and stops the old one working, for when it went somewhere it
+          shouldn&rsquo;t. <UI>Stop sharing</UI> turns the link off; a stopped or reset link shows a
+          not-found page.
+        </Def>
+      </DefList>
+      <Callout tone="warning">
+        Anyone who has the link can open it, and can pass it on. Treat it like the board is public, and
+        mark cards private before sharing, not after.
+      </Callout>
+      <P>
+        Anyone who can work on a board can share it, from the browser only (an AI assistant connected over
+        MCP can mark cards private but can&rsquo;t publish a board). Admins see every shared board in{" "}
+        <UI>Settings → Sharing</UI>, can turn any link off there, and can switch public links off for the
+        whole workspace.
       </P>
 
       <H3>How boards fit the pipeline</H3>

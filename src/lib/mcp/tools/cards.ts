@@ -26,6 +26,7 @@ import {
   updateCardDescription,
 } from "@/app/actions/cards";
 import { assignCardToSprint } from "@/app/actions/sprints";
+import { setCardPrivate } from "@/app/actions/board-share";
 import { fromMarkdown, toMarkdown } from "@/lib/markdown";
 import { check, day, link, parseDate, principal, resolveCardId, tool, ToolError } from "@/lib/mcp/util";
 import { cardHref } from "@/lib/mcp/tools/workspace";
@@ -107,6 +108,7 @@ export async function loadCard(ref: string) {
     done: d.cardDone,
     isSubtask: d.isSubtask,
     parent: d.parent,
+    private: d.card.private,
     due: day(d.card.dueDate ? new Date(d.card.dueDate) : null),
     description: toMarkdown(d.card.description),
     labels: d.card.labelIds.map((id) => label.get(id)).filter(Boolean),
@@ -137,6 +139,7 @@ export async function loadBoard(boardId: string, includeDone: boolean) {
       id: true,
       name: true,
       cardKeyPrefix: true,
+      publicNonce: true,
       project: { select: { id: true, name: true } },
       columns: {
         orderBy: { position: "asc" },
@@ -157,6 +160,7 @@ export async function loadBoard(boardId: string, includeDone: boolean) {
               labels: { select: { label: { select: { name: true } } } },
               subtasks: { select: { done: true } },
               sprint: { select: { name: true } },
+              private: true,
             },
           },
         },
@@ -168,6 +172,7 @@ export async function loadBoard(boardId: string, includeDone: boolean) {
     name: full.name,
     url: link(`/boards/${full.id}`),
     cardKeyPrefix: full.cardKeyPrefix,
+    sharedPublicly: full.publicNonce !== null,
     project: full.project,
     columns: full.columns
       .filter((c) => includeDone || c.status?.category !== "done")
@@ -184,6 +189,7 @@ export async function loadBoard(boardId: string, includeDone: boolean) {
           labels: k.labels.map((l) => l.label.name),
           subtasks: k.subtasks.length ? `${k.subtasks.filter((s) => s.done).length}/${k.subtasks.length}` : undefined,
           sprint: k.sprint?.name,
+          private: k.private || undefined,
         })),
       })),
   };
@@ -315,7 +321,7 @@ export function registerCardTools(server: McpServer) {
     {
       title: "Update a card",
       description:
-        "Change a card: title, description (Markdown, replaces the old one), due date (empty string clears it), column (moves it), assignees, SMEs, labels, sprint. Lists add or remove people/labels; anything you leave out stays as it is.",
+        "Change a card: title, description (Markdown, replaces the old one), due date (empty string clears it), column (moves it), assignees, SMEs, labels, sprint, private (true leaves it off the board's public link; top-level cards only). Lists add or remove people/labels; anything you leave out stays as it is.",
       input: {
         card: cardRef,
         title: z.string().min(1).max(280).optional(),
@@ -329,6 +335,7 @@ export function registerCardTools(server: McpServer) {
         add_labels: z.array(z.string()).max(20).optional(),
         remove_labels: z.array(z.string()).max(20).optional(),
         sprint: z.string().optional().describe("Sprint name or id, 'active', or empty to take it out of its sprint"),
+        private: z.boolean().optional().describe("true hides the card from the board's public read-only link"),
       },
       kind: "write",
       idempotent: true,
@@ -344,6 +351,7 @@ export function registerCardTools(server: McpServer) {
         const count = await prisma.card.count({ where: { columnId: col.id, NOT: { id: cardId } } });
         check(await moveCard(cardId, col.id, count));
       }
+      if (a.private !== undefined) check(await setCardPrivate(cardId, a.private));
       await applyCardChanges(cardId, {
         description: a.description,
         due: a.due,

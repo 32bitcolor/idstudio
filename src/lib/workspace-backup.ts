@@ -49,7 +49,14 @@ const SPECS: Spec[] = [
   // Project before Board so Board.projectId can remap on import; both before
   // Column/Card so their statusId → workspaceStatus remaps too.
   { key: "project", model: "project", where: (w) => ({ workspaceId: w }), fks: { workspaceId: WS } },
-  { key: "board", model: "board", where: (w) => ({ workspaceId: w }), fks: { workspaceId: WS, projectId: "project" } },
+  // A restored board starts unshared: its public link (if any) belongs to the original.
+  {
+    key: "board",
+    model: "board",
+    where: (w) => ({ workspaceId: w }),
+    fks: { workspaceId: WS, projectId: "project" },
+    omit: ["publicNonce", "publicSharedAt", "publicSharedById"],
+  },
   { key: "column", model: "column", where: (w) => ({ board: { workspaceId: w } }), fks: { boardId: "board", statusId: "workspaceStatus" } },
   // A subtask is a Card with columnId null and parentCardId set — the OR clause
   // pulls both top-level cards (via their column) and subtask-cards (via their

@@ -9,7 +9,8 @@ const PUBLIC_ROUTES = ["/login", "/signup"];
 // Reachable with no session at all: the public intake form (/request/<workspace-slug>),
 // where external stakeholders submit requests, and guest review links (/review/…),
 // where outside SMEs review one round. Note "/review/" doesn't match "/reviews/".
-const PUBLIC_PREFIXES = ["/request/", "/review/"];
+// Public board links (/share/b/<token>) show one board, read-only.
+const PUBLIC_PREFIXES = ["/request/", "/review/", "/share/"];
 
 // Hostnames the app used to live at (e.g. before the rename to Tavoro). Page visits
 // there redirect to the same path on APP_URL; API calls and OAuth discovery are
@@ -43,8 +44,9 @@ export default async function proxy(req: NextRequest) {
   }
 
   const res = NextResponse.next();
-  // Guest review pages: keep the guest's page URL out of Referer headers and search engines.
-  if (pathname.startsWith("/review/")) {
+  // Guest review pages and public boards: keep the page URL out of Referer headers and
+  // search engines.
+  if (pathname.startsWith("/review/") || pathname.startsWith("/share/")) {
     res.headers.set("Referrer-Policy", "no-referrer");
     res.headers.set("X-Robots-Tag", "noindex, nofollow");
   }

@@ -13,6 +13,7 @@ const TABS = [
   { href: "/settings/labels", label: "Labels", adminOnly: true },
   { href: "/settings/backup", label: "Backup", adminOnly: true },
   { href: "/settings/intake", label: "Intake", adminOnly: true },
+  { href: "/settings/sharing", label: "Sharing", adminOnly: true },
   { href: "/settings/notifications", label: "Notifications", adminOnly: true },
   { href: "/settings/updates", label: "Updates", adminOnly: true },
 ];
