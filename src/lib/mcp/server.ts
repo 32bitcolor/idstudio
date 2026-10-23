@@ -2,7 +2,7 @@ import "server-only";
 import { z } from "zod";
 import { McpServer, ResourceTemplate } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { prisma } from "@/lib/db";
-import { boardVisibilityWhere, projectVisibilityWhere, storyboardVisibilityWhere } from "@/lib/authz";
+import { boardVisibilityWhere, projectVisibilityWhere, storyboardVisibilityWhere, whiteboardVisibilityWhere } from "@/lib/authz";
 import { principal } from "@/lib/mcp/util";
 import { registerWorkspaceTools } from "@/lib/mcp/tools/workspace";
 import { loadBoard, loadCard, registerCardTools } from "@/lib/mcp/tools/cards";
@@ -10,13 +10,14 @@ import { loadProject, registerProjectTools } from "@/lib/mcp/tools/projects";
 import { loadStoryboard, registerStoryboardTools } from "@/lib/mcp/tools/storyboards";
 import { loadRound, registerReviewTools } from "@/lib/mcp/tools/reviews";
 import { registerPlanningTools } from "@/lib/mcp/tools/planning";
+import { loadWhiteboard, registerWhiteboardTools } from "@/lib/mcp/tools/whiteboards";
 import { registerDocumentTools } from "@/lib/mcp/documents";
 
 // Tavoro's MCP server (docs/MCP.md): tools for reading and changing the workspace,
 // resources for reading one thing by URI, and prompts for common ID workflows. Built
 // fresh per request, inside runAsPrincipal(), so every tool runs as the token's user.
 
-const INSTRUCTIONS = `Tavoro is an instructional-design team workspace: projects (ADDIE/SAM phases, deliverables, milestones, learning objectives), boards of cards, storyboards (screens with on-screen text, narration, visuals, interaction and developer notes), SME review rounds with pinned comments, intake requests and sprints.
+const INSTRUCTIONS = `Tavoro is an instructional-design team workspace: projects (ADDIE/SAM phases, deliverables, milestones, learning objectives), boards of cards, storyboards (screens with on-screen text, narration, visuals, interaction and developer notes), whiteboards (Excalidraw canvases you can read and draw on as shapes, notes, frames and arrows), SME review rounds with pinned comments, intake requests and sprints.
 
 Start with get_workspace to learn who you are acting as, your access level, and the members, statuses, labels and sprints other tools accept. Use search to find things by name; fetch returns any result as a full Markdown document, and the get_* tools return structured detail. Cards can be referred to by key (e.g. SEC-12). Rich text (descriptions, comments, storyboard fields) is Markdown in both directions. Dates are YYYY-MM-DD.
 
@@ -71,6 +72,19 @@ function registerResources(server: McpServer) {
     }),
     { title: "Storyboard", description: "A storyboard, screen by screen, fields in Markdown", mimeType: "application/json" },
     async (uri, { id }) => json(uri, await loadStoryboard(String(id))),
+  );
+
+  server.registerResource(
+    "whiteboard",
+    new ResourceTemplate("tavoro://whiteboard/{id}", {
+      list: async () => ({
+        resources: (
+          await prisma.whiteboard.findMany({ where: { workspaceId: ws(), ...(await whiteboardVisibilityWhere()) }, orderBy: { updatedAt: "desc" }, take: 50, select: { id: true, title: true } })
+        ).map((w) => ({ uri: `tavoro://whiteboard/${w.id}`, name: w.title, mimeType: "application/json" })),
+      }),
+    }),
+    { title: "Whiteboard", description: "A whiteboard's items and connections", mimeType: "application/json" },
+    async (uri, { id }) => json(uri, await loadWhiteboard(String(id))),
   );
 
   server.registerResource(
@@ -213,6 +227,7 @@ export function buildMcpServer(): McpServer {
   registerStoryboardTools(server);
   registerReviewTools(server);
   registerPlanningTools(server);
+  registerWhiteboardTools(server);
   registerResources(server);
   registerPrompts(server);
   return server;

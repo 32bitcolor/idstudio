@@ -6,10 +6,10 @@ import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { getActiveMembership, getCurrentUser } from "@/lib/dal";
 import { getWhiteboardForUser, getStoryboardForUser, getCardForUser } from "@/lib/authz";
+import { MAX_SCENE, SceneTooLarge, saveSceneFrom } from "@/lib/whiteboard-store";
+import { parseScene, serializeScene } from "@/lib/whiteboard-scene";
 
 const Title = z.string().trim().min(1, "Required").max(180);
-// Excalidraw scenes (with embedded image files) can get large; cap generously.
-const MAX_SCENE = 8_000_000;
 
 function whiteboardPath(id: string) {
   return `/whiteboards/${id}`;
@@ -40,14 +40,30 @@ export async function renameWhiteboard(id: string, title: string) {
   revalidatePath("/whiteboards");
 }
 
-/** Autosave: persist the Excalidraw scene JSON (last-write-wins). */
-export async function updateWhiteboardScene(id: string, scene: string) {
+/** Autosave: merge the browser's copy of the scene into the stored one. When someone
+ *  else (another tab, or an assistant over MCP) wrote since `baseVersion`, the merged
+ *  scene comes back so the browser can show their changes. */
+export async function saveWhiteboardScene(id: string, scene: string, baseVersion: number) {
   const wb = await getWhiteboardForUser(id);
   if (!wb) return { error: "Whiteboard not found." };
   if (typeof scene !== "string" || scene.length > MAX_SCENE) return { error: "Scene too large." };
-  await prisma.whiteboard.update({ where: { id }, data: { scene } });
-  // No revalidate: the client holds the live scene; avoid churn on every autosave.
-  return { ok: true };
+  try {
+    const res = await saveSceneFrom(id, parseScene(scene));
+    // No revalidate: the client holds the live scene; avoid churn on every autosave.
+    return { version: res.version, scene: res.previousVersion !== baseVersion ? serializeScene(res.scene) : null };
+  } catch (e) {
+    if (e instanceof SceneTooLarge) return { error: "Scene too large." };
+    throw e;
+  }
+}
+
+/** Polled by an open whiteboard: the scene, if it changed after `version`. */
+export async function getWhiteboardSceneSince(id: string, version: number) {
+  const wb = await getWhiteboardForUser(id);
+  if (!wb) return { error: "Whiteboard not found." };
+  const row = await prisma.whiteboard.findUnique({ where: { id }, select: { scene: true, sceneVersion: true } });
+  if (!row || row.sceneVersion === version) return { version, scene: null };
+  return { version: row.sceneVersion, scene: row.scene };
 }
 
 /** Link (or unlink with null) the whiteboard to a storyboard the user can access. */

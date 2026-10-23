@@ -8,12 +8,14 @@ import {
   projectVisibilityWhere,
   resolveCardKey,
   storyboardVisibilityWhere,
+  whiteboardVisibilityWhere,
 } from "@/lib/authz";
 import { ticketLabel } from "@/lib/intake";
 import { link, principal, resolveCardId, tool, ToolError } from "@/lib/mcp/util";
 import { loadBoard, loadCard } from "@/lib/mcp/tools/cards";
 import { loadProject } from "@/lib/mcp/tools/projects";
 import { loadStoryboard } from "@/lib/mcp/tools/storyboards";
+import { loadWhiteboard } from "@/lib/mcp/tools/whiteboards";
 import { loadRound } from "@/lib/mcp/tools/reviews";
 import { loadIntake } from "@/lib/mcp/tools/planning";
 
@@ -21,7 +23,7 @@ import { loadIntake } from "@/lib/mcp/tools/planning";
 // company knowledge expect — search(query) → { results: [{ id, title, url }] } and
 // fetch(id) → { id, title, text, url, metadata } — and it suits any assistant that
 // wants whole documents. Ids are "<type>:<id>" (card:…, project:…, board:…,
-// storyboard:…, deliverable:…, review:…, intake:…). The detailed get_* tools remain.
+// storyboard:…, deliverable:…, review:…, intake:…, whiteboard:…). The detailed get_* tools remain.
 
 type Doc = { id: string; title: string; text: string; url: string; metadata: Record<string, string> };
 
@@ -228,6 +230,30 @@ async function intakeDoc(id: string): Promise<Doc> {
   };
 }
 
+async function whiteboardDoc(id: string): Promise<Doc> {
+  const w = await loadWhiteboard(id);
+  const texts = w.items.filter((i) => i.text && i.kind !== "arrow" && i.kind !== "line");
+  return {
+    id: `whiteboard:${w.id}`,
+    title: `Whiteboard · ${w.title}`,
+    url: w.url,
+    metadata: { type: "whiteboard" },
+    text: lines(
+      `# ${w.title}`,
+      "",
+      w.card ? `Card: ${w.card.key ?? w.card.title} (card:${w.card.id})` : null,
+      w.storyboard ? `Storyboard: ${w.storyboard.title} (storyboard:${w.storyboard.id})` : null,
+      "",
+      "## On the whiteboard",
+      bullet(texts.map((i) => `${i.kind}${i.frame ? ` in ${w.items.find((f) => f.id === i.frame)?.text ?? "a frame"}` : ""}: ${i.text}`)),
+      "",
+      "## Connections",
+      bullet(w.connections),
+      w.freehandDrawings ? `\n_${w.freehandDrawings} freehand drawing(s) not described._` : null,
+    ),
+  };
+}
+
 const FETCHERS: Record<string, (id: string) => Promise<Doc>> = {
   card: cardDoc,
   project: projectDoc,
@@ -236,6 +262,7 @@ const FETCHERS: Record<string, (id: string) => Promise<Doc>> = {
   review: reviewDoc,
   deliverable: deliverableDoc,
   intake: intakeDoc,
+  whiteboard: whiteboardDoc,
 };
 
 export function registerDocumentTools(server: McpServer) {
@@ -245,7 +272,7 @@ export function registerDocumentTools(server: McpServer) {
     {
       title: "Search the workspace",
       description:
-        "Search cards (by title, or a key such as SEC-12), projects, deliverables, boards, storyboards, review rounds and intake requests by name. Returns ids to pass to fetch, which returns the full document.",
+        "Search cards (by title, or a key such as SEC-12), projects, deliverables, boards, storyboards, whiteboards, review rounds and intake requests by name. Returns ids to pass to fetch, which returns the full document.",
       input: { query: z.string().min(1).describe("Words to look for, or a card key such as SEC-12") },
       output: { results: z.array(z.object({ id: z.string(), title: z.string(), url: z.string() })) },
       kind: "read",
@@ -254,10 +281,10 @@ export function registerDocumentTools(server: McpServer) {
       const wsId = principal().workspaceId;
       const q = query.trim();
       const contains = { contains: q, mode: "insensitive" as const };
-      const [boardVis, projectVis, storyboardVis] = await Promise.all([boardVisibilityWhere(), projectVisibilityWhere(), storyboardVisibilityWhere()]);
+      const [boardVis, projectVis, storyboardVis, whiteboardVis] = await Promise.all([boardVisibilityWhere(), projectVisibilityWhere(), storyboardVisibilityWhere(), whiteboardVisibilityWhere()]);
       const onBoard = { board: { workspaceId: wsId, ...boardVis } };
       const key = /^([A-Za-z][A-Za-z0-9]{0,9})-(\d+)$/.exec(q);
-      const [keyHit, cards, projects, deliverables, boards, storyboards, rounds, intake] = await Promise.all([
+      const [keyHit, cards, projects, deliverables, boards, storyboards, rounds, intake, whiteboards] = await Promise.all([
         key ? resolveCardKey(key[1], Number(key[2])) : null,
         prisma.card.findMany({
           where: { title: contains, OR: [{ column: onBoard }, { parentCard: { column: onBoard } }] },
@@ -276,6 +303,7 @@ export function registerDocumentTools(server: McpServer) {
           select: { id: true, number: true, deliverable: { select: { name: true } } },
         }),
         prisma.intakeRequest.findMany({ where: { workspaceId: wsId, title: contains }, take: 5, select: { id: true, number: true, title: true } }),
+        prisma.whiteboard.findMany({ where: { workspaceId: wsId, title: contains, ...whiteboardVis }, take: 5, select: { id: true, title: true } }),
       ]);
       const results: { id: string; title: string; url: string }[] = [];
       if (keyHit) results.push({ id: `card:${keyHit.cardId}`, title: `${q.toUpperCase()} · ${keyHit.title}`, url: link(`/boards/${keyHit.boardId}?card=${keyHit.cardId}`) });
@@ -292,6 +320,7 @@ export function registerDocumentTools(server: McpServer) {
       for (const s of storyboards) results.push({ id: `storyboard:${s.id}`, title: `Storyboard · ${s.title}`, url: link(`/storyboards/${s.id}`) });
       for (const r of rounds) results.push({ id: `review:${r.id}`, title: `Review · ${r.deliverable.name}, round ${r.number}`, url: link(`/reviews/${r.id}`) });
       for (const r of intake) results.push({ id: `intake:${r.id}`, title: `Intake ${ticketLabel(r.number)} · ${r.title}`, url: link("/intake") });
+      for (const w of whiteboards) results.push({ id: `whiteboard:${w.id}`, title: `Whiteboard · ${w.title}`, url: link(`/whiteboards/${w.id}`) });
       return { results };
     },
   );
@@ -302,7 +331,7 @@ export function registerDocumentTools(server: McpServer) {
     {
       title: "Fetch a document",
       description:
-        "The full text of one item from search, as Markdown: a card, project, deliverable (with all its review rounds), board, storyboard (every screen), review round (every comment) or intake request. Pass the id from search, e.g. card:abc123; a card key such as SEC-12 also works.",
+        "The full text of one item from search, as Markdown: a card, project, deliverable (with all its review rounds), board, storyboard (every screen), whiteboard (its text and connections), review round (every comment) or intake request. Pass the id from search, e.g. card:abc123; a card key such as SEC-12 also works.",
       input: { id: z.string().min(1).describe("An id from search, like card:… or project:…") },
       output: {
         id: z.string(),

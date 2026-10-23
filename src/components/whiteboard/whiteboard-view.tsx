@@ -32,7 +32,7 @@ export function WhiteboardView({
   whiteboard,
   storyboards,
 }: {
-  whiteboard: { id: string; title: string; scene: string | null; storyboardId: string | null };
+  whiteboard: { id: string; title: string; scene: string | null; sceneVersion: number; storyboardId: string | null };
   storyboards: { id: string; title: string }[];
 }) {
   const router = useRouter();
@@ -101,7 +101,7 @@ export function WhiteboardView({
       </header>
 
       <div className="relative min-h-0 flex-1">
-        <WhiteboardCanvas whiteboardId={whiteboard.id} initialScene={whiteboard.scene} />
+        <WhiteboardCanvas whiteboardId={whiteboard.id} initialScene={whiteboard.scene} initialVersion={whiteboard.sceneVersion} />
       </div>
     </div>
   );

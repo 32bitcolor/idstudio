@@ -14,7 +14,7 @@ export default async function WhiteboardPage({ params }: { params: Promise<{ whi
   const [whiteboard, storyboards] = await Promise.all([
     prisma.whiteboard.findUnique({
       where: { id: whiteboardId },
-      select: { id: true, title: true, scene: true, storyboard: { select: { id: true, title: true } } },
+      select: { id: true, title: true, scene: true, sceneVersion: true, storyboard: { select: { id: true, title: true } } },
     }),
     prisma.storyboard.findMany({
       where: { workspaceId: access.workspaceId, ...(await storyboardVisibilityWhere()) },
@@ -30,6 +30,7 @@ export default async function WhiteboardPage({ params }: { params: Promise<{ whi
         id: whiteboard.id,
         title: whiteboard.title,
         scene: whiteboard.scene,
+        sceneVersion: whiteboard.sceneVersion,
         storyboardId: whiteboard.storyboard?.id ?? null,
       }}
       storyboards={storyboards}

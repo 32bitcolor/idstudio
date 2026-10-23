@@ -795,6 +795,7 @@ model Whiteboard {
   createdById  String? // the ID who created/owns it
   title        String
   scene        String? // Excalidraw scene JSON
+  sceneVersion Int               @default(0) // bumped on every scene write (lib/whiteboard-store.ts)
   createdAt    DateTime          @default(now())
   updatedAt    DateTime          @updatedAt
   workspace    Workspace         @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
