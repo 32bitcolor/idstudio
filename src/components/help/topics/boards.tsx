@@ -142,6 +142,35 @@ export default function Boards() {
         appears when you hover over a card on the board.
       </P>
 
+      <H3>Moving a card to another board</H3>
+      <P>
+        Work sometimes lands on the wrong board, or moves to another team. Choose{" "}
+        <UI>Move to board…</UI> at the bottom of the card&rsquo;s drawer, pick the <UI>Board</UI> and the{" "}
+        <UI>Column</UI> (the one matching the card&rsquo;s current status is picked for you), and choose{" "}
+        <UI>Move card</UI>. It lands at the bottom of that column, and a note on the board you left links
+        to it.
+      </P>
+      <UL>
+        <LI>
+          <strong>Everything comes along:</strong> subtasks, comments, attachments, labels, assignees and
+          SMEs, linked whiteboards, review feedback, and its Private setting.
+        </LI>
+        <LI>
+          <strong>It gets a new key</strong> from the new board (say, <code>SEC-12</code> becomes{" "}
+          <code>OPS-31</code>; its subtasks get new keys too). The old key keeps working: short links,
+          search and AI assistants still find the card by it.
+        </LI>
+        <LI>
+          <strong>Its status</strong> becomes the column&rsquo;s, and assignees and SMEs are told if that
+          changes it. If the new board belongs to a project that doesn&rsquo;t plan in sprints, the card
+          leaves its sprint.
+        </LI>
+        <LI>
+          You can move a card to any board in the workspace you can see. Subtasks move with their card, not
+          on their own.
+        </LI>
+      </UL>
+
       <H2>Filtering the board</H2>
       <P>
         The filter bar above the columns narrows what&rsquo;s visible without changing anything. Filters

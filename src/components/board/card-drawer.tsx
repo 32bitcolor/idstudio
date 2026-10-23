@@ -26,6 +26,7 @@ import { DescriptionEditor } from "@/components/board/description-editor";
 import { CommentComposer, CommentBody } from "@/components/board/comment-editor";
 import { assignCardToSprint } from "@/app/actions/sprints";
 import { setCardPrivate } from "@/app/actions/board-share";
+import { MoveCardDialog, type MoveResult } from "@/components/board/move-card-dialog";
 import { ConfirmDelete } from "@/components/shared/confirm-delete";
 import { CardReviewFeedback, type CardReviewComment } from "@/components/review/card-review-feedback";
 import { StatusBadge } from "@/components/shared/status-badge";
@@ -74,6 +75,7 @@ export function CardDrawer({
   onMoveToColumn,
   position,
   onStep,
+  onMoved,
 }: {
   cardId: string;
   onClose: () => void;
@@ -87,6 +89,8 @@ export function CardDrawer({
   /** Where this card sits among the board's visible cards, for previous/next. */
   position?: { index: number; total: number } | null;
   onStep?: (dir: -1 | 1) => void;
+  /** Offered "Move to board…"; called after the card moved to another board. */
+  onMoved?: (cardId: string, result: MoveResult) => void;
 }) {
   // Loading is derived, not a separate state: we're "loading" whenever the data
   // we hold isn't for the card currently open. This flips synchronously when
@@ -104,6 +108,7 @@ export function CardDrawer({
   const [smeIds, setSmeIds] = useState<Set<string>>(new Set());
   const [sprintId, setSprintId] = useState<string | null>(null);
   const [isPrivate, setIsPrivate] = useState(false);
+  const [statusId, setStatusId] = useState<string | null>(null);
   const [sprints, setSprints] = useState<{ id: string; name: string }[]>([]);
   const [sprintsEnabled, setSprintsEnabled] = useState(false);
   const [workspaceLabels, setWorkspaceLabels] = useState<LabelT[]>([]);
@@ -140,6 +145,7 @@ export function CardDrawer({
       setSmeIds(new Set(d.card.smeIds));
       setSprintId(d.card.sprintId);
       setIsPrivate(d.card.private);
+      setStatusId(d.card.statusId);
       setSprints(d.sprints);
       setSprintsEnabled(d.sprintsEnabled);
       setWorkspaceLabels(d.workspaceLabels);
@@ -732,7 +738,15 @@ export function CardDrawer({
               </div>
             </Section>
 
-            <div className="border-t border-border pt-4">
+            <div className="flex flex-wrap items-center gap-x-6 gap-y-2 border-t border-border pt-4">
+              {!isSubtask && onMoved && (
+                <MoveCardDialog
+                  cardId={cardId}
+                  currentKey={cardKeyPrefix && keySeq != null ? `${cardKeyPrefix}-${keySeq}` : null}
+                  statusId={statusId}
+                  onMoved={(result) => onMoved(cardId, result)}
+                />
+              )}
               <ConfirmDelete
                 title="Delete this card?"
                 description="This action can't be undone."

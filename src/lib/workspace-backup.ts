@@ -12,7 +12,7 @@ import { newGuestNonce } from "@/lib/review-guest-token";
 // can be restored into the same instance (a copy) or a fresh one (disaster
 // recovery). Media re-uploads to object storage under new keys.
 
-export const BACKUP_FORMAT = 9; // bump when the shape changes
+export const BACKUP_FORMAT = 10; // bump when the shape changes
 
 const WS = "__ws";
 const USER = "__user";
@@ -139,6 +139,8 @@ const SPECS: Spec[] = [
   { key: "timeEntry", model: "timeEntry", where: (w) => ({ project: { workspaceId: w } }), fks: { projectId: "project", deliverableId: "deliverable", userId: USER } },
   { key: "comment", model: "comment", where: (w) => ({ card: cardInWorkspace(w) }), fks: { cardId: "card", authorId: USER } },
   // junctions
+  // Keys cards had on boards they were moved off (see moveCardToBoard).
+  { key: null, model: "cardKeyAlias", where: (w) => ({ board: { workspaceId: w } }), fks: { boardId: "board", cardId: "card" } },
   { key: null, model: "cardLabel", where: (w) => ({ card: cardInWorkspace(w) }), fks: { cardId: "card", labelId: "label" } },
   { key: null, model: "cardAssignee", where: (w) => ({ card: cardInWorkspace(w) }), fks: { cardId: "card", userId: USER } },
   { key: null, model: "cardSme", where: (w) => ({ card: cardInWorkspace(w) }), fks: { cardId: "card", userId: USER } },

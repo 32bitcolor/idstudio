@@ -68,6 +68,15 @@ Opening a card slides in a drawer with everything about it. Changes save as you 
 
 To remove a card, use **Delete card** at the bottom of the drawer, or the **×** that appears when you hover over a card on the board.
 
+### Moving a card to another board
+
+Work sometimes lands on the wrong board, or moves to another team. Choose **Move to board…** at the bottom of the card’s drawer, pick the **Board** and the **Column** (the one matching the card’s current status is picked for you), and choose **Move card**. It lands at the bottom of that column, and a note on the board you left links to it.
+
+- **Everything comes along:** subtasks, comments, attachments, labels, assignees and SMEs, linked whiteboards, review feedback, and its Private setting.
+- **It gets a new key** from the new board (say, `SEC-12` becomes `OPS-31`; its subtasks get new keys too). The old key keeps working: short links, search and AI assistants still find the card by it.
+- **Its status** becomes the column’s, and assignees and SMEs are told if that changes it. If the new board belongs to a project that doesn’t plan in sprints, the card leaves its sprint.
+- You can move a card to any board in the workspace you can see. Subtasks move with their card, not on their own.
+
 ## Filtering the board
 
 The filter bar above the columns narrows what’s visible without changing anything. Filters stack, so you can answer questions like “overdue cards assigned to me with the *Compliance* label”. While any filter is on, the bar shows *N of M cards*; **Clear** resets them all.

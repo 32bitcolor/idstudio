@@ -120,26 +120,45 @@ export async function resolveCardKey(prefix: string, keySeq: number) {
   const ctx = await getAccessContext();
   if (!ctx) return null;
   const board = await prisma.board.findFirst({
-    where: {
-      cardKeyPrefix: { equals: prefix, mode: "insensitive" },
-      workspace: ownedByUser(ctx),
-      ...boardAccessOR(ctx),
-    },
+    where: { cardKeyPrefix: { equals: prefix, mode: "insensitive" }, workspace: ownedByUser(ctx) },
     select: { id: true },
   });
   if (!board) return null;
-  const card = await prisma.card.findFirst({
+  const visible = await prisma.board.count({ where: { id: board.id, ...boardAccessOR(ctx) } });
+  const card = visible
+    ? await prisma.card.findFirst({
+        where: {
+          keySeq,
+          OR: [
+            { columnId: { not: null }, column: { boardId: board.id } },
+            { parentCardId: { not: null }, parentCard: { column: { boardId: board.id } } },
+          ],
+        },
+        select: { id: true, title: true, parentCardId: true },
+      })
+    : null;
+  if (card) return { boardId: board.id, cardId: card.id, title: card.title, isSubtask: card.parentCardId != null };
+
+  // A key the card had before it moved to another board: follow it to where it is now,
+  // if this member can see that board.
+  const alias = await prisma.cardKeyAlias.findUnique({
+    where: { boardId_keySeq: { boardId: board.id, keySeq } },
+    select: { cardId: true },
+  });
+  if (!alias) return null;
+  const moved = await prisma.card.findFirst({
     where: {
-      keySeq,
+      id: alias.cardId,
       OR: [
-        { columnId: { not: null }, column: { boardId: board.id } },
-        { parentCardId: { not: null }, parentCard: { column: { boardId: board.id } } },
+        { column: { board: { workspace: ownedByUser(ctx), ...boardAccessOR(ctx) } } },
+        { parentCard: { column: { board: { workspace: ownedByUser(ctx), ...boardAccessOR(ctx) } } } },
       ],
     },
-    select: { id: true, title: true, parentCardId: true },
+    select: { id: true, title: true, parentCardId: true, column: { select: { boardId: true } }, parentCard: { select: { column: { select: { boardId: true } } } } },
   });
-  if (!card) return null;
-  return { boardId: board.id, cardId: card.id, title: card.title, isSubtask: card.parentCardId != null };
+  if (!moved) return null;
+  const boardId = moved.column?.boardId ?? moved.parentCard!.column!.boardId;
+  return { boardId, cardId: moved.id, title: moved.title, isSubtask: moved.parentCardId != null };
 }
 
 export async function getColumnForUser(columnId: string) {

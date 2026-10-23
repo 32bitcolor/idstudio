@@ -26,6 +26,7 @@ import { CSS } from "@dnd-kit/utilities";
 import {
   ArrowLeft,
   ArrowRight,
+  ArrowRightLeft,
   Columns3,
   FileCheck2,
   Globe,
@@ -52,7 +53,9 @@ import {
   deleteBoard,
   setBoardCardKeyPrefix,
 } from "@/app/actions/boards";
+import Link from "next/link";
 import { CardDrawer, type CardFacePatch } from "@/components/board/card-drawer";
+import type { MoveResult } from "@/components/board/move-card-dialog";
 import { ShareDialog } from "@/components/board/share-dialog";
 import { ProjectContextStrip, type ProjectContext } from "@/components/board/project-context-strip";
 import type { SavedViewDTO } from "@/app/actions/saved-views";
@@ -357,6 +360,15 @@ export function BoardView({
     }
   }
 
+  // After "Move to board…": the card leaves this board; a notice links to where it went.
+  const [moved, setMoved] = useState<{ cardId: string; title: string; result: MoveResult } | null>(null);
+  function handleMoved(cardId: string, result: MoveResult) {
+    const title = columns.flatMap((c) => c.cards).find((c) => c.id === cardId)?.title ?? "Card";
+    setColumns((prev) => prev.map((c) => ({ ...c, cards: c.cards.filter((x) => x.id !== cardId) })));
+    closeDrawer();
+    setMoved({ cardId, title, result });
+  }
+
   async function handleDeleteCard(cardId: string) {
     // Await so a rejected delete surfaces in the confirm dialog instead of
     // optimistically vanishing and silently reverting on reload.
@@ -443,6 +455,23 @@ export function BoardView({
 
       {context && <ProjectContextStrip context={context} />}
 
+      {moved && (
+        <div role="status" className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border border-border bg-surface px-4 py-2.5 text-sm shadow-xs">
+          <ArrowRightLeft className="size-4 shrink-0 text-accent" aria-hidden="true" />
+          <span className="min-w-0 flex-1">
+            Moved <strong className="font-semibold">{moved.title}</strong> to {moved.result.boardName}
+            {moved.result.key && <> as <span className="font-mono text-xs">{moved.result.key}</span></>}
+            {moved.result.leftSprint && <>. It left its sprint, since that board doesn&rsquo;t plan in sprints</>}.
+          </span>
+          <Link href={`/boards/${moved.result.boardId}?card=${moved.cardId}`} className="font-medium text-accent underline underline-offset-2 hover:no-underline">
+            Open it
+          </Link>
+          <button type="button" onClick={() => setMoved(null)} aria-label="Dismiss" className="rounded p-0.5 text-muted-foreground hover:text-foreground">
+            <X className="size-4" />
+          </button>
+        </div>
+      )}
+
       <FilterBar
         labels={availableLabels}
         members={availableMembers}
@@ -513,6 +542,7 @@ export function BoardView({
           onClose={closeDrawer}
           onPatch={patchCard}
           onDeleted={handleDeleteCard}
+          onMoved={handleMoved}
           onNavigate={navigateCard}
           columns={columns.map((c) => ({ id: c.id, name: c.name }))}
           currentColumnId={openCardColumn?.id ?? null}

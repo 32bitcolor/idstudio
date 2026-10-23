@@ -10,6 +10,7 @@ import {
   createProjectBoard,
   deleteCard,
   moveCard,
+  moveCardToBoard,
   renameCard,
   setBoardCardKeyPrefix,
 } from "@/app/actions/boards";
@@ -62,6 +63,21 @@ async function resolveColumn(boardId: string, ref: string | undefined) {
   if (!ref) return columns[0];
   const hit = columns.find((c) => c.id === ref) ?? columns.find((c) => c.name.toLowerCase() === ref.trim().toLowerCase());
   if (!hit) throw new ToolError(`No column "${ref}" on this board. Columns: ${columns.map((c) => c.name).join(", ")}.`);
+  return hit;
+}
+
+/** A board by id, name or card-key prefix, among those this member can see. */
+async function resolveBoardRef(ref: string) {
+  const boards = await prisma.board.findMany({
+    where: { workspaceId: principal().workspaceId, ...(await boardVisibilityWhere()) },
+    select: { id: true, name: true, cardKeyPrefix: true },
+  });
+  const r = ref.trim().toLowerCase();
+  const hit =
+    boards.find((b) => b.id === ref.trim()) ??
+    boards.find((b) => b.name.toLowerCase() === r) ??
+    boards.find((b) => b.cardKeyPrefix?.toLowerCase() === r);
+  if (!hit) throw new ToolError(`No board "${ref}". Boards: ${boards.map((b) => b.name).join(", ")}.`);
   return hit;
 }
 
@@ -321,13 +337,14 @@ export function registerCardTools(server: McpServer) {
     {
       title: "Update a card",
       description:
-        "Change a card: title, description (Markdown, replaces the old one), due date (empty string clears it), column (moves it), assignees, SMEs, labels, sprint, private (true leaves it off the board's public link; top-level cards only). Lists add or remove people/labels; anything you leave out stays as it is.",
+        "Change a card: title, description (Markdown, replaces the old one), due date (empty string clears it), column (moves it), board (moves it to another board, into \`column\` there or its first column; its key changes and the old key keeps resolving), assignees, SMEs, labels, sprint, private (true leaves it off the board's public link; top-level cards only). Lists add or remove people/labels; anything you leave out stays as it is.",
       input: {
         card: cardRef,
         title: z.string().min(1).max(280).optional(),
         description: z.string().max(50000).optional().describe("Markdown; replaces the description"),
         due: z.string().optional().describe("YYYY-MM-DD, or empty to clear"),
         column: z.string().optional().describe("Move to this column (name or id), at the bottom"),
+        board: z.string().optional().describe("Move to another board (name, id or key prefix); column then names a column on that board"),
         add_assignees: z.array(z.string()).max(20).optional(),
         remove_assignees: z.array(z.string()).max(20).optional(),
         add_smes: z.array(z.string()).max(20).optional(),
@@ -345,7 +362,12 @@ export function registerCardTools(server: McpServer) {
       const access = await getCardForUser(cardId);
       if (!access) throw new ToolError("Card not found, or you can't see it.");
       if (a.title) check(await renameCard(cardId, a.title));
-      if (a.column) {
+      const toBoard = a.board ? await resolveBoardRef(a.board) : null;
+      if (toBoard && toBoard.id !== access.boardId) {
+        if (access.parentCardId) throw new ToolError("Subtasks move with their card; move the parent card instead.");
+        const col = await resolveColumn(toBoard.id, a.column);
+        check(await moveCardToBoard(cardId, col.id));
+      } else if (a.column) {
         if (access.parentCardId) throw new ToolError("Subtasks don't live in columns; move the parent card instead.");
         const col = await resolveColumn(access.boardId, a.column);
         const count = await prisma.card.count({ where: { columnId: col.id, NOT: { id: cardId } } });

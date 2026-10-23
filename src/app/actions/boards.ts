@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { getActiveMembership, getCurrentUser } from "@/lib/dal";
-import { getBoardForUser, getColumnForUser, getCardForUser, getProjectForUser } from "@/lib/authz";
+import { boardVisibilityWhere, getBoardForUser, getColumnForUser, getCardForUser, getProjectForUser } from "@/lib/authz";
 import { positionBetween, positionsAfter, positionForIndex } from "@/lib/ordering";
 import { pickStatusIdForName } from "@/lib/status";
 import { notifyCardStatusChange } from "@/lib/notify";
@@ -442,6 +442,127 @@ export async function setCardStatus(cardId: string, statusId: string) {
 }
 
 /** Move a card to `toColumnId` at `targetIndex` (index among the OTHER cards there). */
+/** Boards (with their columns) a card can be moved to: every other board in its
+ *  workspace that this member can see. */
+export async function listMoveTargets(cardId: string) {
+  const card = await getCardForUser(cardId);
+  if (!card || card.parentCardId) return [];
+  const from = await prisma.board.findUnique({ where: { id: card.boardId }, select: { workspaceId: true } });
+  if (!from) return [];
+  const boards = await prisma.board.findMany({
+    where: { workspaceId: from.workspaceId, id: { not: card.boardId }, ...(await boardVisibilityWhere()) },
+    orderBy: { name: "asc" },
+    select: {
+      id: true,
+      name: true,
+      cardKeyPrefix: true,
+      project: { select: { name: true } },
+      columns: { orderBy: { position: "asc" }, select: { id: true, name: true, statusId: true } },
+    },
+  });
+  return boards
+    .filter((b) => b.columns.length > 0)
+    .map((b) => ({ id: b.id, name: b.name, cardKeyPrefix: b.cardKeyPrefix, projectName: b.project?.name ?? null, columns: b.columns }));
+}
+
+/** Move a card (with its subtasks, comments, attachments and everything else) to a
+ *  column on another board in the same workspace, at the bottom. Its key changes to
+ *  the new board's (SEC-12 → OPS-31); the old key keeps resolving to it through a
+ *  CardKeyAlias. It takes the column's status, and leaves its sprint if the new board
+ *  doesn't do sprints. */
+export async function moveCardToBoard(cardId: string, toColumnId: string) {
+  const card = await getCardForUser(cardId);
+  if (!card) return { error: "Card not found." };
+  if (card.parentCardId) return { error: "Subtasks move with their card. Move the card instead." };
+  const target = await getColumnForUser(toColumnId);
+  if (!target) return { error: "Target column not found." };
+  if (target.boardId === card.boardId) return { error: "The card is already on that board." };
+
+  const [fromBoard, toBoard, current] = await Promise.all([
+    prisma.board.findUnique({ where: { id: card.boardId }, select: { workspaceId: true } }),
+    prisma.board.findUnique({
+      where: { id: target.boardId },
+      select: { workspaceId: true, name: true, cardKeyPrefix: true, project: { select: { sprintsEnabled: true } } },
+    }),
+    prisma.card.findUnique({
+      where: { id: cardId },
+      select: { keySeq: true, statusId: true, sprintId: true, subtasks: { orderBy: { position: "asc" }, select: { id: true, keySeq: true } } },
+    }),
+  ]);
+  if (!fromBoard || !toBoard || !current) return { error: "Card not found." };
+  if (fromBoard.workspaceId !== toBoard.workspaceId) return { error: "Cards can only move between boards in the same workspace." };
+
+  const last = await prisma.card.findFirst({ where: { columnId: toColumnId }, orderBy: { position: "desc" }, select: { position: true } });
+  const sprintsAllowed = !toBoard.project || toBoard.project.sprintsEnabled;
+  const moving = [{ id: cardId, keySeq: current.keySeq }, ...current.subtasks];
+
+  const newKeySeq = await prisma.$transaction(async (tx) => {
+    // Keep the old keys findable.
+    const aliases = moving.filter((c) => c.keySeq != null).map((c) => ({ boardId: card.boardId, keySeq: c.keySeq!, cardId: c.id }));
+    if (aliases.length) await tx.cardKeyAlias.createMany({ data: aliases, skipDuplicates: true });
+
+    // New keys from the target board's sequence, one per card and subtask, in order.
+    let firstSeq: number | null = null;
+    if (toBoard.cardKeyPrefix) {
+      const updated = await tx.board.update({
+        where: { id: target.boardId },
+        data: { cardKeySeq: { increment: moving.length } },
+        select: { cardKeySeq: true },
+      });
+      firstSeq = updated.cardKeySeq - moving.length + 1;
+    }
+    for (const [i, c] of moving.entries()) {
+      await tx.card.update({
+        where: { id: c.id },
+        data: {
+          keySeq: firstSeq != null ? firstSeq + i : null,
+          ...(c.id === cardId
+            ? {
+                columnId: toColumnId,
+                position: positionBetween(last?.position ?? null, null),
+                statusId: target.statusId,
+                ...(sprintsAllowed ? {} : { sprintId: null }),
+              }
+            : {}),
+        },
+      });
+    }
+    // If this key had been an alias for something (the card moved away and back), the
+    // card now owns it again.
+    if (firstSeq != null) {
+      await tx.cardKeyAlias.deleteMany({
+        where: { boardId: target.boardId, keySeq: { gte: firstSeq, lt: firstSeq + moving.length } },
+      });
+    }
+    return firstSeq;
+  });
+
+  revalidatePath(boardPath(card.boardId));
+  revalidatePath(boardPath(target.boardId));
+  revalidatePath("/sprints", "layout");
+
+  if (target.statusId && current.statusId !== target.statusId) {
+    const status = await prisma.workspaceStatus.findUnique({ where: { id: target.statusId }, select: { name: true } });
+    if (status) {
+      const actor = await getCurrentUser();
+      await notifyCardStatusChange({
+        cardId,
+        boardId: target.boardId,
+        workspaceId: toBoard.workspaceId,
+        statusName: status.name,
+        actor: actor ? { id: actor.id, name: actor.name, email: actor.email } : null,
+      });
+    }
+  }
+
+  return {
+    boardId: target.boardId,
+    boardName: toBoard.name,
+    key: toBoard.cardKeyPrefix && newKeySeq != null ? `${toBoard.cardKeyPrefix}-${newKeySeq}` : null,
+    leftSprint: !sprintsAllowed && current.sprintId != null,
+  };
+}
+
 export async function moveCard(cardId: string, toColumnId: string, targetIndex: number) {
   const card = await getCardForUser(cardId);
   if (!card) return { error: "Card not found." };
