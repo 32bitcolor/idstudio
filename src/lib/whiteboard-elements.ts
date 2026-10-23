@@ -332,7 +332,7 @@ const DEFAULT_SIZE: Record<string, [number, number]> = {
 // How much wider than its text a shape must be for the text to fit inside it.
 const SHAPE_FACTOR: Record<string, number> = { rectangle: 1, ellipse: Math.SQRT2, diamond: 2 };
 const ROW_WIDTH = 1400;
-const SPACING = 40;
+const SPACING = 60;
 
 function bounds(els: SceneElement[]) {
   if (!els.length) return null;

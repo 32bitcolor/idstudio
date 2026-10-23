@@ -15,7 +15,17 @@ A whiteboard is a full Excalidraw canvas: shapes, arrows, text, freehand drawing
 - **Autosave** — your scene saves automatically a moment after you stop drawing. There’s no save button; just close the tab when you’re done.
 - **Delete** — open the **⋯** (**Whiteboard settings**) menu in the header and choose **Delete whiteboard…** (you’ll be asked to confirm).
 
-> **Note.** Saving is *last-write-wins* and debounced — it waits until your edits settle before persisting, so rapid changes don’t thrash. Give it a second after your final stroke before navigating away.
+## Working on one together
+
+Several people can have the same whiteboard open. Each save merges shape by shape instead of replacing the whole drawing, and an open whiteboard picks up everyone else’s changes every few seconds, without reloading. If two people change the *same* shape at once, the later change wins; everything else is kept.
+
+> **Note.** Saving waits until your edits settle, so give it a second after your final stroke before closing the tab. Scrolling and zooming don’t count as changes.
+
+## Drawing with an AI assistant
+
+An assistant connected to Tavoro (see **AI assistants (MCP)**) can read a whiteboard and draw on it. Ask it to sketch a course map, a learner journey or a branching scenario, and it adds labelled boxes, sticky notes, frames and arrows, laid out for you. It can also move, relabel, recolour or delete what’s there, or turn a whiteboard into a summary. Its changes appear on an open whiteboard within a few seconds and never overwrite what you’re drawing.
+
+An assistant reads a whiteboard as its text and what connects to what. It doesn’t see freehand drawings or the inside of images.
 
 ## The three ways whiteboards attach
 

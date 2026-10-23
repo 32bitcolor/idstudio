@@ -39,11 +39,11 @@ Tools that can’t sign in through a browser use a **personal token** instead: *
 
 ## What an assistant can do
 
-**Find and read** — Search; your workspace’s members, labels, statuses and sprints; My Work; boards and cards (by key such as SEC-12); projects with phases, deliverables, milestones and objectives; storyboards screen by screen; review rounds with every comment; all feedback on a deliverable; intake requests; sprints.
+**Find and read** — Search; your workspace’s members, labels, statuses and sprints; My Work; boards and cards (by key such as SEC-12); projects with phases, deliverables, milestones and objectives; storyboards screen by screen; whiteboards; review rounds with every comment; all feedback on a deliverable; intake requests; sprints.
 
 **Plan and track** — Create boards, columns and cards; update cards (description, due date, column, assignees, SMEs, labels, sprint); comment; add and tick subtasks; create projects, phases, deliverables, milestones, objectives and assessment items; log time; create and run sprints; triage intake (admins).
 
-**Design** — Create storyboards, add and edit screens (on-screen text, narration, visuals, interaction, developer notes) and link them to objectives.
+**Design** — Create storyboards, add and edit screens (on-screen text, narration, visuals, interaction, developer notes) and link them to objectives. Read whiteboards and draw on them: labelled shapes, sticky notes, frames and arrows, or a whole flowchart laid out automatically (a learner journey, a branching scenario, a course map).
 
 **Review** — Start review rounds, comment on a screen or a PDF page, resolve or won’t-fix threads, record your own decision, and send comments to a board as cards.
 
@@ -61,7 +61,7 @@ Text goes in and out as Markdown. Connected assistants also get ready-made **pro
 
 ### Not included
 
-Uploading files (attachments, PDFs for review), whiteboards, workspace settings, members and backups stay in the app.
+Uploading files (attachments, PDFs for review, images on whiteboards), workspace settings, members and backups stay in the app.
 
 ---
 

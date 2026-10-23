@@ -59,7 +59,7 @@ as a signed-in member. This doc records what was built and why.
    and `fetch(id)` returns `{ id, title, text, url, metadata }` with the item as a full Markdown
    document (`lib/mcp/documents.ts`). That's the shape ChatGPT's deep research and company knowledge
    require, and it suits any assistant that wants to read rather than navigate. Ids are
-   `card:…`, `project:…`, `deliverable:…`, `board:…`, `storyboard:…`, `review:…`, `intake:…`.
+   `card:…`, `project:…`, `deliverable:…`, `board:…`, `storyboard:…`, `review:…`, `intake:…`, `whiteboard:…`.
 9. **People stay in control.** Settings → **AI & MCP** shows each connection with last use, and
    revokes it at once. Admins see and can revoke everyone's in their workspace. Tokens can only be
    created from the browser, never through MCP. Login now honours `?next=` (same-site paths only),
@@ -67,7 +67,7 @@ as a signed-in member. This doc records what was built and why.
 
 ## What's exposed
 
-**Tools (50 with read and write access, 17 read-only):**
+**Tools (56 with read and write access, 19 read-only):**
 
 | Area | Read | Write |
 | ---- | ---- | ----- |
@@ -77,11 +77,12 @@ as a signed-in member. This doc records what was built and why.
 | Storyboards | `list_storyboards`, `get_storyboard` | `create_storyboard`, `update_storyboard`, `add_screens`, `update_screen` (fields, position, objectives), `delete_screen`* |
 | Reviews | `list_reviews`, `get_review_round`, `get_deliverable_feedback` | `add_review_comment` (on a screen and field with a quote, a PDF page, or the whole round; or a reply), `set_review_comment_status`, `decide_review`, `start_review_round`, `send_comments_to_board` |
 | Planning | `list_intake`, `get_intake`, `get_sprint` | `triage_intake`, `create_sprint`, `update_sprint` |
+| Whiteboards | `list_whiteboards`, `get_whiteboard` (items, positions, colours, frames, and arrows with what they connect) | `create_whiteboard` (optionally linked to a card or storyboard), `add_to_whiteboard` (boxes, ellipses, diamonds, sticky notes, text, frames, arrows; refs connect items in one call; unplaced items are laid out in rows), `add_diagram` (nodes + edges, laid out top-down or left-to-right with dagre, optionally in a titled frame), `update_whiteboard` (rename; move, resize, relabel, recolour, dash or delete items) |
 
 \* destructive
 
 **Resources:** `tavoro://project/{id}`, `tavoro://board/{id}`, `tavoro://storyboard/{id}`,
-`tavoro://card/{ref}` and `tavoro://review-round/{id}`, as JSON. All except cards are listable.
+`tavoro://whiteboard/{id}`, `tavoro://card/{ref}` and `tavoro://review-round/{id}`, as JSON. All except cards are listable.
 
 **Prompts:** `status_report`, `summarize_feedback`, `draft_storyboard`, `triage_intake`,
 `plan_sprint`. Each one embeds the relevant data and asks the model to confirm before changing
@@ -102,10 +103,31 @@ anything.
 
 ## Not exposed (on purpose)
 
-Uploads (attachments, review files) and whiteboards stay in the browser. So do workspace settings,
+Uploads (attachments, review files, images on whiteboards) stay in the browser. So do workspace settings,
 members, groups, backups and self-update, and guest-link management (copy, reset, revoke). Personal
 tokens can't be minted over MCP. Backups don't include tokens or OAuth clients: a restored workspace
 has no working credentials.
+
+## Whiteboards
+
+*Added 2026-10-23.* Excalidraw can't run on the server (it needs a DOM), so
+`lib/whiteboard-elements.ts` builds Excalidraw elements itself, in the shape Excalidraw saves:
+labels wrapped and centred in their shape with widths from a measured Excalifont table (shapes grow
+to fit), arrows routed edge to edge and bound at both ends, fractional `index`es after the current
+top element. Assistants work in *items* (`box`, `note`, `frame`, `arrow` from/to…), never raw elements.
+
+Before this, a whiteboard was saved last-write-wins from the browser, which also saved on mount and
+on every scroll, and an open tab never reloaded, so a server-side edit would have been overwritten
+within seconds. Now:
+
+- `Whiteboard.sceneVersion` is bumped on every write, and `lib/whiteboard-store.ts` `commitScene()`
+  only writes if it's unchanged since the read (retrying otherwise).
+- Every write merges per element (`lib/whiteboard-scene.ts`): higher `version` wins, then lower
+  `versionNonce`, which is Excalidraw's own collaboration rule. Deleted elements travel as tombstones
+  (`isDeleted`) and are dropped after 7 days; files no element uses are dropped.
+- The browser sends all elements including deleted ones, with the version it last saw. If someone
+  else wrote in between, the merged scene comes back and is folded into the canvas without touching
+  undo history. It polls every 4 s while visible, and skips saves when only the view changed.
 
 ## Operations
 
@@ -121,6 +143,7 @@ has no working credentials.
 
 - Uploading a PDF to start a file review round from a client (MCP has no file transfer yet; it'd
   need a URL to fetch or base64, capped at 95 MB).
-- Whiteboard read access (the Excalidraw scene as a summary of its text).
+- A rendered picture of a whiteboard (an image result from `get_whiteboard`), for assistants that
+  can see; it needs a server-side renderer.
 - Server-sent notifications (`listChanged`, resource subscriptions) once a stateful transport is
   worth it.

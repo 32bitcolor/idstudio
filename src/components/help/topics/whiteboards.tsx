@@ -31,11 +31,30 @@ export default function Whiteboards() {
         </LI>
       </UL>
 
+      <H2>Working on one together</H2>
+      <P>
+        Several people can have the same whiteboard open. Each save merges shape by shape instead of
+        replacing the whole drawing, and an open whiteboard picks up everyone else&rsquo;s changes every few
+        seconds, without reloading. If two people change the <em>same</em> shape at once, the later change
+        wins; everything else is kept.
+      </P>
       <Callout tone="note">
-        Saving is <em>last-write-wins</em> and debounced — it waits until your edits settle before
-        persisting, so rapid changes don&rsquo;t thrash. Give it a second after your final stroke
-        before navigating away.
+        Saving waits until your edits settle, so give it a second after your final stroke before closing
+        the tab. Scrolling and zooming don&rsquo;t count as changes.
       </Callout>
+
+      <H2>Drawing with an AI assistant</H2>
+      <P>
+        An assistant connected to Tavoro (see <UI>AI assistants (MCP)</UI>) can read a whiteboard and draw
+        on it. Ask it to sketch a course map, a learner journey or a branching scenario, and it adds labelled
+        boxes, sticky notes, frames and arrows, laid out for you. It can also move, relabel, recolour or
+        delete what&rsquo;s there, or turn a whiteboard into a summary. Its changes appear on an open
+        whiteboard within a few seconds and never overwrite what you&rsquo;re drawing.
+      </P>
+      <P>
+        An assistant reads a whiteboard as its text and what connects to what. It doesn&rsquo;t see
+        freehand drawings or the inside of images.
+      </P>
 
       <H2>The three ways whiteboards attach</H2>
       <P>

@@ -74,7 +74,7 @@ export default function AiMcp() {
       <DefList>
         <Def term="Find and read">
           Search; your workspace&rsquo;s members, labels, statuses and sprints; My Work; boards and cards (by key such as SEC-12); projects
-          with phases, deliverables, milestones and objectives; storyboards screen by screen; review rounds with every comment; all feedback on
+          with phases, deliverables, milestones and objectives; storyboards screen by screen; whiteboards; review rounds with every comment; all feedback on
           a deliverable; intake requests; sprints.
         </Def>
         <Def term="Plan and track">
@@ -84,7 +84,8 @@ export default function AiMcp() {
         </Def>
         <Def term="Design">
           Create storyboards, add and edit screens (on-screen text, narration, visuals, interaction, developer notes) and link them to
-          objectives.
+          objectives. Read whiteboards and draw on them: labelled shapes, sticky notes, frames and arrows, or a whole flowchart laid out
+          automatically (a learner journey, a branching scenario, a course map).
         </Def>
         <Def term="Review">
           Start review rounds, comment on a screen or a PDF page, resolve or won&rsquo;t-fix threads, record your own decision, and send
@@ -121,7 +122,7 @@ export default function AiMcp() {
 
       <H3>Not included</H3>
       <P>
-        Uploading files (attachments, PDFs for review), whiteboards, workspace settings, members and backups stay in the app.
+        Uploading files (attachments, PDFs for review, images on whiteboards), workspace settings, members and backups stay in the app.
       </P>
     </>
   );
