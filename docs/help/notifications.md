@@ -14,7 +14,7 @@ Every notification is about something *someone else* did that affects *you*. If 
 
 There are eight categories of notification. Each one can be switched on or off for the whole workspace under **Settings → Notifications** (see below) — but by default, they all send.
 
-**Assignments** — When someone is assigned to a card or subtask, or named as an SME.
+**Assignments** — When someone is assigned to a card, subtask or intake request, or named as an SME.
 
 **Status changes** — When a card moves to a new status, or a subtask is completed or reopened.
 
@@ -36,7 +36,7 @@ Notice how the audience is always the people connected to the work: a status cha
 
 No notification asks you to go hunting. Each one ends with a **View in Tavoro** button that deep-links to exactly the thing it’s about — the specific card, the review, the project, or the intake request — so you land on the right screen in one click.
 
-> **Tip.** Emails to external stakeholders who can’t sign in (for example, an intake requester confirming their submission) skip the button, since there’s nothing for them to open. Everyone with a workspace account gets the link.
+> **Tip.** Emails to external stakeholders who can’t sign in (for example, an intake requester confirming their submission) skip the button, since there’s nothing for them to open. Everyone with a workspace account gets the link. When someone asks an intake requester a question, the email’s reply address is the asker’s own, so the answer reaches a person rather than a no-reply inbox.
 
 ## @-mentions in comments and descriptions
 

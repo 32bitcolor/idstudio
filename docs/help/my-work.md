@@ -17,6 +17,8 @@ Open My Work from the sidebar (or the bell in the header) and you land on **Over
 
 **I'm waiting on** — Open reviews *you* started: who’s still reviewing, and when it’s due.
 
+**My intake requests** — Open intake requests assigned to you, with their status and needed-by date. Shown only when you have some.
+
 **My action items** — Board cards assigned to you, with their board, column, and due date.
 
 **My subtasks** — Open subtasks assigned to you, with the card they belong to.

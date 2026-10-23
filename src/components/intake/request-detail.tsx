@@ -30,6 +30,7 @@ import { StatusBadge } from "@/components/shared/status-badge";
 import { SectionHeader } from "@/components/shared/page";
 import { ApproveDialog } from "@/components/intake/approve-dialog";
 import type { Viewer } from "@/components/intake/triage-queue";
+import { useSetPageTitle } from "@/components/app-shell/breadcrumbs";
 
 type Member = { id: string; name: string | null; email: string };
 export type DetailRequest = {
@@ -56,8 +57,11 @@ export type DetailRequest = {
 };
 
 const fmt = (iso: string) => new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+// Needed-by dates are calendar days stored as UTC midnight.
+const fmtDay = (iso: string) => new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" });
 
 export function RequestDetail({ request, members, viewer }: { request: DetailRequest; members: Member[]; viewer: Viewer }) {
+  useSetPageTitle(ticketLabel(request.number));
   const [pending, startTransition] = useTransition();
   const [impact, setImpact] = useState(request.impactScore);
   const [effort, setEffort] = useState(request.effortScore);
@@ -100,7 +104,7 @@ export function RequestDetail({ request, members, viewer }: { request: DetailReq
               {INTAKE_STATUS_LABEL[request.status as IntakeStatus] ?? request.status}
             </StatusBadge>
             {quadrant && <StatusBadge tone="neutral">{quadrant}</StatusBadge>}
-            {due && <span className={dueToneClass[due.tone]}>Needed by {due.label}</span>}
+            {due && request.targetDate && <span className={dueToneClass[due.tone]}>Needed by {fmtDay(request.targetDate)} ({due.label})</span>}
             <span>Submitted {fmt(request.createdAt)}</span>
           </div>
           <p className="text-sm whitespace-pre-wrap">{request.description}</p>

@@ -32,6 +32,7 @@ const SEED = {
   sprint: "Sprint 42",
   whiteboard: "Module 1 – learner journey",
   group: "Design Team",
+  needsInfoRequest: "Excel for analysts",
 };
 
 const browser = await chromium.launch();
@@ -276,6 +277,15 @@ if (want("intake-form")) {
     console.log("✓ intake-form");
   }
   await fresh.close();
+}
+
+if (want("intake-request")) {
+  // A request waiting on its requester: the question, and the triage panel.
+  await go("/intake");
+  await page.getByRole("link", { name: new RegExp(SEED.needsInfoRequest) }).first().click();
+  await page.waitForURL(/\/intake\/[a-z0-9]+/);
+  await settle();
+  await shot("intake-request");
 }
 
 if (want("my-work")) {

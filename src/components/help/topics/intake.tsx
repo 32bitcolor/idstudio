@@ -157,6 +157,7 @@ export default function Intake() {
         Requests often arrive thin: no audience, no sense of what success looks like. Rather than guess,
         ask.
       </P>
+      <Screenshot name="intake-request" alt="A request's page showing Waiting on the requester with the question that was sent, and the Triage panel with scores, assignee, Approve, Ask the requester and Reject" caption="A request waiting on its requester." />
       <Steps>
         <>
           On the request&rsquo;s page, choose <UI>Ask the requester…</UI>, write your question, and{" "}
