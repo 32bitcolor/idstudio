@@ -13,7 +13,8 @@ Every workspace has a public submission form at its own link — something like 
 
 1. As a workspace admin, open **Settings → Intake**. You’ll see the **Public intake link** panel with your shareable URL.
 2. Click **Copy** to grab the link, then share it however stakeholders reach you — an email signature, a team wiki, an internal portal, a Slack channel topic.
-3. Use **Enable intake form** / **Disable intake form** to control whether the form accepts requests. While disabled, the link shows a not-found page, so you can pause intake without breaking anything you’ve already shared.
+3. To change the address (say, after renaming the workspace), choose **Edit**, type the new ending (lowercase letters, numbers and hyphens), and **Save link**. The old address keeps working and forwards to the new one, so links you’ve already shared don’t break.
+4. Use **Enable intake form** / **Disable intake form** to control whether the form accepts requests. While disabled, the link shows a not-found page, so you can pause intake without breaking anything you’ve already shared.
 
 On the form, the requester fills in **Your name** and **Your email**, **What do you need?** (a short title), and **Tell us more** (the full description). Two optional fields help you triage: **Audience** and **Needed by**. On submit they get a confirmation screen with a reference number like **REQ-14**.
 

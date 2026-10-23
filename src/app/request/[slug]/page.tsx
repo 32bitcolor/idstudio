@@ -1,4 +1,4 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { IntakeForm } from "./intake-form";
 
@@ -13,6 +13,13 @@ export default async function PublicIntakePage({ params }: { params: Promise<{ s
     where: { slug },
     select: { id: true, name: true, intakeEnabled: true },
   });
+
+  // An address the workspace used before (its link was changed): forward to the
+  // current one, so links already shared keep working.
+  if (!workspace) {
+    const moved = await prisma.workspace.findFirst({ where: { formerSlugs: { has: slug } }, select: { slug: true, intakeEnabled: true } });
+    if (moved?.intakeEnabled) redirect(`/request/${moved.slug}`);
+  }
 
   // Same 404 for "no such workspace" and "intake disabled" — a disabled
   // workspace's existence shouldn't be distinguishable from a nonexistent one.

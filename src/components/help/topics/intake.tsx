@@ -30,6 +30,11 @@ export default function Intake() {
           an email signature, a team wiki, an internal portal, a Slack channel topic.
         </>
         <>
+          To change the address (say, after renaming the workspace), choose <UI>Edit</UI>, type the new
+          ending (lowercase letters, numbers and hyphens), and <UI>Save link</UI>. The old address keeps
+          working and forwards to the new one, so links you&rsquo;ve already shared don&rsquo;t break.
+        </>
+        <>
           Use <UI>Enable intake form</UI> / <UI>Disable intake form</UI> to control whether the form
           accepts requests. While disabled, the link shows a not-found page, so you can pause intake
           without breaking anything you&rsquo;ve already shared.

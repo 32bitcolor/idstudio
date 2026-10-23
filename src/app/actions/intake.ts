@@ -358,6 +358,36 @@ export async function resumeIntakeTriage(requestId: string): Promise<{ error: st
 
 // ── Settings ─────────────────────────────────────────────────────────────────
 
+const IntakeSlug = z
+  .string()
+  .trim()
+  .toLowerCase()
+  .regex(/^[a-z0-9](?:[a-z0-9-]{1,46}[a-z0-9])$/, "Use 3–48 lowercase letters, numbers and hyphens, starting and ending with a letter or number.");
+
+/** Change the intake link (/request/<slug>). The old address keeps working: the public
+ *  page forwards any former slug to the current one. */
+export async function setIntakeSlug(raw: string): Promise<{ error: string } | { slug: string }> {
+  const admin = await adminGuard();
+  if (!admin) return { error: "You must be a workspace admin." };
+  const parsed = IntakeSlug.safeParse(raw);
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid link." };
+  const slug = parsed.data;
+  const ws = await prisma.workspace.findUnique({ where: { id: admin.workspaceId }, select: { slug: true, formerSlugs: true } });
+  if (!ws) return { error: "Workspace not found." };
+  if (slug === ws.slug) return { slug };
+  const taken = await prisma.workspace.findFirst({
+    where: { id: { not: admin.workspaceId }, OR: [{ slug }, { formerSlugs: { has: slug } }] },
+    select: { id: true },
+  });
+  if (taken) return { error: "Another workspace uses that link. Pick a different one." };
+  // Remember the old address (most recent first, at most 10), and drop the new one if
+  // this workspace used it before.
+  const formerSlugs = [ws.slug, ...ws.formerSlugs.filter((s) => s !== slug && s !== ws.slug)].slice(0, 10);
+  await prisma.workspace.update({ where: { id: admin.workspaceId }, data: { slug, formerSlugs } });
+  revalidatePath("/settings/intake");
+  return { slug };
+}
+
 export async function setIntakeEnabled(enabled: boolean): Promise<{ error: string } | undefined> {
   const admin = await adminGuard();
   if (!admin) return { error: "You must be a workspace admin." };
