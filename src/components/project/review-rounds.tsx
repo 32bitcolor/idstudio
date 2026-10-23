@@ -78,7 +78,8 @@ export function ReviewRounds({
                   href={`/reviews/${r.id}`}
                   className={cn(
                     "group flex flex-wrap items-center gap-x-3 gap-y-1.5 rounded-md border border-border px-3 py-2 text-sm hover:bg-hover",
-                    r !== latest && "opacity-80",
+                    // Older rounds recede by background, not by fading their text.
+                    r !== latest && "bg-surface-muted",
                   )}
                 >
                   <span className="font-semibold">Round {r.number}</span>
@@ -97,7 +98,7 @@ export function ReviewRounds({
                       <span key={x.id} className="inline-flex items-center gap-1" title={REVIEW_STATUS_LABEL[x.status as ReviewStatus] ?? x.status}>
                         <span className={cn("size-1.5 rounded-full", DECISION_DOT[x.status] ?? "bg-muted-foreground/50")} aria-hidden="true" />
                         {x.name}
-                        {x.guest && <span className="text-muted-foreground/80">(guest)</span>}
+                        {x.guest && <span className="text-muted-foreground">(guest)</span>}
                         <span className="sr-only">: {REVIEW_STATUS_LABEL[x.status as ReviewStatus] ?? x.status}</span>
                       </span>
                     ))}

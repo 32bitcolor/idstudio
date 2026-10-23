@@ -145,7 +145,7 @@ export function GroupDetail({
           restricted to its groups (and admins); anything left unchecked by every group stays
           visible to all members.
         </p>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-[minmax(0,1fr)] gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <ResourceColumn groupId={group.id} kind="board" title="Boards" items={resources.board} />
           <ResourceColumn groupId={group.id} kind="storyboard" title="Storyboards" items={resources.storyboard} />
           <ResourceColumn groupId={group.id} kind="project" title="Projects" items={resources.project} />

@@ -88,7 +88,7 @@ function PhaseDate({ label, value, onChange }: { label: string; value: string | 
       onChange={(e) => onChange(e.target.value)}
       className={cn(
         "h-7 w-auto border-transparent bg-transparent px-1.5 py-0.5 text-xs shadow-none hover:border-border focus-visible:border-ring",
-        !value && "text-muted-foreground/70",
+        !value && "text-muted-foreground",
       )}
     />
   );
