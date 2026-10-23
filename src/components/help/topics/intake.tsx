@@ -187,7 +187,7 @@ export default function Intake() {
       </P>
 
       <H2>Talking to the requester</H2>
-      <Screenshot name="intake-request" alt="A request's page with the conversation: a question to the requester, their reply, and an internal note, above a box for writing a reply or note" caption="The conversation on a request: replies, and an internal note." />
+      <Screenshot name="intake-request" alt="A request's page with the conversation: a question to the requester and an internal note, above a box for writing a reply or note" caption="The conversation on a request: a question to the requester, and an internal note." />
       <P>
         Requests often arrive thin: no audience, no sense of what success looks like. Rather than guess, ask.
         The <UI>Conversation</UI> on the request&rsquo;s page holds two kinds of message:

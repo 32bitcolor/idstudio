@@ -90,8 +90,8 @@ Admins, managers and the assigned member see **Copy link**, **View as requester*
 
 ## Talking to the requester
 
-![A request's page with the conversation: a question to the requester, their reply, and an internal note, above a box for writing a reply or note](../../public/help-shots/intake-request.png)
-*The conversation on a request: replies, and an internal note.*
+![A request's page with the conversation: a question to the requester and an internal note, above a box for writing a reply or note](../../public/help-shots/intake-request.png)
+*The conversation on a request: a question to the requester, and an internal note.*
 
 Requests often arrive thin: no audience, no sense of what success looks like. Rather than guess, ask. The **Conversation** on the request’s page holds two kinds of message:
 
