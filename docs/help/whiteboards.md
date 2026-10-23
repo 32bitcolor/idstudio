@@ -6,6 +6,9 @@
 
 ## Drawing on a whiteboard
 
+![An Excalidraw whiteboard sketching a learner journey, with its linked storyboard shown in the header](../../public/help-shots/whiteboard.png)
+*A whiteboard linked to a storyboard.*
+
 A whiteboard is a full Excalidraw canvas: shapes, arrows, text, freehand drawing, sticky frames, and images — the familiar toolset for quick diagrams and wireframes. Open one from the **Whiteboards** page (or from wherever it’s linked) and start drawing.
 
 - **Rename** — edit the title in the header; it saves when you click away.

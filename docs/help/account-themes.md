@@ -20,6 +20,9 @@ Anyone signed in can update their own password — you don’t need an admin to 
 
 ## Theming Tavoro
 
+![Settings, Account: the Appearance theme swatches, the profile, and the change-password form](../../public/help-shots/account.png)
+*Settings → Account.*
+
 Tavoro ships with a big library of hand-tuned themes, and the entire interface re-colors instantly when you pick one — sidebar, cards, buttons, charts, and all. Find the theme picker in **Settings → Account**, under **Appearance** — a grid of swatches, each showing a preview of that theme’s background and accent color. Click one to apply it.
 
 ### How it behaves

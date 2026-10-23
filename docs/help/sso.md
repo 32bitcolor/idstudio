@@ -8,6 +8,9 @@
 
 ## What each part does
 
+![The Tavoro sign-in page with email and password fields, a Sign in button, and a Sign in with SSO button](../../public/help-shots/login.png)
+*The sign-in page. “Sign in with SSO” uses the email typed above it.*
+
 **Single sign-on** — People choose **Sign in with SSO** on the sign-in page (Tavoro sends them to the identity provider for their email’s domain), or click Tavoro in their identity provider’s app portal. Either way the provider vouches for them with a signed SAML response, and they land in the workspace.
 
 **Create on first sign-in** — Optional. Anyone the identity provider lets into the app gets a Tavoro account the first time they sign in. With it off, only people already in the workspace (added by an admin or by provisioning) can sign in.
@@ -19,6 +22,9 @@
 **Require SSO** — Optional. Members can no longer sign in with a password. Admins still can, so there’s always a way in if the identity provider is down.
 
 ## Set it up (any identity provider)
+
+![Settings, Single sign-on: the status bar, Tavoro's values to give the identity provider with copy buttons, and the identity provider's details](../../public/help-shots/sso-settings.png)
+*Settings → Single sign-on: steps 1 and 2.*
 
 Keep two tabs open: Tavoro’s **Settings → Single sign-on** and your identity provider’s admin console. The settings page walks through the same five steps.
 

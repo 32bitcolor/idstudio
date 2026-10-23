@@ -148,3 +148,20 @@ export function Table({ head, rows }: { head: React.ReactNode[]; rows: React.Rea
     </div>
   );
 }
+
+/** A screenshot of the app, from public/help-shots (captured by `npm run help:screenshots`).
+ *  The Markdown export (docs/help) points at the same file. */
+export function Screenshot({ name, alt, caption }: { name: string; alt: string; caption?: string }) {
+  return (
+    <figure className="my-6">
+      {/* eslint-disable-next-line @next/next/no-img-element -- static screenshots; next/image adds nothing here */}
+      <img
+        src={`/help-shots/${name}.png`}
+        alt={alt}
+        loading="lazy"
+        className="w-full rounded-xl border border-border shadow-sm"
+      />
+      {caption && <figcaption className="mt-2 text-center text-xs text-muted-foreground">{caption}</figcaption>}
+    </figure>
+  );
+}

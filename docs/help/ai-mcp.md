@@ -6,6 +6,9 @@
 
 ## Connect Claude.ai or Claude Desktop
 
+![Settings, AI & MCP: the server URL with a copy button, and connection steps for Claude, ChatGPT and Claude Code](../../public/help-shots/ai-settings.png)
+*Settings → AI & MCP: the server URL and how to connect each assistant.*
+
 1. In Tavoro, open **Settings → AI & MCP** and copy the server URL. It ends in `/api/mcp`.
 2. In Claude, open **Settings → Connectors**, choose **Add custom connector**, and paste the URL.
 3. Click **Connect**. You’re sent to Tavoro to sign in. Pick the **workspace** Claude may use and the **access** (read and change, or read only), then **Allow**.

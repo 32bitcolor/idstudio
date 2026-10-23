@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Lead, H2, H3, P, UL, LI, Steps, Callout, DefList, Def, UI } from "@/components/help/prose";
+import { Lead, H2, H3, P, UL, LI, Steps, Callout, DefList, Def, UI, Screenshot } from "@/components/help/prose";
 
 export default function Projects() {
   return (
@@ -43,6 +43,7 @@ export default function Projects() {
       </P>
 
       <H2>Phases</H2>
+      <Screenshot name="project" alt="A project page with its phase, next milestone and alignment summary, the phases list, and the Boards section" caption="A project: phase progress, next milestone, alignment, then phases and boards." />
       <P>
         Phases are the stages your project moves through. Each one carries a status and optional
         start/end dates, and the project card in the grid shows a live <em>done / total</em> progress
@@ -106,6 +107,7 @@ export default function Projects() {
       </P>
 
       <H2>Review rounds</H2>
+      <Screenshot name="review-round" alt="A review round: the reviewers and their decisions at the top, the storyboard as reviewed on the left, and comments on the right" caption="Round 2 of a storyboard review, with pinned comments beside the screens." />
       <P>
         Every deliverable has its own <strong>review rounds</strong>: the SME and stakeholder sign-off
         loop that&rsquo;s the daily bottleneck for most ID teams. Each round freezes a copy of the linked
@@ -165,6 +167,7 @@ export default function Projects() {
       </Callout>
 
       <H3>Turn feedback into work</H3>
+      <Screenshot name="feedback" alt="The All feedback view listing every comment on a deliverable from every round, grouped by screen" caption="All feedback: every comment from every round, ready to resolve or send to a board." />
       <P>
         Review comments become board cards, so fixing them happens where the rest of your work does.
       </P>

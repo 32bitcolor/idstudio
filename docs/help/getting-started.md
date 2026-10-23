@@ -14,6 +14,9 @@ Everything in Tavoro lives inside a **workspace** — your team’s shared home 
 
 ## Finding your way around
 
+![The Tavoro dashboard with the sidebar, header search, and the active projects, reviews and milestones sections](../../public/help-shots/dashboard.png)
+*The dashboard: your active projects, reviews awaiting you, and upcoming milestones.*
+
 The app has one consistent shell, so every screen feels the same:
 
 - The **left sidebar** lists your modules — My Work, Intake, Boards, Projects, Sprints, Storyboards, and Whiteboards, plus Team for admins and managers — with Help and your account at the bottom. Collapse it with the toggle in the header when you want more room.

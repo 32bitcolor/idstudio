@@ -6,6 +6,9 @@
 
 ## The public intake link
 
+![The public intake form a stakeholder fills in, with name, email, what they need, details, audience and needed-by date](../../public/help-shots/intake-form.png)
+*The public request form. No sign-in needed.*
+
 Every workspace has a public submission form at its own link — something like **/request/your-workspace**. Anyone with the link can submit a request; there’s **no login required**, which is the point — stakeholders shouldn’t need an account to ask for help. Requests they submit land in **Intake** for your team to triage.
 
 1. As a workspace admin, open **Settings → Intake**. You’ll see the **Public intake link** panel with your shareable URL.
@@ -17,6 +20,9 @@ On the form, the requester fills in **Your name** and **Your email**, **What do 
 > **Spam protection.** The form has a hidden honeypot field that real people never see — if it’s filled in, the submission is silently dropped. Each network can also submit only five requests an hour, so a bot (or an over-eager tab) can’t flood your queue.
 
 ## The triage queue
+
+![The Intake queue listing requests with their reference numbers, status, impact and effort scores, and quadrant](../../public/help-shots/intake-queue.png)
+*The triage queue: unscored requests first, then by priority.*
 
 Everything that comes in appears on the **Intake** page in the sidebar. The queue sorts itself so the work that needs attention floats up: untriaged requests come first, then everything you’ve scored, ordered by priority — highest first. Each row shows the reference number, current status, an impact/effort quadrant once scored, and the **Needed by** date (highlighted when it’s close or past).
 

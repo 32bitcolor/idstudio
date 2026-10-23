@@ -1,4 +1,4 @@
-import { Lead, H2, H3, P, UL, LI, Steps, Callout, DefList, Def, UI } from "@/components/help/prose";
+import { Lead, H2, H3, P, UL, LI, Steps, Callout, DefList, Def, UI, Screenshot } from "@/components/help/prose";
 
 export default function AccountThemes() {
   return (
@@ -49,6 +49,7 @@ export default function AccountThemes() {
       </Callout>
 
       <H2>Theming Tavoro</H2>
+      <Screenshot name="account" alt="Settings, Account: the Appearance theme swatches, the profile, and the change-password form" caption="Settings → Account." />
       <P>
         Tavoro ships with a big library of hand-tuned themes, and the entire interface re-colors
         instantly when you pick one — sidebar, cards, buttons, charts, and all. Find the theme picker

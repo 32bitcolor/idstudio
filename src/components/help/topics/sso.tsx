@@ -1,4 +1,4 @@
-import { Lead, H2, H3, P, UL, LI, Steps, Callout, DefList, Def, UI, Table } from "@/components/help/prose";
+import { Lead, H2, H3, P, UL, LI, Steps, Callout, DefList, Def, UI, Table, Screenshot } from "@/components/help/prose";
 
 // Single sign-on and provisioning (docs/SSO.md). Written for any SAML 2.0 / SCIM 2.0
 // identity provider. Provider guides go under "Provider guides": add a section per
@@ -19,6 +19,7 @@ export default function Sso() {
       </Callout>
 
       <H2>What each part does</H2>
+      <Screenshot name="login" alt="The Tavoro sign-in page with email and password fields, a Sign in button, and a Sign in with SSO button" caption="The sign-in page. “Sign in with SSO” uses the email typed above it." />
       <DefList>
         <Def term="Single sign-on">
           People choose <UI>Sign in with SSO</UI> on the sign-in page (Tavoro sends them to the identity provider for their email&rsquo;s
@@ -45,6 +46,7 @@ export default function Sso() {
       </DefList>
 
       <H2>Set it up (any identity provider)</H2>
+      <Screenshot name="sso-settings" alt="Settings, Single sign-on: the status bar, Tavoro's values to give the identity provider with copy buttons, and the identity provider's details" caption="Settings → Single sign-on: steps 1 and 2." />
       <P>
         Keep two tabs open: Tavoro&rsquo;s <UI>Settings → Single sign-on</UI> and your identity provider&rsquo;s admin console. The settings
         page walks through the same five steps.

@@ -1,4 +1,4 @@
-import { Lead, H2, H3, P, UL, LI, Steps, Callout, DefList, Def, UI } from "@/components/help/prose";
+import { Lead, H2, H3, P, UL, LI, Steps, Callout, DefList, Def, UI, Screenshot } from "@/components/help/prose";
 
 export default function Sprints() {
   return (
@@ -60,6 +60,7 @@ export default function Sprints() {
       </DefList>
 
       <H2>The sprint board</H2>
+      <Screenshot name="sprint-board" alt="A sprint board with cards from several boards grouped by status columns, and Project, Assignee and Label filters" caption="Sprint 42's board: cards from across projects, grouped by status." />
       <P>
         Click <UI>Open board</UI> on any sprint to see its cards laid out as a Kanban view. Instead
         of the columns a single board uses, the sprint board groups every card by your

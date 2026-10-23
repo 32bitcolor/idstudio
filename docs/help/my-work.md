@@ -8,6 +8,9 @@
 
 ## The Overview tab
 
+![My Work's Overview tab, with reviews awaiting you, reviews you're waiting on, and your assigned cards](../../public/help-shots/my-work.png)
+*My Work: what needs you, and what you're waiting on.*
+
 Open My Work from the sidebar (or the bell in the header) and you land on **Overview**. Each section shows a live count, with the most actionable work at the top:
 
 **Awaiting my review** — Review rounds where you’re a reviewer and haven’t decided yet. You can open the review or decide right here (see below).

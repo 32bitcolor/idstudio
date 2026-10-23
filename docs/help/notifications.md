@@ -52,6 +52,9 @@ Comments are rich text, so a mention sits inline alongside bold, italic, links, 
 
 ## Admin controls: Settings → Notifications
 
+![Settings, Notifications: the SMTP status, a test email form, and a toggle for each type of email](../../public/help-shots/notifications-settings.png)
+*Settings → Notifications.*
+
 Admins tune the whole system from one screen. It’s admin-only — regular members don’t see it, and there are no per-person preferences to manage. Everything here applies to the entire workspace.
 
 ### Turning types on and off

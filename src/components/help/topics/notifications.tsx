@@ -1,4 +1,4 @@
-import { Lead, H2, H3, P, Steps, Callout, DefList, Def, UI } from "@/components/help/prose";
+import { Lead, H2, H3, P, Steps, Callout, DefList, Def, UI, Screenshot } from "@/components/help/prose";
 
 export default function Notifications() {
   return (
@@ -110,6 +110,7 @@ export default function Notifications() {
       </P>
 
       <H2>Admin controls: Settings → Notifications</H2>
+      <Screenshot name="notifications-settings" alt="Settings, Notifications: the SMTP status, a test email form, and a toggle for each type of email" caption="Settings → Notifications." />
       <P>
         Admins tune the whole system from one screen. It&rsquo;s admin-only — regular members don&rsquo;t
         see it, and there are no per-person preferences to manage. Everything here applies to the entire

@@ -1,4 +1,4 @@
-import { Lead, H2, H3, P, UL, LI, Steps, Callout, DefList, Def, UI } from "@/components/help/prose";
+import { Lead, H2, H3, P, UL, LI, Steps, Callout, DefList, Def, UI, Screenshot } from "@/components/help/prose";
 
 export default function Boards() {
   return (
@@ -48,6 +48,7 @@ export default function Boards() {
       </P>
 
       <H2>Cards</H2>
+      <Screenshot name="board" alt="A board with Backlog, To do and In progress columns of cards above the project strip and filter bar" caption="A project board: the project strip, the filter bar, and the columns." />
       <P>
         Add a card with <UI>Add card</UI> at the bottom of a column, or <UI>New card</UI> in the board
         header, then type a title in <UI>Card title…</UI>. To move a card, drag it: within a column to
@@ -61,6 +62,7 @@ export default function Boards() {
       </P>
 
       <H3>Board and list views</H3>
+      <Screenshot name="board-list" alt="The same board shown as a list grouped by column, with key, title, labels, people and due date" caption="List view: the same cards as a table, grouped by column." />
       <P>
         The <UI>Board</UI> / <UI>List</UI> switch in the header changes how the same cards are shown:
         columns you drag between, or a table grouped by column with key, title, labels, people, and due
@@ -68,6 +70,7 @@ export default function Boards() {
       </P>
 
       <H2>The card drawer, in depth</H2>
+      <Screenshot name="card-drawer" alt="An open card drawer showing the description, subtasks, status, due date, sprint, assignees, SMEs and labels" caption="The card drawer for SEC-13, with its subtasks and details." />
       <P>
         Opening a card slides in a drawer with everything about it. Changes save as you go — there&rsquo;s
         no save button. Press <UI>Esc</UI> or use <UI>Close card</UI> to close it; <UI>J</UI> and{" "}

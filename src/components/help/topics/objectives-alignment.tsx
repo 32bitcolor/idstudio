@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Lead, H2, H3, P, UL, LI, Steps, Callout, DefList, Def, UI } from "@/components/help/prose";
+import { Lead, H2, H3, P, UL, LI, Steps, Callout, DefList, Def, UI, Screenshot } from "@/components/help/prose";
 
 export default function ObjectivesAlignment() {
   return (
@@ -51,6 +51,7 @@ export default function ObjectivesAlignment() {
       </Callout>
 
       <H2>How to use it</H2>
+      <Screenshot name="alignment" alt="The Learning objectives & alignment section: each objective with its Bloom level and how many screens teach it and items assess it" caption="Each objective shows its Bloom level and its taught and assessed coverage." />
       <Steps>
         <>
           Open a project and find <strong>Learning objectives &amp; alignment</strong>. Add

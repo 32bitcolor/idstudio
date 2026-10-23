@@ -8,6 +8,9 @@
 
 ## Managing members
 
+![Settings, Members: the Add a member form and the list of members with their roles and SSO badges](../../public/help-shots/members.png)
+*Settings → Members.*
+
 Open **Settings → Members** to see everyone in the workspace, their email, and their role. Tavoro uses admin-provisioned accounts — there’s no open sign-up into an existing workspace — so you create each person’s login and share their first password out-of-band.
 
 ### Add a member
@@ -55,6 +58,9 @@ Groups are named sets of people — “Leadership,” “Compliance Team,” “
 3. Rename the group or edit its description inline at the top — changes save when you click away. **Delete group** removes the group and all of its resource-sharing (people and resources themselves are untouched).
 
 ## Group-based access control
+
+![A group's page: its members and the Shared resources checkboxes for boards, storyboards, projects and whiteboards](../../public/help-shots/group.png)
+*A group, with the resources shared with it.*
 
 By default Tavoro is open: every board, project, storyboard, and whiteboard is visible to all members. Groups let you tighten that on a per-resource basis when something should only be seen by certain people.
 

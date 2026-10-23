@@ -1,4 +1,4 @@
-import { Lead, H2, H3, P, Steps, Callout, DefList, Def, UI } from "@/components/help/prose";
+import { Lead, H2, H3, P, Steps, Callout, DefList, Def, UI, Screenshot } from "@/components/help/prose";
 
 export default function Intake() {
   return (
@@ -11,6 +11,7 @@ export default function Intake() {
       </Lead>
 
       <H2>The public intake link</H2>
+      <Screenshot name="intake-form" alt="The public intake form a stakeholder fills in, with name, email, what they need, details, audience and needed-by date" caption="The public request form. No sign-in needed." />
       <P>
         Every workspace has a public submission form at its own link &mdash; something like{" "}
         <UI>/request/your-workspace</UI>. Anyone with the link can submit a request; there&rsquo;s{" "}
@@ -49,6 +50,7 @@ export default function Intake() {
       </Callout>
 
       <H2>The triage queue</H2>
+      <Screenshot name="intake-queue" alt="The Intake queue listing requests with their reference numbers, status, impact and effort scores, and quadrant" caption="The triage queue: unscored requests first, then by priority." />
       <P>
         Everything that comes in appears on the <UI>Intake</UI> page in the sidebar. The queue sorts
         itself so the work that needs attention floats up: untriaged requests come first, then

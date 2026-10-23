@@ -1,4 +1,4 @@
-import { Lead, H2, H3, P, UL, LI, Steps, Callout, DefList, Def, UI } from "@/components/help/prose";
+import { Lead, H2, H3, P, UL, LI, Steps, Callout, DefList, Def, UI, Screenshot } from "@/components/help/prose";
 
 export default function Storyboards() {
   return (
@@ -38,6 +38,7 @@ export default function Storyboards() {
       </Callout>
 
       <H2>Screens</H2>
+      <Screenshot name="storyboard" alt="A storyboard with its first screen expanded, showing the Teaches chips and the on-screen text, narration and notes fields" caption="A storyboard with the first screen open." />
       <P>
         Screens are the ordered building blocks of the course. Add one with <UI>Add a screen</UI>,
         give it a title, and it appears at the end of the list, numbered in sequence. Click a

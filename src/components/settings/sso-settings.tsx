@@ -156,8 +156,8 @@ export function SsoSettings({ conn, urls }: { conn: Conn; urls: Urls }) {
           <CopyField label="SP metadata" hint="if your provider can import it" value={urls.metadata} />
         </div>
         <p className="mt-3 text-xs text-muted-foreground">
-          Send the user&apos;s email as the NameID (or an <code>email</code> attribute), sign the assertion, and, to use roles from groups, include the group
-          attribute named below.
+          Send the user&apos;s email as the NameID (or an <code>email</code> attribute), sign the response or the assertion (either works), and, to use
+          roles from groups, include the group attribute named below.
         </p>
       </Card>
 

@@ -9,7 +9,7 @@ import { mkdirSync, readFileSync, writeFileSync, readdirSync, unlinkSync } from 
 import { join } from "node:path";
 import Link from "next/link";
 import { HELP_TOPICS, type HelpGroup } from "@/components/help/registry";
-import { Lead, H2, H3, P, UL, LI, Steps, Callout, DefList, Def, UI, Table } from "@/components/help/prose";
+import { Lead, H2, H3, P, UL, LI, Steps, Callout, DefList, Def, UI, Table, Screenshot } from "@/components/help/prose";
 
 const OUT = join(process.cwd(), "docs/help");
 const CALLOUT_LABEL = { tip: "Tip", note: "Note", warning: "Heads up" } as const;
@@ -107,6 +107,11 @@ function block(node: React.ReactNode): string[] {
     return [
       [`| ${head.map(cell).join(" | ")} |`, `| ${head.map(() => "---").join(" | ")} |`, ...rows.map((r) => `| ${r.map(cell).join(" | ")} |`)].join("\n"),
     ];
+  }
+  if (el.type === Screenshot) {
+    // Relative to docs/help, so GitHub shows the same file the app serves.
+    const img = `![${el.props.alt as string}](../../public/help-shots/${el.props.name as string}.png)`;
+    return [el.props.caption ? `${img}\n*${el.props.caption as string}*` : img];
   }
   if (el.type === LI) return [`- ${clean(inline(children))}`];
   if (typeof el.type === "function") return block((el.type as (p: unknown) => React.ReactNode)(el.props));

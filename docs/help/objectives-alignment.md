@@ -31,6 +31,9 @@ Once objectives exist, two things attach to them — and Tavoro shows you the ga
 
 ## How to use it
 
+![The Learning objectives & alignment section: each objective with its Bloom level and how many screens teach it and items assess it](../../public/help-shots/alignment.png)
+*Each objective shows its Bloom level and its taught and assessed coverage.*
+
 1. Open a project and find **Learning objectives & alignment**. Add objectives — one per thing a learner should be able to do — and set each one’s Bloom level.
 2. In the project’s storyboards, expand a screen and use the **Teaches** chips (O1, O2, …) to mark which objectives that screen covers.
 3. Back on the project, add **assessment items** and toggle which objectives each one **Assesses:**.

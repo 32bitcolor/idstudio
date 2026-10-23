@@ -19,15 +19,24 @@ Give a board a **Card prefix** (for example `SEC`) and every card gets a short k
 
 ## Cards
 
+![A board with Backlog, To do and In progress columns of cards above the project strip and filter bar](../../public/help-shots/board.png)
+*A project board: the project strip, the filter bar, and the columns.*
+
 Add a card with **Add card** at the bottom of a column, or **New card** in the board header, then type a title in **Card title…**. To move a card, drag it: within a column to reorder, or across columns to change its stage. Dragging works with filters on, too — a dropped card lands next to the card you can see. Positions save automatically.
 
 The card face shows its state at a glance: key, labels, a due-date chip (red when overdue), a subtask count (green once every subtask is done), comment and attachment counts, and the assignees. Click a card to open its drawer.
 
 ### Board and list views
 
+![The same board shown as a list grouped by column, with key, title, labels, people and due date](../../public/help-shots/board-list.png)
+*List view: the same cards as a table, grouped by column.*
+
 The **Board** / **List** switch in the header changes how the same cards are shown: columns you drag between, or a table grouped by column with key, title, labels, people, and due date. Filters apply to both.
 
 ## The card drawer, in depth
+
+![An open card drawer showing the description, subtasks, status, due date, sprint, assignees, SMEs and labels](../../public/help-shots/card-drawer.png)
+*The card drawer for SEC-13, with its subtasks and details.*
 
 Opening a card slides in a drawer with everything about it. Changes save as you go — there’s no save button. Press **Esc** or use **Close card** to close it; **J** and **K** step to the next and previous card, and **Copy shareable link** copies a link that opens this card for anyone who can see the board.
 

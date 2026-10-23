@@ -1,4 +1,4 @@
-import { Lead, H2, H3, P, UL, LI, Steps, Callout, DefList, Def, UI } from "@/components/help/prose";
+import { Lead, H2, H3, P, UL, LI, Steps, Callout, DefList, Def, UI, Screenshot } from "@/components/help/prose";
 
 export default function Whiteboards() {
   return (
@@ -11,6 +11,7 @@ export default function Whiteboards() {
       </Lead>
 
       <H2>Drawing on a whiteboard</H2>
+      <Screenshot name="whiteboard" alt="An Excalidraw whiteboard sketching a learner journey, with its linked storyboard shown in the header" caption="A whiteboard linked to a storyboard." />
       <P>
         A whiteboard is a full Excalidraw canvas: shapes, arrows, text, freehand drawing, sticky
         frames, and images — the familiar toolset for quick diagrams and wireframes. Open one from the{" "}

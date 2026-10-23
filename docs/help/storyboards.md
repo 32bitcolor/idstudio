@@ -16,6 +16,9 @@ Storyboards live under **Storyboards** in the sidebar. You can create one on its
 
 ## Screens
 
+![A storyboard with its first screen expanded, showing the Teaches chips and the on-screen text, narration and notes fields](../../public/help-shots/storyboard.png)
+*A storyboard with the first screen open.*
+
 Screens are the ordered building blocks of the course. Add one with **Add a screen**, give it a title, and it appears at the end of the list, numbered in sequence. Click a screen’s arrow to expand it and edit its fields; collapse it again to keep the outline scannable.
 
 - **Rename** — click the screen title to edit it inline.

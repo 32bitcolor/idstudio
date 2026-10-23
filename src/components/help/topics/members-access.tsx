@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Lead, H2, H3, P, UL, LI, Steps, Callout, DefList, Def, UI } from "@/components/help/prose";
+import { Lead, H2, H3, P, UL, LI, Steps, Callout, DefList, Def, UI, Screenshot } from "@/components/help/prose";
 
 export default function MembersAccess() {
   return (
@@ -22,6 +22,7 @@ export default function MembersAccess() {
       </Callout>
 
       <H2>Managing members</H2>
+      <Screenshot name="members" alt="Settings, Members: the Add a member form and the list of members with their roles and SSO badges" caption="Settings → Members." />
       <P>
         Open <UI>Settings → Members</UI> to see everyone in the workspace, their email, and their
         role. Tavoro uses admin-provisioned accounts — there&rsquo;s no open sign-up into an
@@ -143,6 +144,7 @@ export default function MembersAccess() {
       </Steps>
 
       <H2>Group-based access control</H2>
+      <Screenshot name="group" alt="A group's page: its members and the Shared resources checkboxes for boards, storyboards, projects and whiteboards" caption="A group, with the resources shared with it." />
       <P>
         By default Tavoro is open: every board, project, storyboard, and whiteboard is visible to
         all members. Groups let you tighten that on a per-resource basis when something should only

@@ -16,6 +16,9 @@ Not sure which methodology fits? See [ADDIE vs. SAM](addie-sam.md) for what each
 
 ## Phases
 
+![A project page with its phase, next milestone and alignment summary, the phases list, and the Boards section](../../public/help-shots/project.png)
+*A project: phase progress, next milestone, alignment, then phases and boards.*
+
 Phases are the stages your project moves through. Each one carries a status and optional start/end dates, and the project card in the grid shows a live *done / total* progress bar built from them.
 
 - **Advance the status** — click a phase’s status badge to cycle it **Not started** → **In progress** → **Done**.
@@ -52,6 +55,9 @@ Use the **Link a card…** dropdown to tie a deliverable to a specific board car
 
 ## Review rounds
 
+![A review round: the reviewers and their decisions at the top, the storyboard as reviewed on the left, and comments on the right](../../public/help-shots/review-round.png)
+*Round 2 of a storyboard review, with pinned comments beside the screens.*
+
 Every deliverable has its own **review rounds**: the SME and stakeholder sign-off loop that’s the daily bottleneck for most ID teams. Each round freezes a copy of the linked storyboard, so reviewers comment on exactly what you sent, even if you keep editing.
 
 1. On a deliverable, click **Request a review** and choose what’s being reviewed: the linked storyboard, or a **PDF or image** you upload (for example, a Storyline or Rise export). Pick reviewers from your workspace, and/or add **guests** by name and email for SMEs who don’t have an account. Set a due date and click **Start round 1**. Everyone is emailed a link.
@@ -71,6 +77,9 @@ A guest gets a personal link that opens just that one round: no account, no side
 > **Tip.** Admins and managers can **Override** a round to pass it without every approval, for example when an SME has gone silent. A reason is required, and it’s shown on the round.
 
 ### Turn feedback into work
+
+![The All feedback view listing every comment on a deliverable from every round, grouped by screen](../../public/help-shots/feedback.png)
+*All feedback: every comment from every round, ready to resolve or send to a board.*
 
 Review comments become board cards, so fixing them happens where the rest of your work does.
 

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Lead, H2, P, UL, LI, Steps, Callout, UI } from "@/components/help/prose";
+import { Lead, H2, P, UL, LI, Steps, Callout, UI, Screenshot } from "@/components/help/prose";
 
 export default function GettingStarted() {
   return (
@@ -31,6 +31,7 @@ export default function GettingStarted() {
       </UL>
 
       <H2>Finding your way around</H2>
+      <Screenshot name="dashboard" alt="The Tavoro dashboard with the sidebar, header search, and the active projects, reviews and milestones sections" caption="The dashboard: your active projects, reviews awaiting you, and upcoming milestones." />
       <P>The app has one consistent shell, so every screen feels the same:</P>
       <UL>
         <LI>

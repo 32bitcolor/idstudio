@@ -1,4 +1,4 @@
-import { Lead, H2, H3, P, UL, LI, Steps, Callout, DefList, Def, UI } from "@/components/help/prose";
+import { Lead, H2, H3, P, UL, LI, Steps, Callout, DefList, Def, UI, Screenshot } from "@/components/help/prose";
 
 export default function AiMcp() {
   return (
@@ -11,6 +11,7 @@ export default function AiMcp() {
       </Lead>
 
       <H2>Connect Claude.ai or Claude Desktop</H2>
+      <Screenshot name="ai-settings" alt="Settings, AI & MCP: the server URL with a copy button, and connection steps for Claude, ChatGPT and Claude Code" caption="Settings → AI & MCP: the server URL and how to connect each assistant." />
       <Steps>
         <>
           In Tavoro, open <UI>Settings → AI &amp; MCP</UI> and copy the server URL. It ends in <code>/api/mcp</code>.

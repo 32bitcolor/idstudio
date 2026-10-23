@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Lead, H2, P, UL, LI, Steps, Callout, DefList, Def, UI } from "@/components/help/prose";
+import { Lead, H2, P, UL, LI, Steps, Callout, DefList, Def, UI, Screenshot } from "@/components/help/prose";
 
 export default function MyWork() {
   return (
@@ -17,6 +17,7 @@ export default function MyWork() {
       </Callout>
 
       <H2>The Overview tab</H2>
+      <Screenshot name="my-work" alt="My Work's Overview tab, with reviews awaiting you, reviews you're waiting on, and your assigned cards" caption="My Work: what needs you, and what you're waiting on." />
       <P>
         Open My Work from the sidebar (or the bell in the header) and you land on <UI>Overview</UI>.
         Each section shows a live count, with the most actionable work at the top:

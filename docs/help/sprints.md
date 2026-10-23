@@ -23,6 +23,9 @@ Sprints live under **Sprints** in the sidebar. Every sprint belongs to your work
 
 ## The sprint board
 
+![A sprint board with cards from several boards grouped by status columns, and Project, Assignee and Label filters](../../public/help-shots/sprint-board.png)
+*Sprint 42's board: cards from across projects, grouped by status.*
+
 Click **Open board** on any sprint to see its cards laid out as a Kanban view. Instead of the columns a single board uses, the sprint board groups every card by your workspace’s statuses — by default **Backlog**, **To do**, **In progress**, **In review**, and **Done** — so a mix of cards from different boards reads as one shared picture of progress.
 
 Each card shows its key, title, home project, labels, due date, and assignees. Click a card to open the same full card drawer you use on a board — description, subtasks, comments, attachments, and all. Filter the view with the **Project**, **Assignee**, and **Label** pickers at the top; while a filter is on, the bar shows *N of M cards* and **Clear** resets it. Filtering by label works across projects because labels belong to the workspace, not to a single board. Keep a combination you use often by opening **Views** → **Save current filters…**; sprint views are personal to you and available on every sprint board.
