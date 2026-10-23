@@ -253,59 +253,90 @@ send to the board. The comment marked SEC-28 is already a card.
 
 ## The vision
 
-Tavoro is built around five pillars of an ID operating system. Three are live; two are next.
+Tavoro aims to be the operating system for an instructional-design team: one place for the work
+around a course, from the first request to proof that it worked. It's built around five pillars.
+Three are live; two are next.
 
 1. **Intake and demand management** ✅: structured request capture, triage, impact/effort scoring,
    and approve-to-project conversion.
 2. **SME review and approval** ✅: review rounds on frozen storyboards, PDFs and images, with
    anchored comments, guest links, an every-reviewer gate, email notifications, comments sent to
    the board as cards, and Word/PDF export. Still planned: reviewing videos and reporting SME
-   turnaround times. See
-   [docs/REVIEW-LINKS.md](docs/REVIEW-LINKS.md).
+   turnaround times. See [docs/REVIEW-LINKS.md](docs/REVIEW-LINKS.md).
 3. **Objectives → content → assessment alignment spine** ✅: objectives threaded through storyboard
    screens and assessment items, with coverage and gap analysis.
-4. **Content lifecycle and a reusable asset library**: a content inventory with review and expiry
-   dates, impact analysis, and a searchable library of templates, scenarios and question banks.
-5. **LMS integration**: publish and sync courses to your LMS, and pull completion and assessment
-   data back for impact reporting.
+4. **Content lifecycle and a reusable asset library** (next): a content inventory with review and
+   expiry dates, impact analysis when a source changes, and a searchable library of templates,
+   scenarios and question banks. A first design, grounded in the current schema, is on the
+   [`content-lifecycle-design`](https://github.com/32bitcolor/tavoro/blob/content-lifecycle-design/docs/CONTENT-LIFECYCLE-REUSE.md)
+   branch.
+5. **LMS integration** (next): publish and sync courses to your LMS, and pull completion and
+   assessment data back for impact reporting.
+
+Underneath the pillars, Tavoro is meant to fit how a company already runs, not ask it to change:
+
+- **People come from your identity provider.** Members sign in with their work account over SAML,
+  are provisioned and deactivated over SCIM, and get their Tavoro role from their groups
+  ([docs/SSO.md](docs/SSO.md)). Live, and tested with JumpCloud; guides for other providers will
+  follow as each is tested.
+- **AI assistants work in it as you.** Over MCP, the assistant someone already uses (Claude,
+  ChatGPT, Cursor and others) can read and update the workspace with exactly that person's access
+  ([docs/MCP.md](docs/MCP.md)). Live.
+- **It stays yours.** Self-hosted, with backups, restore and updates from the admin settings.
 
 > **On scope:** a standalone exam builder and a course-authoring module were both removed as
 > off-strategy. Building courses and grading assessments is the job of the authoring tools and
 > the LMS. Assessment lives on in Tavoro as part of the alignment spine, not as a bespoke exam
-> engine.
+> engine. A built-in chat assistant was also tried and removed: it would have needed its own AI
+> account for every member, while MCP lets people bring the assistant they already pay for.
 
 ## Tech stack
 
 | Layer         | Choice |
 | ------------- | ------ |
-| Framework     | Next.js 16 (App Router, React 19): UI, route handlers and Server Actions |
+| Framework     | Next.js 16.4 (App Router, React 19.2): UI, route handlers and Server Actions |
 | Language      | TypeScript end to end |
 | UI            | shadcn/ui + Tailwind CSS v4, with theme tokens driving 17 themes |
-| Rich text     | TipTap 3 (descriptions, comments and storyboard fields, with @-mentions) |
+| Rich text     | TipTap 3 (descriptions, comments and storyboard fields, with @-mentions), stored as JSON and converted to and from Markdown for MCP and exports |
 | Whiteboards   | Excalidraw |
-| PDF review    | pdf.js, drawing pages to canvas with a selectable text layer (no scripts, no forms) |
+| PDF review    | pdf.js 6, drawing pages to canvas with a selectable text layer (no scripts, no forms) |
+| Exports       | Word files written directly as WordprocessingML (zipped with fflate), no template or Office dependency |
 | Database      | PostgreSQL 16 + Prisma 7 (`@prisma/adapter-pg` driver adapter) |
-| Auth          | Email/password with argon2 (`@node-rs/argon2`), signed-JWT sessions (`jose`) and a Data Access Layer; per-workspace roles. Guest reviewers use separate HMAC-signed links, not accounts. MCP clients use OAuth 2.1 (PKCE, client metadata documents, dynamic registration) or personal tokens |
-| MCP           | `@modelcontextprotocol/sdk`, Streamable HTTP (stateless) |
+| Auth          | Email/password with argon2 (`@node-rs/argon2`), signed-JWT sessions (`jose`) and a Data Access Layer; per-workspace roles. Guest reviewers use separate HMAC-signed links, not accounts |
+| SSO           | SAML 2.0 service provider on `@node-saml/node-saml` (signature, audience, time and InResponseTo checks), IdP metadata parsed with `@xmldom/xmldom` + `xpath`; a SCIM 2.0 server for Users and Groups with hashed bearer tokens |
+| MCP           | `@modelcontextprotocol/sdk`, Streamable HTTP (stateless). Clients sign in with OAuth 2.1 (PKCE, client metadata documents, dynamic registration) or use personal tokens |
 | Validation    | Zod 4 |
-| Background    | BullMQ + Redis worker: queued email (nodemailer), daily due-date reminders, and a nightly clean-up of unused review files and stale MCP credentials |
+| Background    | BullMQ + Redis worker: queued email (nodemailer), daily due-date reminders, and a nightly clean-up of unused review files and stale MCP credentials. Redis also holds rate limits, pending SAML request ids and the assertion replay guard |
 | Object store  | S3-compatible (MinIO) via the AWS SDK. Uploads and downloads stream through the app (large files as multipart uploads, with HTTP Range for PDFs), so MinIO never needs to be public |
 | Ordering      | Fractional indexing for drag-and-drop positions |
 | Reverse proxy | Caddy (automatic HTTPS) |
 | Packaging     | Docker Compose (Postgres, Redis, MinIO, migrate, app, worker, Caddy) |
-| Tooling       | ESLint; Playwright for end-to-end checks and the screenshots above |
+| Tooling       | ESLint; Playwright for end-to-end checks and screenshots (README and Help); `tsx` scripts that export the in-app Help to Markdown |
 
 ### A note on auth
 
-We deliberately use the lightweight **`jose` session + Data Access Layer** pattern from the
-official Next.js 16 docs rather than NextAuth/Auth.js. NextAuth v5 is still in beta and predates
-Next 16's async request APIs and its Proxy (formerly middleware), and we didn't want a foundation
-that depends on unproven compatibility. Users get the same result (email/password sign-in and
-roles), and it's fully self-contained, so an auth library can be swapped in later if needed.
+Tavoro owns its sign-in rather than building on NextAuth/Auth.js. It uses the lightweight
+**`jose` session + Data Access Layer** pattern from the official Next.js 16 docs: a signed,
+http-only session cookie, and one server-only layer (`lib/dal.ts`) that every page, action and
+route goes through to learn who's asking and what they can reach. When this was built, NextAuth v5
+was still in beta and predated Next 16's async request APIs and Proxy (formerly middleware), and we
+didn't want the foundation to depend on unproven compatibility. Keeping it small also made the
+later additions straightforward, because each one plugs into the same session and the same checks.
 
-Guest reviewers are deliberately **not** users. A link is `<guestId>.<HMAC(SESSION_SECRET, …)>`,
-exchanged on first visit for a cookie scoped to that one review page. Nothing in the member
-authorization layer can return a guest, and a database dump alone can't forge a link.
+- **Single sign-on** is an additional way to start that same session, not a second auth system.
+  node-saml verifies the identity provider's response (a signed response or assertion; never
+  neither), each assertion is accepted only once, and the session records that it began with SSO.
+  A workspace can **require SSO**: its members can't use a password there, though admins can, as the
+  break-glass if the provider is down.
+- **Provisioning never deletes work.** A SCIM deactivation or delete *suspends* the membership. The
+  Data Access Layer checks suspension on every request, so a suspended member loses access at once,
+  their API tokens are revoked, and their cards, comments and reviews stay.
+- **AI assistants** (MCP) sign in with OAuth or a personal token. Either one resolves to a person and
+  a workspace, and then goes through the same authorization as the app, so an assistant can never
+  see more than its person can. See [docs/MCP.md](docs/MCP.md).
+- **Guest reviewers** are deliberately **not** users. A link is `<guestId>.<HMAC(SESSION_SECRET, …)>`,
+  exchanged on first visit for a cookie scoped to that one review page. Nothing in the member
+  authorization layer can return a guest, and a database dump alone can't forge a link.
 
 ## Project layout
 
