@@ -168,7 +168,8 @@ review that.
 - **In-app Help**: a guide library (getting started, ADDIE and SAM, objectives and alignment, and a
   walkthrough of every module) built with the same design system. The same guides are in
   [docs/help](docs/help/README.md) as Markdown, generated from the app with `npm run help:export`
-  (`npm run help:check` fails if they're out of date).
+  (`npm run help:check` fails if they're out of date). Their screenshots live in `public/help-shots`
+  and are retaken from a demo-seeded workspace with `npm run help:screenshots`.
 
 ## Screenshots
 
