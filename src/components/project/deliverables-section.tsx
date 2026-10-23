@@ -127,7 +127,7 @@ export function DeliverablesSection({
                 confirmLabel="Delete deliverable"
                 onConfirm={() => remove(d.id)}
                 trigger={
-                  <Button variant="ghost" size="icon-xs" className="shrink-0 text-muted-foreground hover:bg-destructive/10 hover:text-destructive" title="Delete deliverable">
+                  <Button variant="ghost" size="icon-xs" className="shrink-0 text-muted-foreground hover:bg-destructive/10 hover:text-destructive-ink" title="Delete deliverable">
                     <X className="size-3.5" />
                   </Button>
                 }
@@ -181,7 +181,7 @@ export function DeliverablesSection({
                   <Link href={`/boards/${d.card.boardId}`} className="inline-flex items-center gap-1 hover:underline" title={`${d.card.boardName}: ${d.card.title}`}>
                     <Link2 className="size-3" /> {d.card.title}
                   </Link>
-                  <button onClick={() => link(d, "")} className="text-foreground/40 hover:text-destructive" title="Unlink">
+                  <button onClick={() => link(d, "")} className="text-muted-foreground hover:text-destructive-ink" title="Unlink">
                     <X className="size-3" />
                   </button>
                 </span>
@@ -222,7 +222,7 @@ function DeliverableComposer({ onAdd }: { onAdd: (name: string, type: string) =>
 
   if (!open) {
     return (
-      <button onClick={() => setOpen(true)} className="mt-2 rounded-lg px-2 py-1.5 text-left text-sm text-foreground/50 hover:bg-hover">
+      <button onClick={() => setOpen(true)} className="mt-2 rounded-lg px-2 py-1.5 text-left text-sm text-muted-foreground hover:bg-hover">
         + Add a deliverable
       </button>
     );

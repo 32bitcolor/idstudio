@@ -238,7 +238,7 @@ function ScreenRow({
             confirmLabel="Delete screen"
             onConfirm={() => onRemove(screen.id)}
             trigger={
-              <Button variant="ghost" size="icon-xs" className="hover:bg-destructive/10 hover:text-destructive" title="Delete screen" aria-label="Delete screen">
+              <Button variant="ghost" size="icon-xs" className="hover:bg-destructive/10 hover:text-destructive-ink" title="Delete screen" aria-label="Delete screen">
                 <X className="size-3.5" />
               </Button>
             }

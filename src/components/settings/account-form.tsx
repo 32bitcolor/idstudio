@@ -61,8 +61,8 @@ export function AccountForm({ email, name }: { email: string; name: string | nul
             error={state?.fieldErrors?.confirmPassword?.[0]}
           />
 
-          {state?.error && <p className="text-sm text-destructive">{state.error}</p>}
-          {state?.success && <p className="text-sm text-success">{state.success}</p>}
+          {state?.error && <p className="text-sm text-destructive-ink">{state.error}</p>}
+          {state?.success && <p className="text-sm text-success-ink">{state.success}</p>}
 
           <Button type="submit" disabled={pending} className="mt-1 self-start">
             {pending ? "Saving…" : "Update password"}
@@ -88,7 +88,7 @@ function Field({
     <div className="flex flex-col gap-1.5">
       <Label htmlFor={name}>{label}</Label>
       <Input id={name} name={name} type="password" autoComplete={autoComplete} />
-      {error && <span className="text-xs text-destructive">{error}</span>}
+      {error && <span className="text-xs text-destructive-ink">{error}</span>}
     </div>
   );
 }

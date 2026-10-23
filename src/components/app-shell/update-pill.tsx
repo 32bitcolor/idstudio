@@ -40,7 +40,7 @@ export function UpdatePill({ initialCount }: { initialCount: number }) {
       style={{
         borderColor: "color-mix(in srgb, var(--color-info) 35%, transparent)",
         backgroundColor: "color-mix(in srgb, var(--color-info) 10%, transparent)",
-        color: "var(--color-info)",
+        color: "var(--color-info-ink)",
       }}
       title={`${count} update${count === 1 ? "" : "s"} available`}
     >

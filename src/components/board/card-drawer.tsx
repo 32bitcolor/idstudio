@@ -457,7 +457,7 @@ export function CardDrawer({
 
         <div className="flex-1 overflow-y-auto">
         {loading ? (
-          <p className="p-4 text-sm text-foreground/50">Loading…</p>
+          <p className="p-4 text-sm text-muted-foreground">Loading…</p>
         ) : (
           <div className="flex flex-col gap-6 p-4">
             {isSubtask && parent && onNavigate && (
@@ -635,7 +635,7 @@ export function CardDrawer({
 
             <Section title="Attachments">
               <div className="flex flex-col gap-1.5">
-                {attachments.length === 0 && <p className="text-sm text-foreground/40">No attachments.</p>}
+                {attachments.length === 0 && <p className="text-sm text-muted-foreground">No attachments.</p>}
                 {attachments.map((a) => (
                   <div
                     key={a.id}
@@ -644,10 +644,10 @@ export function CardDrawer({
                     <span className="flex-1 truncate text-sm" title={a.fileName}>
                       {a.fileName}
                     </span>
-                    <span className="shrink-0 text-xs text-foreground/40">{formatBytes(a.sizeBytes)}</span>
+                    <span className="shrink-0 text-xs text-muted-foreground">{formatBytes(a.sizeBytes)}</span>
                     <button
                       onClick={() => downloadAttachment(a)}
-                      className="shrink-0 text-xs text-foreground/60 hover:underline"
+                      className="shrink-0 text-xs text-muted-foreground hover:underline"
                     >
                       Download
                     </button>
@@ -658,7 +658,7 @@ export function CardDrawer({
                       confirmLabel="Delete file"
                       trigger={
                         <button
-                          className="shrink-0 text-foreground/30 opacity-0 hover:text-destructive group-hover:opacity-100"
+                          className="shrink-0 text-muted-foreground opacity-0 hover:text-destructive-ink group-hover:opacity-100"
                           title="Remove"
                         >
                           <X className="size-3.5" />
@@ -682,14 +682,14 @@ export function CardDrawer({
                     }}
                   />
                 </label>
-                {uploadError && <p className="mt-1 text-xs text-destructive">{uploadError}</p>}
+                {uploadError && <p className="mt-1 text-xs text-destructive-ink">{uploadError}</p>}
               </div>
             </Section>
 
             <Section title="Whiteboards">
               <div className="flex flex-col gap-1.5">
                 {whiteboards.length === 0 && (
-                  <p className="text-sm text-foreground/40">No whiteboards linked to this card.</p>
+                  <p className="text-sm text-muted-foreground">No whiteboards linked to this card.</p>
                 )}
                 {whiteboards.map((w) => (
                   <Link
@@ -698,7 +698,7 @@ export function CardDrawer({
                     className="flex items-center gap-2 rounded-md border border-border px-2 py-1.5 text-sm hover:bg-hover"
                   >
                     <span className="flex-1 truncate">{w.title}</span>
-                    <span className="shrink-0 text-xs text-foreground/40">Open →</span>
+                    <span className="shrink-0 text-xs text-muted-foreground">Open →</span>
                   </Link>
                 ))}
               </div>
@@ -711,17 +711,17 @@ export function CardDrawer({
 
             <Section title="Comments">
               <div className="flex flex-col gap-3">
-                {comments.length === 0 && <p className="text-sm text-foreground/40">No comments yet.</p>}
+                {comments.length === 0 && <p className="text-sm text-muted-foreground">No comments yet.</p>}
                 {comments.map((c) => (
                   <div key={c.id} className="group">
                     <div className="flex items-center justify-between gap-2">
                       <span className="text-xs font-medium">{c.author.name ?? c.author.email}</span>
                       <div className="flex items-center gap-2">
-                        <span className="text-xs text-foreground/40">{formatTime(c.createdAt)}</span>
+                        <span className="text-xs text-muted-foreground">{formatTime(c.createdAt)}</span>
                         {(c.author.id === currentUserId || isAdmin) && (
                           <button
                             onClick={() => removeComment(c)}
-                            className="text-xs text-foreground/40 opacity-0 hover:text-destructive group-hover:opacity-100"
+                            className="text-xs text-muted-foreground opacity-0 hover:text-destructive-ink group-hover:opacity-100"
                           >
                             Delete
                           </button>
@@ -754,7 +754,7 @@ export function CardDrawer({
                 confirmLabel="Delete card"
                 onConfirm={handleDelete}
                 trigger={
-                  <Button variant="link" className="h-auto p-0 text-sm text-destructive">
+                  <Button variant="link" className="h-auto p-0 text-sm text-destructive-ink">
                     Delete card
                   </Button>
                 }
@@ -825,7 +825,7 @@ function AssigneePicker({
         <>
           <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
           <div className="absolute z-20 mt-1 max-h-56 w-60 overflow-y-auto rounded-md border border-border bg-surface py-1 shadow-lg">
-            {members.length === 0 && <p className="px-3 py-1.5 text-sm text-foreground/50">No members</p>}
+            {members.length === 0 && <p className="px-3 py-1.5 text-sm text-muted-foreground">No members</p>}
             {members.map((m) => {
               const on = assigneeIds.has(m.id);
               return (
@@ -874,7 +874,7 @@ function SubtaskRow({
       />
       <button
         onClick={onOpen}
-        className={`flex-1 truncate text-left text-sm hover:underline ${item.done ? "text-foreground/40 line-through" : ""}`}
+        className={`flex-1 truncate text-left text-sm hover:underline ${item.done ? "text-muted-foreground line-through" : ""}`}
       >
         {cardKeyPrefix && item.keySeq != null && (
           <span className="mr-1.5 font-mono text-xs font-medium text-muted-foreground">
@@ -916,7 +916,7 @@ function SubtaskRow({
 
       <button
         onClick={onRemove}
-        className="shrink-0 text-foreground/30 opacity-0 hover:text-destructive group-hover:opacity-100"
+        className="shrink-0 text-muted-foreground opacity-0 hover:text-destructive-ink group-hover:opacity-100"
         title="Remove"
       >
         <X className="size-3.5" />

@@ -15,7 +15,7 @@ export default async function SettingsLayout({ children }: { children: React.Rea
         title="Settings"
         description={isAdmin ? "Your account, and how this workspace runs." : "Your account and connected assistants."}
       />
-      <div className="mt-6 grid gap-6 md:grid-cols-[11rem_minmax(0,1fr)]">
+      <div className="mt-6 grid grid-cols-[minmax(0,1fr)] gap-6 md:grid-cols-[11rem_minmax(0,1fr)]">
         <SettingsNav isAdmin={isAdmin} />
         <div className="min-w-0">{children}</div>
       </div>

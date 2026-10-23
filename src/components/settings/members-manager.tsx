@@ -45,17 +45,17 @@ function CreateUser() {
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="name">Name</Label>
           <Input id="name" name="name" placeholder="Alex Chen" />
-          {state?.fieldErrors?.name?.[0] && <span className="text-xs text-destructive">{state.fieldErrors.name[0]}</span>}
+          {state?.fieldErrors?.name?.[0] && <span className="text-xs text-destructive-ink">{state.fieldErrors.name[0]}</span>}
         </div>
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="email">Email</Label>
           <Input id="email" name="email" type="email" placeholder="alex@company.com" autoComplete="off" />
-          {state?.fieldErrors?.email?.[0] && <span className="text-xs text-destructive">{state.fieldErrors.email[0]}</span>}
+          {state?.fieldErrors?.email?.[0] && <span className="text-xs text-destructive-ink">{state.fieldErrors.email[0]}</span>}
         </div>
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="password">Initial password</Label>
           <Input id="password" name="password" type="text" placeholder="Share this securely" autoComplete="off" />
-          {state?.fieldErrors?.password?.[0] && <span className="text-xs text-destructive">{state.fieldErrors.password[0]}</span>}
+          {state?.fieldErrors?.password?.[0] && <span className="text-xs text-destructive-ink">{state.fieldErrors.password[0]}</span>}
         </div>
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="role">Role</Label>
@@ -69,8 +69,8 @@ function CreateUser() {
           <Button type="submit" disabled={pending}>
             <UserPlus className="size-4" /> {pending ? "Adding…" : "Add member"}
           </Button>
-          {state?.error && <span className="text-sm text-destructive">{state.error}</span>}
-          {state?.success && <span className="text-sm text-success">{state.success}</span>}
+          {state?.error && <span className="text-sm text-destructive-ink">{state.error}</span>}
+          {state?.success && <span className="text-sm text-success-ink">{state.success}</span>}
         </div>
       </form>
     </Card>
@@ -120,11 +120,11 @@ function MemberRow({ member }: { member: Member }) {
           <span className="truncate font-medium">{member.name ?? member.email}</span>
           {member.isSelf && <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">You</span>}
           {member.sso && <span className="rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary" title="Linked to your identity provider">SSO</span>}
-          {member.suspended && <span className="rounded bg-destructive/10 px-1.5 py-0.5 text-[10px] font-medium text-destructive" title="Can't sign in; their work stays">Suspended</span>}
+          {member.suspended && <span className="rounded bg-destructive/10 px-1.5 py-0.5 text-[10px] font-medium text-destructive-ink" title="Can't sign in; their work stays">Suspended</span>}
         </div>
         <div className="truncate text-sm text-muted-foreground">{member.email}</div>
         {member.roleManaged && <div className="mt-0.5 text-xs text-muted-foreground">Role comes from identity-provider groups.</div>}
-        {msg && <div className={msg.kind === "ok" ? "mt-1 text-xs text-success" : "mt-1 text-xs text-destructive"}>{msg.text}</div>}
+        {msg && <div className={msg.kind === "ok" ? "mt-1 text-xs text-success-ink" : "mt-1 text-xs text-destructive-ink"}>{msg.text}</div>}
       </div>
 
       <div className="flex items-center gap-2">
@@ -172,7 +172,7 @@ function MemberRow({ member }: { member: Member }) {
           confirmLabel="Remove"
           onConfirm={doRemove}
           trigger={
-            <Button variant="ghost" size="sm" disabled={pending} className="text-destructive hover:text-destructive" aria-label={`Remove ${member.name ?? member.email}`}>
+            <Button variant="ghost" size="sm" disabled={pending} className="text-destructive-ink hover:text-destructive-ink" aria-label={`Remove ${member.name ?? member.email}`}>
               <Trash2 className="size-4" />
             </Button>
           }

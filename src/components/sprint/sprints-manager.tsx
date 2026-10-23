@@ -86,7 +86,7 @@ export function SprintsManager({ initial }: { initial: SprintT[] }) {
           <Timer className="size-4" /> Create sprint
         </Button>
       </div>
-      {error && <p role="alert" className="mt-1 text-sm text-destructive">{error}</p>}
+      {error && <p role="alert" className="mt-1 text-sm text-destructive-ink">{error}</p>}
 
       <div className="mt-6 flex flex-col gap-2">
         {sprints.length === 0 && (
@@ -120,7 +120,7 @@ export function SprintsManager({ initial }: { initial: SprintT[] }) {
                 confirmLabel="Delete sprint"
                 onConfirm={() => remove(s.id)}
                 trigger={
-                  <Button variant="ghost" size="icon-xs" className="shrink-0 text-muted-foreground hover:bg-destructive/10 hover:text-destructive" title="Delete sprint">
+                  <Button variant="ghost" size="icon-xs" className="shrink-0 text-muted-foreground hover:bg-destructive/10 hover:text-destructive-ink" title="Delete sprint">
                     <X className="size-3.5" />
                   </Button>
                 }

@@ -117,7 +117,7 @@ export function StoryboardView({
           confirmLabel="Delete storyboard"
           onConfirm={() => deleteStoryboard(storyboard.id)}
           trigger={
-            <Button variant="ghost" className="text-destructive hover:bg-destructive/10 hover:text-destructive">
+            <Button variant="ghost" className="text-destructive-ink hover:bg-destructive/10 hover:text-destructive-ink">
               Delete storyboard
             </Button>
           }

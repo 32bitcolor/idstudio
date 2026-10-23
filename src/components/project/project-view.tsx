@@ -338,7 +338,7 @@ export function ProjectView({
                       confirmLabel="Delete phase"
                       onConfirm={() => removePhase(p.id)}
                       trigger={
-                        <Button variant="ghost" size="icon-xs" className="hover:bg-destructive/10 hover:text-destructive" title="Delete phase" aria-label="Delete phase">
+                        <Button variant="ghost" size="icon-xs" className="hover:bg-destructive/10 hover:text-destructive-ink" title="Delete phase" aria-label="Delete phase">
                           <X className="size-3.5" />
                         </Button>
                       }
@@ -385,7 +385,7 @@ export function ProjectView({
           confirmLabel="Delete project"
           onConfirm={() => deleteProject(project.id)}
           trigger={
-            <Button variant="ghost" className="text-destructive hover:bg-destructive/10 hover:text-destructive">
+            <Button variant="ghost" className="text-destructive-ink hover:bg-destructive/10 hover:text-destructive-ink">
               Delete project
             </Button>
           }

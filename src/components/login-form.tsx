@@ -31,7 +31,7 @@ export function LoginForm({ next, email }: { next?: string; email?: string }) {
         )}
       </label>
 
-      {state?.error && <p className="text-sm text-red-600">{state.error}</p>}
+      {state?.error && <p className="text-sm text-destructive-ink">{state.error}</p>}
 
       <button
         type="submit"
@@ -57,7 +57,7 @@ export function LoginForm({ next, email }: { next?: string; email?: string }) {
         Sign in with SSO
       </button>
 
-      <p className="text-center text-sm text-foreground/60">
+      <p className="text-center text-sm text-muted-foreground">
         Need an account?{" "}
         <Link href="/signup" className="underline">
           Create one

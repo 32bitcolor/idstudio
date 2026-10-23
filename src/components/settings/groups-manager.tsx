@@ -35,7 +35,7 @@ export function GroupsManager({ groups }: { groups: GroupRow[] }) {
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="name">Name</Label>
             <Input id="name" name="name" placeholder="Leadership" />
-            {state?.fieldErrors?.name?.[0] && <span className="text-xs text-destructive">{state.fieldErrors.name[0]}</span>}
+            {state?.fieldErrors?.name?.[0] && <span className="text-xs text-destructive-ink">{state.fieldErrors.name[0]}</span>}
           </div>
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="description">Description (optional)</Label>
@@ -45,8 +45,8 @@ export function GroupsManager({ groups }: { groups: GroupRow[] }) {
             <Button type="submit" disabled={pending}>
               <Plus className="size-4" /> {pending ? "Creating…" : "Create group"}
             </Button>
-            {state?.error && <span className="text-sm text-destructive">{state.error}</span>}
-            {state?.success && <span className="text-sm text-success">{state.success}</span>}
+            {state?.error && <span className="text-sm text-destructive-ink">{state.error}</span>}
+            {state?.success && <span className="text-sm text-success-ink">{state.success}</span>}
           </div>
         </form>
       </Card>

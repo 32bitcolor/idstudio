@@ -113,9 +113,9 @@ export function BackupPanel({ workspaceName }: { workspaceName: string }) {
                 className={
                   "mt-3 text-sm " +
                   (status.tone === "error"
-                    ? "text-destructive"
+                    ? "text-destructive-ink"
                     : status.tone === "ok"
-                      ? "text-success"
+                      ? "text-success-ink"
                       : "text-muted-foreground")
                 }
               >
@@ -148,7 +148,7 @@ export function BackupPanel({ workspaceName }: { workspaceName: string }) {
             {backfillResult && (
               <div className="mt-3 text-sm">
                 {typeof backfillResult === "string" ? (
-                  <p className="text-destructive">{backfillResult}</p>
+                  <p className="text-destructive-ink">{backfillResult}</p>
                 ) : backfillResult.length === 0 ? (
                   <p className="text-muted-foreground">Every board already has a card-key prefix.</p>
                 ) : (

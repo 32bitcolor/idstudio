@@ -119,7 +119,7 @@ function ReviewItem({
         className="w-full resize-none rounded-md border border-input bg-transparent px-3 py-2 text-sm outline-none focus:border-ring"
       />
 
-      {err && <p className="text-sm text-destructive">{err}</p>}
+      {err && <p className="text-sm text-destructive-ink">{err}</p>}
 
       <div className="flex flex-wrap items-center gap-2">
         <Button size="sm" onClick={() => act("approved")} disabled={pending}>

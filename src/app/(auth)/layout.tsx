@@ -8,7 +8,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
           <h1 className="flex justify-center text-3xl">
             <TavoroLogo markClassName="size-10" />
           </h1>
-          <p className="mt-1 text-sm text-foreground/60">The workbench for instructional design teams</p>
+          <p className="mt-1 text-sm text-muted-foreground">The workbench for instructional design teams</p>
         </div>
         <div className="rounded-xl border border-border p-6">{children}</div>
       </div>

@@ -84,7 +84,7 @@ export function GroupDetail({
             <span className="text-xs font-medium text-muted-foreground">Description</span>
             <Input value={description} onChange={(e) => setDescription(e.target.value)} onBlur={saveMeta} placeholder="Optional" className="max-w-md" />
           </label>
-          {err && <p className="text-sm text-destructive">{err}</p>}
+          {err && <p className="text-sm text-destructive-ink">{err}</p>}
           <div>
             <ConfirmDelete
               title="Delete this group?"
@@ -92,7 +92,7 @@ export function GroupDetail({
               confirmLabel="Delete group"
               onConfirm={doDelete}
               trigger={
-                <Button variant="ghost" size="sm" disabled={pending} className="text-destructive hover:text-destructive">
+                <Button variant="ghost" size="sm" disabled={pending} className="text-destructive-ink hover:text-destructive-ink">
                   <Trash2 className="size-4" /> Delete group
                 </Button>
               }

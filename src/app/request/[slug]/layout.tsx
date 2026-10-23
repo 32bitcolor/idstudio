@@ -8,7 +8,7 @@ export default function PublicIntakeLayout({ children }: { children: React.React
           <h1 className="flex justify-center text-3xl">
             <TavoroLogo markClassName="size-10" />
           </h1>
-          <p className="mt-1 text-sm text-foreground/60">Request training or content</p>
+          <p className="mt-1 text-sm text-muted-foreground">Request training or content</p>
         </div>
         <div className="rounded-xl border border-border p-6">{children}</div>
       </div>

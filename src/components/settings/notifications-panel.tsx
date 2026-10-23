@@ -63,11 +63,11 @@ export function NotificationsPanel({
         <div className="mt-4 flex items-center gap-2 text-sm">
           <span className="text-muted-foreground">Status:</span>
           {configured ? (
-            <span className="inline-flex items-center gap-1 font-medium text-success">
+            <span className="inline-flex items-center gap-1 font-medium text-success-ink">
               <CheckCircle2 className="size-4" /> SMTP configured
             </span>
           ) : (
-            <span className="inline-flex items-center gap-1 font-medium text-destructive">
+            <span className="inline-flex items-center gap-1 font-medium text-destructive-ink">
               <AlertCircle className="size-4" /> Not configured
             </span>
           )}
@@ -93,7 +93,7 @@ export function NotificationsPanel({
             </Button>
           </div>
           {result && (
-            <p role="alert" className={`mt-2 text-sm ${result.ok ? "text-success" : "text-destructive"}`}>
+            <p role="alert" className={`mt-2 text-sm ${result.ok ? "text-success-ink" : "text-destructive-ink"}`}>
               {result.text}
             </p>
           )}

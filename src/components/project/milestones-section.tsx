@@ -79,7 +79,7 @@ export function MilestonesSection({ projectId, initial }: { projectId: string; i
                     variant="ghost"
                     size="icon-xs"
                     onClick={() => remove(m.id)}
-                    className="hover:bg-destructive/10 hover:text-destructive"
+                    className="hover:bg-destructive/10 hover:text-destructive-ink"
                     title="Delete milestone"
                     aria-label={`Delete milestone ${m.name}`}
                   >

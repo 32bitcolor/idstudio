@@ -164,7 +164,7 @@ export function AlignmentSection({
       {/* Objectives + coverage */}
       <div className="flex flex-col gap-2">
         {objectives.length === 0 && (
-          <p className="text-sm text-foreground/40">
+          <p className="text-sm text-muted-foreground">
             No objectives yet. Start with what a learner should be able to <em>do</em> after this.
           </p>
         )}
@@ -217,7 +217,7 @@ export function AlignmentSection({
                   confirmLabel="Delete objective"
                   onConfirm={() => removeObjective(o.id)}
                   trigger={
-                    <Button variant="ghost" size="icon-xs" className="shrink-0 text-muted-foreground hover:bg-destructive/10 hover:text-destructive" title="Delete objective">
+                    <Button variant="ghost" size="icon-xs" className="shrink-0 text-muted-foreground hover:bg-destructive/10 hover:text-destructive-ink" title="Delete objective">
                       <X className="size-4" />
                     </Button>
                   }
@@ -261,7 +261,7 @@ export function AlignmentSection({
         </p>
         <div className="mt-3 flex flex-col gap-2">
           {items.length === 0 && (
-            <p className="text-sm text-foreground/40">No assessment items yet.</p>
+            <p className="text-sm text-muted-foreground">No assessment items yet.</p>
           )}
           {items.map((it) => (
             <div key={it.id} className="rounded-xl border border-border p-3">
@@ -282,7 +282,7 @@ export function AlignmentSection({
                   variant="ghost"
                   size="icon-xs"
                   onClick={() => removeItem(it.id)}
-                  className="shrink-0 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                  className="shrink-0 text-muted-foreground hover:bg-destructive/10 hover:text-destructive-ink"
                   title="Delete item"
                 >
                   <X className="size-4" />
@@ -302,7 +302,7 @@ export function AlignmentSection({
                   ))}
                 </Select>
                 {objectives.length === 0 ? (
-                  <span className="text-xs text-foreground/40">Add objectives to link this to.</span>
+                  <span className="text-xs text-muted-foreground">Add objectives to link this to.</span>
                 ) : (
                   <div className="flex flex-wrap items-center gap-1.5">
                     <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
@@ -347,7 +347,7 @@ function ObjectiveComposer({ onAdd }: { onAdd: (text: string, bloom: string) => 
     return (
       <button
         onClick={() => setOpen(true)}
-        className="mt-2 rounded-lg px-2 py-1.5 text-left text-sm text-foreground/50 hover:bg-hover"
+        className="mt-2 rounded-lg px-2 py-1.5 text-left text-sm text-muted-foreground hover:bg-hover"
       >
         <Plus className="mr-1 inline size-3.5" /> Add an objective
       </button>
@@ -399,7 +399,7 @@ function ItemComposer({ onAdd }: { onAdd: (prompt: string, type: string) => void
     return (
       <button
         onClick={() => setOpen(true)}
-        className="mt-2 rounded-lg px-2 py-1.5 text-left text-sm text-foreground/50 hover:bg-hover"
+        className="mt-2 rounded-lg px-2 py-1.5 text-left text-sm text-muted-foreground hover:bg-hover"
       >
         <Plus className="mr-1 inline size-3.5" /> Add an assessment item
       </button>

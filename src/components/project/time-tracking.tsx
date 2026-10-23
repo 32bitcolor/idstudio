@@ -80,12 +80,12 @@ export function TimeTracking({
         {entries.length === 0 && <p className="text-sm text-muted-foreground">No time logged yet.</p>}
         {entries.map((e) => (
           <div key={e.id} className="group flex items-center gap-3 rounded-lg border border-border px-3 py-2 text-sm">
-            <span className="w-14 shrink-0 text-foreground/50">{fmtDate(e.loggedFor)}</span>
+            <span className="w-14 shrink-0 text-muted-foreground">{fmtDate(e.loggedFor)}</span>
             <span className="w-16 shrink-0 font-medium">{fmtDuration(e.minutes)}</span>
-            <span className="shrink-0 text-foreground/60">{e.user.name ?? e.user.email}</span>
+            <span className="shrink-0 text-muted-foreground">{e.user.name ?? e.user.email}</span>
             {e.deliverable && <span className="truncate rounded bg-muted px-1.5 py-0.5 text-xs text-foreground/70">{e.deliverable.name}</span>}
-            <span className="flex-1 truncate text-foreground/60">{e.note}</span>
-            <Button variant="ghost" size="icon-xs" onClick={() => remove(e.id)} className="shrink-0 text-foreground/30 opacity-0 hover:text-destructive group-hover:opacity-100" title="Delete entry">
+            <span className="flex-1 truncate text-muted-foreground">{e.note}</span>
+            <Button variant="ghost" size="icon-xs" onClick={() => remove(e.id)} className="shrink-0 text-muted-foreground opacity-0 hover:text-destructive-ink group-hover:opacity-100" title="Delete entry">
               <X className="size-3.5" />
             </Button>
           </div>
@@ -121,7 +121,7 @@ export function TimeTracking({
           <Button size="sm" variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
         </div>
       ) : (
-        <button onClick={() => setOpen(true)} className="mt-2 rounded-lg px-2 py-1.5 text-left text-sm text-foreground/50 hover:bg-hover">
+        <button onClick={() => setOpen(true)} className="mt-2 rounded-lg px-2 py-1.5 text-left text-sm text-muted-foreground hover:bg-hover">
           + Log time
         </button>
       )}

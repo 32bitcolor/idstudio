@@ -115,7 +115,7 @@ export function SavedViewsMenu({
                 <Button
                   size="icon-xs"
                   variant="ghost"
-                  className="text-muted-foreground hover:text-destructive"
+                  className="text-muted-foreground hover:text-destructive-ink"
                   title={`Delete "${v.name}"`}
                   aria-label={`Delete view ${v.name}`}
                   onClick={() => remove(v.id)}
@@ -148,7 +148,7 @@ export function SavedViewsMenu({
                     placeholder="View name…"
                     className="h-8 text-xs"
                   />
-                  {error && <p className="mt-1 text-xs text-destructive">{error}</p>}
+                  {error && <p className="mt-1 text-xs text-destructive-ink">{error}</p>}
                   <div className="mt-1.5 flex gap-1.5">
                     <Button size="sm" onClick={save} disabled={!name.trim()}>Save</Button>
                     <Button size="sm" variant="ghost" onClick={reset}>Cancel</Button>

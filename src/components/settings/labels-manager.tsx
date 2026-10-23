@@ -10,6 +10,7 @@ import { SectionHeader } from "@/components/shared/page";
 import { EmptyState } from "@/components/shared/empty-state";
 import { ConfirmDelete } from "@/components/shared/confirm-delete";
 import { LABEL_PALETTE } from "@/lib/label-colors";
+import { LabelPill } from "@/components/shared/work-item";
 
 export type LabelRow = { id: string; name: string; color: string; uses: number };
 
@@ -81,12 +82,7 @@ export function LabelsManager({ labels: initial }: { labels: LabelRow[] }) {
               <div key={l.id} className="flex flex-wrap items-center gap-3 px-5 py-3">
                 {editingId === l.id ? (
                   <>
-                    <span
-                      className="rounded px-2 py-0.5 text-xs font-medium text-white"
-                      style={{ backgroundColor: draftColor }}
-                    >
-                      {draftName.trim() || l.name}
-                    </span>
+                    <LabelPill label={{ id: l.id, name: draftName.trim() || l.name, color: draftColor }} />
                     <Input
                       value={draftName}
                       onChange={(e) => setDraftName(e.target.value)}
@@ -111,7 +107,7 @@ export function LabelsManager({ labels: initial }: { labels: LabelRow[] }) {
                       ))}
                     </div>
                     <div className="ml-auto flex items-center gap-1.5">
-                      {error && <span className="text-xs text-destructive">{error}</span>}
+                      {error && <span className="text-xs text-destructive-ink">{error}</span>}
                       <Button size="sm" onClick={() => save(l.id)}>
                         <Check className="size-4" /> Save
                       </Button>
@@ -122,12 +118,7 @@ export function LabelsManager({ labels: initial }: { labels: LabelRow[] }) {
                   </>
                 ) : (
                   <>
-                    <span
-                      className="rounded px-2 py-0.5 text-xs font-medium text-white"
-                      style={{ backgroundColor: l.color }}
-                    >
-                      {l.name}
-                    </span>
+                    <LabelPill label={l} />
                     <span className="text-sm text-muted-foreground">
                       {l.uses === 0 ? "Not used yet" : `${l.uses} ${l.uses === 1 ? "card" : "cards"}`}
                     </span>
@@ -140,7 +131,7 @@ export function LabelsManager({ labels: initial }: { labels: LabelRow[] }) {
                           <Button
                             size="icon-xs"
                             variant="ghost"
-                            className="text-muted-foreground hover:text-destructive"
+                            className="text-muted-foreground hover:text-destructive-ink"
                             title="Delete label"
                             aria-label="Delete label"
                           >

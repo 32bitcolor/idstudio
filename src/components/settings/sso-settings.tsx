@@ -93,7 +93,7 @@ function Card({ step, title, children, done }: { step: number; title: string; ch
 
 function Status({ msg }: { msg: { ok?: string; error?: string } | null }) {
   if (!msg) return null;
-  return <p className={cn("text-sm", msg.error ? "text-destructive" : "text-success-ink")}>{msg.error ?? msg.ok}</p>;
+  return <p className={cn("text-sm", msg.error ? "text-destructive-ink" : "text-success-ink")}>{msg.error ?? msg.ok}</p>;
 }
 
 export function SsoSettings({ conn, urls }: { conn: Conn; urls: Urls }) {
@@ -132,7 +132,7 @@ export function SsoSettings({ conn, urls }: { conn: Conn; urls: Urls }) {
     <div className="flex max-w-3xl flex-col gap-6">
       <div className="flex flex-wrap items-center gap-x-6 gap-y-2 rounded-xl border border-border bg-surface p-4 text-sm">
         <span className="flex items-center gap-2 font-medium">
-          <ShieldCheck className={cn("size-4", conn.enabled ? "text-success" : "text-muted-foreground")} />
+          <ShieldCheck className={cn("size-4", conn.enabled ? "text-success-ink" : "text-muted-foreground")} />
           Single sign-on is {conn.enabled ? "on" : "off"}
           {conn.requireSso && " and required"}
         </span>
@@ -175,7 +175,7 @@ export function SsoSettings({ conn, urls }: { conn: Conn; urls: Urls }) {
             </div>
             <div>
               <dt className="inline text-muted-foreground">Certificate expires: </dt>
-              <dd className={cn("inline", certSoon && "font-medium text-destructive")}>
+              <dd className={cn("inline", certSoon && "font-medium text-destructive-ink")}>
                 {conn.certExpiry ? <LocalTime iso={conn.certExpiry} /> : "unknown"}
                 {certSoon && " — upload the new certificate before then"}
               </dd>
@@ -439,7 +439,7 @@ export function SsoSettings({ conn, urls }: { conn: Conn; urls: Urls }) {
               <li key={l.id}>
                 <details>
                   <summary className="flex cursor-pointer list-none flex-wrap items-center gap-x-3 gap-y-0.5 px-3 py-2">
-                    <span className={cn("w-10 font-mono text-xs", l.status >= 400 ? "text-destructive" : "text-success-ink")}>{l.status}</span>
+                    <span className={cn("w-10 font-mono text-xs", l.status >= 400 ? "text-destructive-ink" : "text-success-ink")}>{l.status}</span>
                     <span className="min-w-0 max-w-full truncate font-mono text-xs text-muted-foreground">
                       {l.method} {l.path.length > 60 ? `${l.path.slice(0, 57)}…` : l.path}
                     </span>

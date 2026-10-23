@@ -30,7 +30,7 @@ export function IntakeForm({ workspaceId, workspaceName }: { workspaceId: string
   if (ticket) {
     return (
       <div className="flex flex-col items-center gap-3 py-4 text-center">
-        <CheckCircle2 className="size-9 text-success" />
+        <CheckCircle2 className="size-9 text-success-ink" />
         <h2 className="font-medium">Thanks — your request is in</h2>
         <p className="text-sm text-muted-foreground">
           {ticket !== "received" && (
@@ -98,7 +98,7 @@ export function IntakeForm({ workspaceId, workspaceName }: { workspaceId: string
         </div>
       </div>
 
-      {error && <p className="text-sm text-destructive">{error}</p>}
+      {error && <p className="text-sm text-destructive-ink">{error}</p>}
 
       <Button type="submit" disabled={pending} className="mt-2">
         {pending ? "Submitting…" : "Submit request"}

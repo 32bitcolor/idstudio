@@ -240,7 +240,7 @@ function RequestRow({ request, members, viewer }: { request: QueueRequest; membe
             </Link>
           )}
         </div>
-        {error && <p className="text-sm text-destructive">{error}</p>}
+        {error && <p className="text-sm text-destructive-ink">{error}</p>}
       </Card>
     </li>
   );

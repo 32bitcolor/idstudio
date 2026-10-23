@@ -154,7 +154,7 @@ export function IntakeLinkPanel({
                 {enabled ? "Accepting requests" : "Not accepting requests — link shows a not-found page"}
               </span>
             </div>
-            {error && <p className="mt-2 text-sm text-destructive">{error}</p>}
+            {error && <p className="mt-2 text-sm text-destructive-ink">{error}</p>}
           </div>
         </div>
       </section>

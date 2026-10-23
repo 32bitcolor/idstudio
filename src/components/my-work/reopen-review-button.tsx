@@ -23,7 +23,7 @@ export function ReopenReviewButton({ reviewId, approved }: { reviewId: string; a
 
   return (
     <div className="flex items-center gap-2">
-      {err && <span className="text-xs text-destructive">{err}</span>}
+      {err && <span className="text-xs text-destructive-ink">{err}</span>}
       <Button
         variant="ghost"
         size="sm"

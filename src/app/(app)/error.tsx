@@ -24,7 +24,7 @@ export default function Error({
           className="mb-3 flex size-11 items-center justify-center rounded-full"
           style={{
             backgroundColor: "color-mix(in srgb, var(--color-destructive) 12%, transparent)",
-            color: "var(--color-destructive)",
+            color: "var(--color-destructive-ink)",
           }}
         >
           <TriangleAlert className="size-5" />

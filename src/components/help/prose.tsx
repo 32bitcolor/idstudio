@@ -59,10 +59,11 @@ export function Steps({ children }: { children: React.ReactNode }) {
   );
 }
 
-const CALLOUT: Record<string, { icon: LucideIcon; var: string; label: string }> = {
-  tip: { icon: Lightbulb, var: "--color-success", label: "Tip" },
-  note: { icon: Info, var: "--color-info", label: "Note" },
-  warning: { icon: TriangleAlert, var: "--color-warning", label: "Heads up" },
+// `ink` is the darker shade for text; the tint and icon use the brighter fill.
+const CALLOUT: Record<string, { icon: LucideIcon; var: string; ink: string; label: string }> = {
+  tip: { icon: Lightbulb, var: "--color-success", ink: "--color-success-ink", label: "Tip" },
+  note: { icon: Info, var: "--color-info", ink: "--color-info-ink", label: "Note" },
+  warning: { icon: TriangleAlert, var: "--color-warning", ink: "--color-warning-ink", label: "Heads up" },
 };
 
 /** A tinted aside for tips, notes, and warnings — theme-safe via color-mix. */
@@ -87,7 +88,7 @@ export function Callout({
     >
       <Icon className="mt-0.5 size-4.5 shrink-0" style={{ color: `var(${c.var})` }} />
       <div className="min-w-0 text-sm leading-relaxed text-foreground/90">
-        <span className="font-semibold" style={{ color: `var(${c.var})` }}>
+        <span className="font-semibold" style={{ color: `var(${c.ink})` }}>
           {title ?? c.label}.
         </span>{" "}
         {children}

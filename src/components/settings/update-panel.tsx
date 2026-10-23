@@ -248,7 +248,7 @@ export function UpdatePanel({ initial }: { initial: UpdateStatus | null }) {
           current. This is the signal that was silently swallowed before. */}
       {s?.fetchError && (
         <section className="rounded-xl border border-warning/35 bg-warning/7 p-5">
-          <h2 className="font-medium text-warning">Can&rsquo;t reach the update source</h2>
+          <h2 className="font-medium text-warning-ink">Can&rsquo;t reach the update source</h2>
           <p className="mt-1 text-sm text-muted-foreground">
             The version info below is from the last successful check and may be out of
             date. Git reported:
@@ -338,7 +338,7 @@ export function UpdatePanel({ initial }: { initial: UpdateStatus | null }) {
         </p>
       )}
       {!reconnecting && !reloading && s?.state === "error" && (
-        <p className="text-sm text-destructive">{s.lastResult || "The last update failed."}</p>
+        <p className="text-sm text-destructive-ink">{s.lastResult || "The last update failed."}</p>
       )}
 
       {canRollback && (
