@@ -702,7 +702,7 @@ export function diagramItems(scene: Scene, d: DiagramInput): ItemInput[] {
     const factor = SHAPE_FACTOR[shape === "box" || shape === "note" ? "rectangle" : shape];
     const lines = wrap(n.text, 200, size);
     const m = measure(lines, size);
-    const w = Math.max(160, Math.min(320, (m.width + PADDING * 2 + 24) * factor));
+    const w = Math.max(160, Math.min(shape === "diamond" ? 440 : 320, (m.width + PADDING * 2 + 24) * factor));
     const h = Math.max(shape === "diamond" ? 110 : 70, (m.height + PADDING * 2 + 24) * factor);
     dims.set(n.id, [Math.round(w), Math.round(h)]);
     g.setNode(n.id, { width: w, height: h });
