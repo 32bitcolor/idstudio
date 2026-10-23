@@ -180,6 +180,7 @@ export default function Boards() {
         company) follow a board without an account. They see it read-only: they can&rsquo;t change
         anything, and the link never leads anywhere else in Tavoro.
       </P>
+      <Screenshot name="share-dialog" alt="The Share this board publicly dialog with the link, a Copy button, the Show who's assigned option, and Reset link and Stop sharing" caption="Board ⋯ → Share publicly…: the link and its options." />
       <Steps>
         <>
           Open the board&rsquo;s <UI>⋯</UI> (<UI>Board settings</UI>) menu and choose{" "}
@@ -194,6 +195,7 @@ export default function Boards() {
           <UI>Visibility</UI>.
         </>
       </Steps>
+      <Screenshot name="card-private" alt="A card drawer with Visibility set to Private, and the card on the board showing a Private tag" caption="A private card: the Private tag on the board, and Visibility in the drawer." />
       <DefList>
         <Def term="What visitors see">
           The columns, and each card that isn&rsquo;t private: its key, title, labels, due date, subtask
@@ -211,6 +213,7 @@ export default function Boards() {
           not-found page.
         </Def>
       </DefList>
+      <Screenshot name="public-board" alt="The public, read-only board: columns of cards with keys, labels and due dates, a filter box, and no editing controls" caption="What a visitor sees. The private card isn't there." />
       <Callout tone="warning">
         Anyone who has the link can open it, and can pass it on. Treat it like the board is public, and
         mark cards private before sharing, not after.
@@ -221,6 +224,7 @@ export default function Boards() {
         <UI>Settings → Sharing</UI>, can turn any link off there, and can switch public links off for the
         whole workspace.
       </P>
+      <Screenshot name="sharing-settings" alt="Settings → Sharing: the public board links switch and the list of shared boards, with Open and Turn off link" caption="Settings → Sharing, for admins." />
 
       <H3>How boards fit the pipeline</H3>
       <P>

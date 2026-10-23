@@ -26,6 +26,7 @@ const SEED = {
   project: "Security Awareness 2027 Refresh",
   board: "Security Awareness 2027",
   card: "Phishing simulation interaction",
+  privateCard: "Pilot group recruitment",
   storyboard: "Security Awareness 2027 – Module 1",
   round: { deliverable: "Module 1 storyboard", number: 2 },
   sprint: "Sprint 42",
@@ -55,8 +56,8 @@ async function openLink(listPath, name) {
 async function shot(name, target) {
   if (ONLY.length && !ONLY.includes(name)) return;
   const path = join(OUT, `${name}.png`);
-  if (target) await target.screenshot({ path });
-  else await page.screenshot({ path });
+  if (target) await target.screenshot({ path, animations: "disabled" });
+  else await page.screenshot({ path, animations: "disabled" });
   console.log("✓", name);
 }
 const want = (...names) => !ONLY.length || names.some((n) => ONLY.includes(n));
@@ -96,6 +97,79 @@ if (want("board", "card-drawer", "board-list")) {
     await settle();
     await shot("board-list");
   }
+}
+
+// Public board links: mark a card private, share the board, capture what a visitor sees
+// and the admin list, then put everything back (unshared, not private).
+if (want("card-private", "share-dialog", "public-board", "sharing-settings")) {
+  await openLink("/boards", SEED.board);
+  const boardUrl = page.url();
+  await page.getByRole("button", { name: new RegExp(SEED.privateCard) }).first().click();
+  await page.getByRole("button", { name: "Close card" }).first().waitFor();
+  const visibility = page.getByRole("button", { name: /^(Not private|Private)$/ });
+  if ((await visibility.innerText()).trim() === "Not private") await visibility.click();
+  await page.getByRole("button", { name: "Private", exact: true }).waitFor();
+  await visibility.scrollIntoViewIfNeeded();
+  await settle();
+  await shot("card-private");
+  await page.getByRole("button", { name: "Close card" }).first().click();
+  await page.waitForTimeout(500);
+
+  await page.getByRole("button", { name: "Board settings" }).click();
+  await page.getByRole("menuitem", { name: /Share publicly|Public link/ }).click();
+  const create = page.getByRole("button", { name: "Create public link" });
+  const dialog = page.getByRole("dialog");
+  await dialog.locator("code").or(create).first().waitFor();
+  if (await create.count()) await create.click();
+  await dialog.locator("code").waitFor();
+  await page.mouse.move(5, 5); // off every button, so nothing shows a hover state
+  await page.evaluate(() => document.activeElement?.blur());
+  await settle();
+  await page.waitForTimeout(600); // the dialog's open animation
+  if (!ONLY.length || ONLY.includes("share-dialog")) {
+    // A crop of the page around the dialog (with the dimmed board behind it), rather than
+    // an element shot, which renders the centred, transformed dialog washed out.
+    const box = await dialog.boundingBox();
+    const pad = 24;
+    await page.screenshot({
+      path: join(OUT, "share-dialog.png"),
+      animations: "disabled",
+      clip: { x: box.x - pad, y: box.y - pad, width: box.width + pad * 2, height: box.height + pad * 2 },
+    });
+    console.log("✓ share-dialog");
+  }
+  const link = (await dialog.locator("code").innerText()).trim();
+  await page.keyboard.press("Escape");
+
+  if (want("public-board")) {
+    const fresh = await browser.newContext({ viewport: { width: 1280, height: 800 }, colorScheme: "light" });
+    const p2 = await fresh.newPage();
+    await p2.goto(link);
+    await p2.waitForLoadState("networkidle");
+    await p2.evaluate(() => document.fonts.ready);
+    if (!ONLY.length || ONLY.includes("public-board")) {
+      await p2.screenshot({ path: join(OUT, "public-board.png") });
+      console.log("✓ public-board");
+    }
+    await fresh.close();
+  }
+
+  if (want("sharing-settings")) {
+    await go("/settings/sharing");
+    await shot("sharing-settings");
+  }
+
+  // Clean up.
+  await page.goto(boardUrl);
+  await settle();
+  await page.getByRole("button", { name: "Public link on" }).click();
+  await page.getByRole("button", { name: "Stop sharing" }).click();
+  await page.getByRole("button", { name: "Create public link" }).waitFor();
+  await page.keyboard.press("Escape");
+  await page.getByRole("button", { name: new RegExp(SEED.privateCard) }).first().click();
+  await page.getByRole("button", { name: "Private", exact: true }).click();
+  await page.getByRole("button", { name: "Not private" }).waitFor();
+  await page.waitForTimeout(800);
 }
 
 if (want("project", "alignment")) {

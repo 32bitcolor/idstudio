@@ -96,6 +96,10 @@ review that.
 
   Boards that belong to a project show a strip with the current phase, the next milestone and
   alignment coverage.
+
+  A board can be **shared publicly** as a read-only link for people without an account. Cards
+  marked **Private** are left off it, and so are comments, attachments, SMEs, reviews and email
+  addresses. Admins see every shared board, and can switch links off, in **Settings → Sharing**.
 - **Projects**: ADDIE, SAM or custom methodologies.
   - phases with status, dates and a progress bar
   - deliverables linked to board cards and storyboards, each with its review rounds

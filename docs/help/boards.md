@@ -84,9 +84,15 @@ Once you’ve set up a combination of filters you keep coming back to, open **Vi
 
 A public link lets people outside the workspace (a stakeholder, a client, the rest of the company) follow a board without an account. They see it read-only: they can’t change anything, and the link never leads anywhere else in Tavoro.
 
+![The Share this board publicly dialog with the link, a Copy button, the Show who's assigned option, and Reset link and Stop sharing](../../public/help-shots/share-dialog.png)
+*Board ⋯ → Share publicly…: the link and its options.*
+
 1. Open the board’s **⋯** (**Board settings**) menu and choose **Share publicly…**, then **Create public link**.
 2. **Copy** the link and send it. While it’s on, the board header shows **Public link on**; click it to come back to these settings.
 3. Mark any card that shouldn’t be seen **Private**, in its drawer under **Visibility**.
+
+![A card drawer with Visibility set to Private, and the card on the board showing a Private tag](../../public/help-shots/card-private.png)
+*A private card: the Private tag on the board, and Visibility in the drawer.*
 
 **What visitors see** — The columns, and each card that isn’t private: its key, title, labels, due date, subtask progress, and description (mentions show as plain names). Click a card to read its description. The page shows the board as it is now, so a refresh picks up changes.
 
@@ -94,9 +100,15 @@ A public link lets people outside the workspace (a stakeholder, a client, the re
 
 **Reset link and Stop sharing** — **Reset link…** makes a new link and stops the old one working, for when it went somewhere it shouldn’t. **Stop sharing** turns the link off; a stopped or reset link shows a not-found page.
 
+![The public, read-only board: columns of cards with keys, labels and due dates, a filter box, and no editing controls](../../public/help-shots/public-board.png)
+*What a visitor sees. The private card isn't there.*
+
 > **Heads up.** Anyone who has the link can open it, and can pass it on. Treat it like the board is public, and mark cards private before sharing, not after.
 
 Anyone who can work on a board can share it, from the browser only (an AI assistant connected over MCP can mark cards private but can’t publish a board). Admins see every shared board in **Settings → Sharing**, can turn any link off there, and can switch public links off for the whole workspace.
+
+![Settings → Sharing: the public board links switch and the list of shared boards, with Open and Turn off link](../../public/help-shots/sharing-settings.png)
+*Settings → Sharing, for admins.*
 
 ### How boards fit the pipeline
 
