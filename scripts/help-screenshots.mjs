@@ -238,9 +238,30 @@ if (want("whiteboard")) {
   await shot("whiteboard");
 }
 
-if (want("intake-queue")) {
+if (want("intake-queue", "intake-approve")) {
   await go("/intake");
   await shot("intake-queue");
+  if (want("intake-approve")) {
+    // Open the first open request's Approve dialog and capture it; nothing is approved.
+    await page.locator("main li").getByRole("button", { name: "Approve" }).first().click();
+    const dialog = page.getByRole("dialog");
+    await dialog.getByLabel("Methodology").waitFor();
+    await page.mouse.move(5, 5);
+    await page.evaluate(() => document.activeElement?.blur?.());
+    await settle();
+    await page.waitForTimeout(600);
+    const box = await dialog.boundingBox();
+    const pad = 24;
+    if (!ONLY.length || ONLY.includes("intake-approve")) {
+      await page.screenshot({
+        path: join(OUT, "intake-approve.png"),
+        animations: "disabled",
+        clip: { x: box.x - pad, y: box.y - pad, width: box.width + pad * 2, height: box.height + pad * 2 },
+      });
+      console.log("✓ intake-approve");
+    }
+    await page.keyboard.press("Escape");
+  }
 }
 
 if (want("intake-form")) {

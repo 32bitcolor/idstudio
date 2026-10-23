@@ -18,8 +18,8 @@ import {
 } from "@/components/ui/dialog";
 
 const METHODOLOGIES = [
-  { value: "ADDIE", label: "ADDIE (Analyze, Design, Develop, Implement, Evaluate)" },
-  { value: "SAM", label: "SAM (Preparation, Iterative Design, Iterative Development)" },
+  { value: "ADDIE", label: "ADDIE (5 phases)" },
+  { value: "SAM", label: "SAM (3 phases)" },
   { value: "CUSTOM", label: "Custom (no phases yet)" },
 ] as const;
 
