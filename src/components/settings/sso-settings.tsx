@@ -10,6 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { SectionHeader } from "@/components/shared/page";
 import { createScimToken, saveIdentityProvider, saveRoleMappings, saveSsoOptions, setScimEnabled } from "@/app/actions/sso";
 import { cn } from "@/lib/utils";
+import { LocalTime } from "@/components/shared/local-time";
 
 // Settings → Single sign-on (docs/SSO.md). Written for any SAML 2.0 / SCIM 2.0
 // identity provider; JumpCloud's field names appear as hints.
@@ -44,7 +45,7 @@ const ROLE_LABEL: Record<RoleName, string> = { ADMIN: "Admin", MANAGER: "Manager
 
 function when(iso: string | null) {
   if (!iso) return "never";
-  return new Date(iso).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+  return <LocalTime iso={iso} format="dateTime" />;
 }
 
 function CopyField({ label, value, hint }: { label: string; value: string; hint?: string }) {
@@ -175,7 +176,7 @@ export function SsoSettings({ conn, urls }: { conn: Conn; urls: Urls }) {
             <div>
               <dt className="inline text-muted-foreground">Certificate expires: </dt>
               <dd className={cn("inline", certSoon && "font-medium text-destructive")}>
-                {conn.certExpiry ? new Date(conn.certExpiry).toLocaleDateString(undefined, { dateStyle: "medium" }) : "unknown"}
+                {conn.certExpiry ? <LocalTime iso={conn.certExpiry} /> : "unknown"}
                 {certSoon && " — upload the new certificate before then"}
               </dd>
             </div>

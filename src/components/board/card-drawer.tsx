@@ -37,6 +37,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { LABEL_PALETTE as PALETTE } from "@/lib/label-colors";
 import { dueMeta, dueToneClass } from "@/lib/due";
+import { LocalTime } from "@/components/shared/local-time";
 
 export type LabelT = { id: string; name: string; color: string };
 export type MemberT = { id: string; name: string | null; email: string };
@@ -925,12 +926,7 @@ function SubtaskRow({
 }
 
 function formatTime(iso: string) {
-  return new Date(iso).toLocaleString(undefined, {
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  });
+  return <LocalTime iso={iso} format="dateTime" />;
 }
 
 function formatBytes(n: number) {

@@ -34,7 +34,9 @@
   --color-primary-foreground: var(--accent-foreground);
   --color-secondary: var(--muted);
   --color-secondary-foreground: var(--foreground);
-  --color-muted-foreground: color-mix(in srgb, var(--foreground) 60%, transparent);
+  /* Secondary text: strong enough for 4.5:1 on light and dark surfaces. Themes whose
+     foreground is already soft (solarized, latte) push it further with --muted-fg-mix. */
+  --color-muted-foreground: color-mix(in srgb, var(--foreground) var(--muted-fg-mix, 70%), transparent);
   --color-destructive: var(--destructive);
   --color-destructive-foreground: #ffffff;
   /* Semantic status colors — theme-agnostic, used by StatusBadge and status chips
@@ -51,6 +53,7 @@
   --color-destructive-ink: var(--destructive-ink, var(--destructive));
   --color-warning-ink: var(--warning-ink, var(--warning));
   --color-success-ink: var(--success-ink, var(--success));
+  --color-info-ink: var(--info-ink, var(--info));
   --color-input: var(--border);
   --color-ring: var(--accent);
   --radius-xl: 0.5rem;
@@ -114,6 +117,7 @@
   --info: #4373c7;
   --shadow-tint: 32 45 56;
   --destructive-ink: #b42330;
+  --info-ink: #2f5aa8;
   --warning-ink: #a14800;
   --success-ink: #0d7a52;
   --sidebar-fg: #4a5662;
@@ -219,6 +223,7 @@
 
 /* Solarized Light — warm paper, blue accent */
 [data-theme="solarized"] {
+  --muted-fg-mix: 85%;
   color-scheme: light;
   --background: #fdf6e3;
   --foreground: #586e75;
@@ -264,6 +269,7 @@
 
 /* Catppuccin Latte — light pastel, mauve accent */
 [data-theme="catppuccin-latte"] {
+  --muted-fg-mix: 85%;
   color-scheme: light;
   --background: #eff1f5;
   --foreground: #4c4f69;

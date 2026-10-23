@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { Globe } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { adminUnshareBoard, setPublicBoardsEnabled } from "@/app/actions/board-share";
+import { LocalTime } from "@/components/shared/local-time";
 
 type SharedBoard = {
   id: string;
@@ -86,7 +87,7 @@ export function SharingPanel({ enabled: initial, boards }: { enabled: boolean; b
                   <p className="text-xs text-muted-foreground">
                     {b.sharedBy ? `Shared by ${b.sharedBy}` : "Shared"}
                     {b.sharedAt &&
-                      ` on ${new Date(b.sharedAt).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}`}
+                      <> on <LocalTime iso={b.sharedAt} /></>}
                     {b.showAssignees && " · shows assignees"}
                   </p>
                 </div>

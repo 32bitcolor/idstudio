@@ -135,7 +135,7 @@ export function DeliverablesSection({
             </div>
 
             <div className="mt-2 flex flex-wrap items-center gap-2">
-              <Select
+              <Select aria-label="Deliverable type"
                 value={d.type}
                 onChange={(e) => {
                   patch(d.id, { type: e.target.value });
@@ -148,7 +148,7 @@ export function DeliverablesSection({
                 ))}
               </Select>
 
-              <Select
+              <Select aria-label="Deliverable status"
                 value={d.status}
                 onChange={(e) => {
                   patch(d.id, { status: e.target.value });
@@ -161,7 +161,7 @@ export function DeliverablesSection({
                 ))}
               </Select>
 
-              <Select
+              <Select aria-label="Phase"
                 value={d.phaseId ?? ""}
                 onChange={(e) => {
                   const v = e.target.value || null;
@@ -186,7 +186,7 @@ export function DeliverablesSection({
                   </button>
                 </span>
               ) : (
-                <Select
+                <Select aria-label="Link a card"
                   defaultValue=""
                   onFocus={ensureCards}
                   onChange={(e) => e.target.value && link(d, e.target.value)}
@@ -244,7 +244,7 @@ function DeliverableComposer({ onAdd }: { onAdd: (name: string, type: string) =>
         placeholder="Deliverable name…"
         className="flex-1"
       />
-      <Select value={type} onChange={(e) => setType(e.target.value)} className="w-auto">
+      <Select aria-label="Deliverable type" value={type} onChange={(e) => setType(e.target.value)} className="w-auto">
         {DELIVERABLE_TYPES.map((t) => (
           <option key={t} value={t}>{DELIVERABLE_TYPE_LABEL[t as DeliverableType]}</option>
         ))}

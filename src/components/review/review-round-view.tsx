@@ -62,6 +62,7 @@ import type { ScreenChange, SnapshotDiff, StoryboardSnapshot } from "@/lib/revie
 import { isApproval, isDecided, type ReviewDecision } from "@/lib/methodology";
 import { extractText } from "@/lib/mentions";
 import { cn } from "@/lib/utils";
+import { LocalTime } from "@/components/shared/local-time";
 
 /** Who's looking: a workspace member in the app, or a guest on their review link. */
 export type Viewer =
@@ -102,7 +103,7 @@ const SCREEN_TYPE_LABEL: Record<string, string> = {
 };
 
 function when(iso: string) {
-  return new Date(iso).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+  return <LocalTime iso={iso} format="dateTime" />;
 }
 
 /** A timestamp in the viewer's own timezone. The server renders it in ITS timezone,
@@ -590,7 +591,7 @@ function GuestDecisionBar({
       <p className="text-xs text-muted-foreground">
         {howTo} This link is personal to you and works until{" "}
         <time dateTime={viewer.expiresAt} suppressHydrationWarning>
-          {new Date(viewer.expiresAt).toLocaleDateString(undefined, { month: "long", day: "numeric" })}
+          <LocalTime iso={viewer.expiresAt} format="longDay" />
         </time>
         .
       </p>

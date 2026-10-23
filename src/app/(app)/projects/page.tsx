@@ -59,10 +59,10 @@ export default async function ProjectsPage() {
             const pct = total ? Math.round((done / total) * 100) : 0;
             return (
               <li key={p.id}>
-                <Link href={`/projects/${p.id}`} className="group block">
-                  <Card className="gap-3 py-4 transition-colors group-hover:border-border-strong">
-                    <div className="flex items-center justify-between gap-2 px-5">
-                      <span className="truncate font-medium">{p.name}</span>
+                <Link href={`/projects/${p.id}`} className="group block h-full">
+                  <Card className="h-full gap-3 py-4 transition-colors group-hover:border-border-strong">
+                    <div className="flex flex-1 items-start justify-between gap-2 px-5">
+                      <span className="line-clamp-2 font-medium" title={p.name}>{p.name}</span>
                       <StatusBadge tone="neutral">{p.methodology}</StatusBadge>
                     </div>
                     <div className="px-5">

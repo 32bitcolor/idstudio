@@ -60,7 +60,7 @@ export function WorkloadView({ workload }: { workload: MemberWorkload[] }) {
     <div className="flex flex-col gap-4">
       <div className="w-52">
         <Select aria-label="Filter by due date" value={due} onChange={(e) => setDue(e.target.value as DueFilter)}>
-          <option value="any">All</option>
+          <option value="any">Any due date</option>
           <option value="month">This month</option>
           <option value="quarter">This quarter</option>
           <option value="overdue">Overdue</option>
@@ -99,9 +99,9 @@ function MemberRow({ member }: { member: MemberWorkload }) {
 
   return (
     <div className="flex flex-col gap-3 px-5 py-4">
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-x-2">
         <span className="font-medium">{member.name ?? member.email}</span>
-        <span className="text-sm text-muted-foreground">{member.email}</span>
+        <span className="min-w-0 truncate text-sm text-muted-foreground">{member.email}</span>
         <StatusBadge tone={member.role === "ADMIN" || member.role === "MANAGER" ? "info" : "neutral"} className="ml-auto">
           {member.role}
         </StatusBadge>
@@ -121,7 +121,7 @@ function MemberRow({ member }: { member: MemberWorkload }) {
                 className="flex flex-wrap items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-hover"
               >
                 <Icon className="size-3.5 shrink-0 text-muted-foreground" />
-                <span className="min-w-0 flex-1 truncate">{item.title}</span>
+                <span className="min-w-0 flex-[1_1_12rem] truncate">{item.title}</span>
                 <span className="truncate text-xs text-muted-foreground">{item.context}</span>
                 {due && <span className={`shrink-0 text-xs ${dueToneClass[due.tone]}`}>{due.label}</span>}
               </Link>

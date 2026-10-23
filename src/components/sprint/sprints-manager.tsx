@@ -130,7 +130,7 @@ export function SprintsManager({ initial }: { initial: SprintT[] }) {
             {s.goal && <p className="mt-1 text-sm text-muted-foreground">{s.goal}</p>}
 
             <div className="mt-2 flex flex-wrap items-center gap-2">
-              <Select
+              <Select aria-label="Sprint status"
                 value={s.status}
                 onChange={(e) => {
                   patch(s.id, { status: e.target.value });

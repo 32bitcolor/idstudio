@@ -266,7 +266,7 @@ export function ProjectView({
         <ProjectContextStrip context={context} onProjectPage />
       </div>
 
-      <Textarea
+      <Textarea aria-label="Project description"
         value={description}
         onChange={(e) => setDescription(e.target.value)}
         onBlur={() => updateProjectDescription(project.id, description)}

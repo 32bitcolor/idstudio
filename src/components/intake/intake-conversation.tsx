@@ -9,6 +9,7 @@ import { Card } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { SectionHeader } from "@/components/shared/page";
 import { cn } from "@/lib/utils";
+import { LocalTime } from "@/components/shared/local-time";
 
 export type IntakeMessageDTO = {
   id: string;
@@ -18,9 +19,6 @@ export type IntakeMessageDTO = {
   body: string;
   at: string;
 };
-
-const fmtTime = (iso: string) =>
-  new Date(iso).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
 
 /** The request's conversation: replies (shared with the requester on their status page
  *  and by email) and internal notes (team only). */
@@ -90,7 +88,7 @@ export function IntakeConversation({
                   </span>
                 )}
                 {m.kind === "reply" && !m.fromRequester && <span>to the requester</span>}
-                <span>· {fmtTime(m.at)}</span>
+                <span>· <LocalTime iso={m.at} format="dateTime" /></span>
               </p>
               <p className="mt-1 whitespace-pre-wrap break-words">{m.body}</p>
             </li>
@@ -116,9 +114,11 @@ export function IntakeConversation({
             placeholder={`Reply to ${requesterName}, or add an internal note…`}
           />
           {canAsk && (
-            <label className="flex items-center gap-2 text-sm text-muted-foreground">
-              <input type="checkbox" checked={ask} onChange={(e) => setAsk(e.target.checked)} className="size-4 accent-accent" />
-              It&rsquo;s a question: mark the request <span className="font-medium text-foreground">Needs info</span> until they reply
+            <label className="flex items-start gap-2 text-sm text-muted-foreground">
+              <input type="checkbox" checked={ask} onChange={(e) => setAsk(e.target.checked)} className="mt-0.5 size-4 shrink-0 accent-accent" />
+              <span>
+                It&rsquo;s a question: mark the request <span className="font-medium text-foreground">Needs info</span> until they reply
+              </span>
             </label>
           )}
           <div className="flex flex-wrap items-center gap-2">

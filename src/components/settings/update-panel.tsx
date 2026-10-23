@@ -5,6 +5,7 @@ import { RefreshCw, ArrowUpCircle, RotateCcw, GitCommitHorizontal, CircleAlert, 
 import { Button } from "@/components/ui/button";
 import { getUpdateStatus, checkForUpdates, applyUpdate, rollbackUpdate } from "@/app/actions/updates";
 import type { UpdateStatus } from "@/lib/updater";
+import { LocalTime } from "@/components/shared/local-time";
 
 const UPDATE_STAGES = [
   { key: "pulling", label: "Pulling code" },
@@ -224,7 +225,7 @@ export function UpdatePanel({ initial }: { initial: UpdateStatus | null }) {
             </div>
             {s?.currentDate && (
               <p className="mt-1 text-xs text-muted-foreground">
-                {new Date(s.currentDate).toLocaleString()}
+                <LocalTime iso={s.currentDate} format="full" />
               </p>
             )}
           </div>
@@ -236,7 +237,7 @@ export function UpdatePanel({ initial }: { initial: UpdateStatus | null }) {
 
         {s?.lastChecked && (
           <p className="mt-3 text-xs text-muted-foreground">
-            Last checked {new Date(s.lastChecked).toLocaleString()}
+            Last checked <LocalTime iso={s.lastChecked} format="full" />
             {s.lastResult ? ` · ${s.lastResult}` : ""}
           </p>
         )}
@@ -297,7 +298,7 @@ export function UpdatePanel({ initial }: { initial: UpdateStatus | null }) {
                     <div className="text-sm font-medium">{c.subject}</div>
                     <div className="mt-0.5 text-xs text-muted-foreground">
                       {c.author}
-                      {c.date ? ` · ${new Date(c.date).toLocaleString()}` : ""}
+                      {c.date && <> · <LocalTime iso={c.date} format="full" /></>}
                     </div>
                   </div>
                 </li>

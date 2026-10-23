@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
+import { LocalTime, useHydrated } from "@/components/shared/local-time";
 
 export type ConnectionRow = {
   id: string;
@@ -27,11 +28,18 @@ export type ConnectionRow = {
 
 function ago(iso: string | null) {
   if (!iso) return "never";
-  const s = (Date.now() - new Date(iso).getTime()) / 1000;
-  if (s < 90) return "just now";
-  if (s < 5400) return `${Math.round(s / 60)} min ago`;
-  if (s < 129600) return `${Math.round(s / 3600)} h ago`;
-  return new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+  return <Ago iso={iso} />;
+}
+
+/** "5 min ago" depends on the clock at render time, so it's worked out in the browser. */
+function Ago({ iso }: { iso: string }) {
+  const local = useHydrated();
+  const [now] = useState(() => Date.now());
+  const s = (now - new Date(iso).getTime()) / 1000;
+  if (!local || s >= 129600) return <LocalTime iso={iso} />;
+  if (s < 90) return <>just now</>;
+  if (s < 5400) return <>{Math.round(s / 60)} min ago</>;
+  return <>{Math.round(s / 3600)} h ago</>;
 }
 
 function CopyButton({ text, label = "Copy" }: { text: string; label?: string }) {
@@ -172,7 +180,7 @@ function Connections({ rows, empty }: { rows: ConnectionRow[]; empty: string }) 
                 {r.prefix && <span className="font-mono">{r.prefix}…</span>}
                 {r.prefix && " · "}
                 created {ago(r.createdAt)} · last used {ago(r.lastUsedAt)}
-                {r.expiresAt && <> · expires {new Date(r.expiresAt).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}</>}
+                {r.expiresAt && <> · expires <LocalTime iso={r.expiresAt} /></>}
               </p>
             </div>
             <ConfirmDelete

@@ -13,10 +13,12 @@ export default async function SettingsLayout({ children }: { children: React.Rea
     <PageContainer>
       <PageHeader
         title="Settings"
-        description="Manage your account, workspace members, and groups."
+        description={isAdmin ? "Your account, and how this workspace runs." : "Your account and connected assistants."}
       />
-      <SettingsNav isAdmin={isAdmin} />
-      <div className="mt-6">{children}</div>
+      <div className="mt-6 grid gap-6 md:grid-cols-[11rem_minmax(0,1fr)]">
+        <SettingsNav isAdmin={isAdmin} />
+        <div className="min-w-0">{children}</div>
+      </div>
     </PageContainer>
   );
 }

@@ -104,7 +104,7 @@ export function TimeTracking({
             placeholder="Hours"
             className="w-20"
           />
-          <Select value={deliverableId} onChange={(e) => setDeliverableId(e.target.value)} className="w-auto">
+          <Select aria-label="Deliverable" value={deliverableId} onChange={(e) => setDeliverableId(e.target.value)} className="w-auto">
             <option value="">No deliverable</option>
             {deliverables.map((d) => (
               <option key={d.id} value={d.id}>{d.name}</option>

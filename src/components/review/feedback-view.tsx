@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import { LocalTime } from "@/components/shared/local-time";
 
 export type FeedbackGroup = { key: string; label: string; order: number };
 export type FeedbackItem = ReviewCommentDTO & {
@@ -308,7 +309,7 @@ function FeedbackRow({ item, selected, onSelect }: { item: FeedbackItem; selecte
             <span className="rounded bg-muted px-1 py-px text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Guest</span>
           )}
           <time dateTime={item.createdAt} className="text-muted-foreground" suppressHydrationWarning>
-            {new Date(item.createdAt).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
+            <LocalTime iso={item.createdAt} format="day" />
           </time>
         </div>
         <div className="mt-0.5 text-sm">

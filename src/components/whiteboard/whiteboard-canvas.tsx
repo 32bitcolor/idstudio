@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, type ComponentProps } from "react";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore, type ComponentProps } from "react";
 import { CaptureUpdateAction, Excalidraw } from "@excalidraw/excalidraw";
 import type { BinaryFileData, ExcalidrawImperativeAPI } from "@excalidraw/excalidraw/types";
 import "@excalidraw/excalidraw/index.css";
@@ -12,6 +12,25 @@ type OnChange = NonNullable<ComponentProps<typeof Excalidraw>["onChange"]>;
 // How often an open whiteboard checks for changes made elsewhere (another tab, or an
 // assistant over MCP). Only while the tab is visible.
 const POLL_MS = 4000;
+
+// Excalidraw has a light and a dark look; pick whichever suits the app's theme (any of
+// the 17) by how dark its background is. Follows theme changes and the OS setting.
+function subscribeTheme(cb: () => void) {
+  const mq = window.matchMedia("(prefers-color-scheme: dark)");
+  const mo = new MutationObserver(cb);
+  mo.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+  mq.addEventListener("change", cb);
+  return () => {
+    mo.disconnect();
+    mq.removeEventListener("change", cb);
+  };
+}
+function appTheme(): "light" | "dark" {
+  const m = getComputedStyle(document.body).backgroundColor.match(/\d+(\.\d+)?/g);
+  if (!m) return "light";
+  const [r, g, b] = m.map(Number);
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b < 128 ? "dark" : "light";
+}
 
 // Rebuild Excalidraw initialData from our persisted scene JSON.
 function parseInitial(scene: string | null): ComponentProps<typeof Excalidraw>["initialData"] {
@@ -35,6 +54,7 @@ export function WhiteboardCanvas({
   initialVersion: number;
 }) {
   const [api, setApi] = useState<ExcalidrawImperativeAPI | null>(null);
+  const theme = useSyncExternalStore(subscribeTheme, appTheme, () => "light" as const);
   const [initialData] = useState(() => parseInitial(initialScene));
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const version = useRef(initialVersion);
@@ -127,5 +147,5 @@ export function WhiteboardCanvas({
     [],
   );
 
-  return <Excalidraw excalidrawAPI={setApi} initialData={initialData} onChange={onChange} />;
+  return <Excalidraw excalidrawAPI={setApi} initialData={initialData} onChange={onChange} theme={theme} />;
 }

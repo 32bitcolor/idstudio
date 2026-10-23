@@ -67,8 +67,8 @@ export default async function ReviewHistoryPage() {
               {approved
                 ? <Check className="size-4 shrink-0 text-green-600" />
                 : <RotateCcw className="size-4 shrink-0 text-amber-600" />}
-              <div className="min-w-0 flex-1">
-                <Link href={link.href} className="truncate font-medium hover:underline">
+              <div className="min-w-0 flex-[1_1_12rem]">
+                <Link href={link.href} className="block truncate font-medium hover:underline">
                   {r.deliverable.name}
                 </Link>
                 <div className="truncate text-sm text-muted-foreground">

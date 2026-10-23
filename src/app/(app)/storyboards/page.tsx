@@ -55,10 +55,10 @@ export default async function StoryboardsPage() {
         <ul className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 [&>*]:min-w-0">
           {storyboards.map((sb) => (
             <li key={sb.id}>
-              <Link href={`/storyboards/${sb.id}`} className="group block">
-                <Card className="gap-2 py-4 transition-colors group-hover:border-border-strong">
+              <Link href={`/storyboards/${sb.id}`} className="group block h-full">
+                <Card className="h-full gap-2 py-4 transition-colors group-hover:border-border-strong">
                   <div className="flex items-start justify-between gap-2 px-5">
-                    <span className="min-w-0 truncate font-medium">{sb.title}</span>
+                    <span className="line-clamp-2 min-w-0 font-medium" title={sb.title}>{sb.title}</span>
                     <StatusBadge tone={storyboardTone(sb.status)}>
                       {STORYBOARD_STATUS_LABEL[sb.status as StoryboardStatus] ?? sb.status}
                     </StatusBadge>

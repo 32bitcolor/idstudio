@@ -199,7 +199,7 @@ export function AlignmentSection({
                     <ChevronDown className="size-3.5" />
                   </Button>
                 </div>
-                <Textarea
+                <Textarea aria-label="Objective"
                   value={o.text}
                   onChange={(e) => patchObj(o.id, { text: e.target.value })}
                   onBlur={(e) => {
@@ -224,7 +224,7 @@ export function AlignmentSection({
                 />
               </div>
               <div className="mt-2 flex flex-wrap items-center gap-2 pl-8">
-                <Select
+                <Select aria-label="Bloom's level"
                   value={o.bloomLevel}
                   onChange={(e) => {
                     patchObj(o.id, { bloomLevel: e.target.value });
@@ -266,7 +266,7 @@ export function AlignmentSection({
           {items.map((it) => (
             <div key={it.id} className="rounded-xl border border-border p-3">
               <div className="flex items-start gap-2">
-                <Textarea
+                <Textarea aria-label="Assessment item"
                   value={it.prompt}
                   onChange={(e) => patchItem(it.id, { prompt: e.target.value })}
                   onBlur={(e) => {
@@ -289,7 +289,7 @@ export function AlignmentSection({
                 </Button>
               </div>
               <div className="mt-2 flex flex-wrap items-center gap-2">
-                <Select
+                <Select aria-label="Item type"
                   value={it.itemType}
                   onChange={(e) => {
                     patchItem(it.id, { itemType: e.target.value });
@@ -360,7 +360,7 @@ function ObjectiveComposer({ onAdd }: { onAdd: (text: string, bloom: string) => 
   }
   return (
     <div className="mt-2 rounded-xl border border-border-strong p-3">
-      <Textarea
+      <Textarea aria-label="New objective"
         autoFocus
         value={text}
         onChange={(e) => setText(e.target.value)}
@@ -373,7 +373,7 @@ function ObjectiveComposer({ onAdd }: { onAdd: (text: string, bloom: string) => 
         className="w-full resize-none border-none px-1 shadow-none focus-visible:ring-0"
       />
       <div className="mt-2 flex flex-wrap items-center gap-2">
-        <Select value={bloom} onChange={(e) => setBloom(e.target.value)} className="w-auto">
+        <Select aria-label="Bloom's level" value={bloom} onChange={(e) => setBloom(e.target.value)} className="w-auto">
           {BLOOM_LEVELS.map((b) => (
             <option key={b} value={b}>{BLOOM_LABEL[b as BloomLevel]}</option>
           ))}
@@ -420,7 +420,7 @@ function ItemComposer({ onAdd }: { onAdd: (prompt: string, type: string) => void
         placeholder="Question or check…"
         className="flex-1"
       />
-      <Select value={type} onChange={(e) => setType(e.target.value)} className="w-auto">
+      <Select aria-label="Item type" value={type} onChange={(e) => setType(e.target.value)} className="w-auto">
         {ASSESSMENT_ITEM_TYPES.map((t) => (
           <option key={t} value={t}>{ASSESSMENT_ITEM_TYPE_LABEL[t as AssessmentItemType]}</option>
         ))}

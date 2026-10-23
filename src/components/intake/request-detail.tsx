@@ -32,6 +32,7 @@ import { IntakeConversation, type IntakeMessageDTO } from "@/components/intake/i
 import { StatusLink } from "@/components/intake/status-link";
 import type { Viewer } from "@/components/intake/triage-queue";
 import { useSetPageTitle } from "@/components/app-shell/breadcrumbs";
+import { LocalTime } from "@/components/shared/local-time";
 
 type Member = { id: string; name: string | null; email: string };
 export type DetailRequest = {
@@ -55,7 +56,6 @@ export type DetailRequest = {
   createdAt: string;
 };
 
-const fmt = (iso: string) => new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
 // Needed-by dates are calendar days stored as UTC midnight.
 const fmtDay = (iso: string) => new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" });
 
@@ -89,7 +89,12 @@ export function RequestDetail({
   const due = dueMeta(request.targetDate);
   const quadrant = quadrantLabel(impact, effort);
   const assignee = members.find((m) => m.id === request.assignedToId);
-  const decidedLine = request.decidedAt ? `${fmt(request.decidedAt)}${request.decidedBy ? ` by ${request.decidedBy}` : ""}` : null;
+  const decidedLine = request.decidedAt ? (
+    <>
+      <LocalTime iso={request.decidedAt} />
+      {request.decidedBy ? ` by ${request.decidedBy}` : ""}
+    </>
+  ) : null;
 
   function run(action: () => Promise<{ error: string } | undefined>, after?: () => void) {
     setError(null);
@@ -118,7 +123,7 @@ export function RequestDetail({
             </StatusBadge>
             {quadrant && <StatusBadge tone="neutral">{quadrant}</StatusBadge>}
             {due && request.targetDate && <span className={dueToneClass[due.tone]}>Needed by {fmtDay(request.targetDate)} ({due.label})</span>}
-            <span>Submitted {fmt(request.createdAt)}</span>
+            <span>Submitted <LocalTime iso={request.createdAt} /></span>
           </div>
           <p className="text-sm whitespace-pre-wrap">{request.description}</p>
           {request.targetAudience && (

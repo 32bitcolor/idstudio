@@ -9,13 +9,11 @@ import { ticketLabel } from "@/lib/intake";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
+import { LocalTime } from "@/components/shared/local-time";
 
 // What the requester sees (lib/intake-status.ts decides what's in `page`).
 
-const fmt = (iso: string) => new Date(iso).toLocaleDateString(undefined, { month: "long", day: "numeric", year: "numeric" });
 const fmtDay = (iso: string) => new Date(iso).toLocaleDateString(undefined, { month: "long", day: "numeric", year: "numeric", timeZone: "UTC" });
-const fmtTime = (iso: string) =>
-  new Date(iso).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
 
 /** Three plain-language steps; the request's status says how far along it is. */
 function steps(status: string) {
@@ -55,7 +53,7 @@ export function StatusView({ page, token }: { page: StatusPage; token: string })
         <p className="font-mono text-xs text-muted-foreground">{ticketLabel(page.number)}</p>
         <h1 className="mt-1 text-2xl font-semibold break-words">{page.title}</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Sent to {page.workspaceName} on {fmt(page.submittedAt)}
+          Sent to {page.workspaceName} on <LocalTime iso={page.submittedAt} format="longDate" />
         </p>
       </div>
 
@@ -84,13 +82,13 @@ export function StatusView({ page, token }: { page: StatusPage; token: string })
       )}
       {page.status === "converted" && (
         <div className="rounded-xl border border-success/35 bg-success/7 p-4 text-sm">
-          <p className="font-medium text-success-ink">Approved{page.decidedAt && ` on ${fmt(page.decidedAt)}`}</p>
+          <p className="font-medium text-success-ink">Approved{page.decidedAt && <> on <LocalTime iso={page.decidedAt} format="longDate" /></>}</p>
           <p className="mt-1 text-muted-foreground">The {page.workspaceName} team is now working on it.</p>
         </div>
       )}
       {page.status === "rejected" && (
         <div className="rounded-xl border border-border bg-muted/60 p-4 text-sm">
-          <p className="font-medium">Not going ahead{page.decidedAt && ` (decided ${fmt(page.decidedAt)})`}</p>
+          <p className="font-medium">Not going ahead{page.decidedAt && <> (decided <LocalTime iso={page.decidedAt} format="longDate" />)</>}</p>
           {page.rejectionReason && <p className="mt-1 whitespace-pre-wrap text-muted-foreground">{page.rejectionReason}</p>}
         </div>
       )}
@@ -133,7 +131,7 @@ export function StatusView({ page, token }: { page: StatusPage; token: string })
                 )}
               >
                 <p className="text-xs text-muted-foreground">
-                  <span className="font-medium text-foreground">{m.fromRequester ? "You" : m.author}</span> · {fmtTime(m.at)}
+                  <span className="font-medium text-foreground">{m.fromRequester ? "You" : m.author}</span> · <LocalTime iso={m.at} format="dateTime" />
                 </p>
                 <p className="mt-1 whitespace-pre-wrap break-words">{m.body}</p>
               </li>

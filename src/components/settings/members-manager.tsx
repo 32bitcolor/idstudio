@@ -114,7 +114,8 @@ function MemberRow({ member }: { member: Member }) {
 
   return (
     <div className="flex flex-wrap items-center gap-3 px-5 py-3">
-      <div className="min-w-0 flex-1">
+      {/* A real basis, so on a narrow screen the controls wrap below the name instead of squeezing it to nothing. */}
+      <div className="min-w-0 flex-[1_1_14rem]">
         <div className="flex items-center gap-2">
           <span className="truncate font-medium">{member.name ?? member.email}</span>
           {member.isSelf && <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">You</span>}
@@ -171,7 +172,7 @@ function MemberRow({ member }: { member: Member }) {
           confirmLabel="Remove"
           onConfirm={doRemove}
           trigger={
-            <Button variant="ghost" size="sm" disabled={pending} className="text-destructive hover:text-destructive">
+            <Button variant="ghost" size="sm" disabled={pending} className="text-destructive hover:text-destructive" aria-label={`Remove ${member.name ?? member.email}`}>
               <Trash2 className="size-4" />
             </Button>
           }

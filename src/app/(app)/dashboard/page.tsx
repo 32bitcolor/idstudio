@@ -210,9 +210,11 @@ export default async function DashboardPage() {
           <div>
             <SectionHeader
               action={
-                <Link href="/my-work" className="text-xs text-muted-foreground hover:underline">
-                  View all →
-                </Link>
+                <Button asChild variant="ghost" size="sm">
+                  <Link href="/my-work">
+                    My Work <ArrowRight className="size-4" />
+                  </Link>
+                </Button>
               }
             >
               Awaiting your review

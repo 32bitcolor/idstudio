@@ -91,7 +91,7 @@ function ReviewItem({
         </Button>
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <Link href={`/reviews/${review.roundId}`} className="truncate font-medium hover:underline">
+            <Link href={`/reviews/${review.roundId}`} className="min-w-0 truncate font-medium hover:underline">
               {review.deliverableName}
             </Link>
             <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">

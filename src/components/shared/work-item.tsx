@@ -31,7 +31,8 @@ export function Avatar({ member, sme }: { member: WorkMember; sme?: boolean }) {
     <span
       className={cn(
         "flex size-6 items-center justify-center rounded-full border-2 border-surface text-[10px] font-semibold",
-        sme ? "bg-warning/15 text-warning-ink" : "bg-accent text-accent-foreground",
+        // Opaque tint: in a stack the avatar underneath must not show through.
+        sme ? "bg-[color-mix(in_srgb,var(--warning)_18%,var(--surface))] text-warning-ink" : "bg-accent text-accent-foreground",
       )}
       title={sme ? `SME: ${name}` : name}
     >
@@ -45,7 +46,7 @@ export function Avatar({ member, sme }: { member: WorkMember; sme?: boolean }) {
 export function AvatarStack({ assignees, smes = [] }: { assignees: WorkMember[]; smes?: WorkMember[] }) {
   if (assignees.length === 0 && smes.length === 0) return null;
   return (
-    <span className="flex shrink-0 -space-x-1.5">
+    <span className="flex shrink-0 -space-x-1">
       {assignees.slice(0, 3).map((m) => (
         <Avatar key={"a" + m.id} member={m} />
       ))}

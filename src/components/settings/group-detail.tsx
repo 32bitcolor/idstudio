@@ -76,14 +76,14 @@ export function GroupDetail({
 
       <Card className="p-6">
         <div className="flex flex-col gap-4">
-          <div className="flex flex-col gap-1.5">
+          <label className="flex flex-col gap-1.5">
             <span className="text-xs font-medium text-muted-foreground">Group name</span>
             <Input value={name} onChange={(e) => setName(e.target.value)} onBlur={saveMeta} className="max-w-md" />
-          </div>
-          <div className="flex flex-col gap-1.5">
+          </label>
+          <label className="flex flex-col gap-1.5">
             <span className="text-xs font-medium text-muted-foreground">Description</span>
             <Input value={description} onChange={(e) => setDescription(e.target.value)} onBlur={saveMeta} placeholder="Optional" className="max-w-md" />
-          </div>
+          </label>
           {err && <p className="text-sm text-destructive">{err}</p>}
           <div>
             <ConfirmDelete
@@ -122,7 +122,8 @@ export function GroupDetail({
 
         {candidates.length > 0 && (
           <div className="mt-3 flex items-center gap-2">
-            <Select value={pick} onChange={(e) => setPick(e.target.value)} className="h-9 w-auto">
+            {/* min-w-0 lets a long name (with email) shrink the picker instead of the page. */}
+            <Select value={pick} onChange={(e) => setPick(e.target.value)} className="h-9 w-auto min-w-0 max-w-full" aria-label="Add a member">
               <option value="">Add a member…</option>
               {candidates.map((c) => (
                 <option key={c.id} value={c.id}>

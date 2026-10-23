@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Input } from "@/components/ui/input";
 import { DueChip, LabelPill, StatusDot } from "@/components/shared/work-item";
 import { cn } from "@/lib/utils";
+import { LocalTime } from "@/components/shared/local-time";
 
 // The read-only board a public link shows (lib/board-share.ts decides what's in it).
 // Everything arrives as props; this page calls no server actions.
@@ -31,7 +32,7 @@ export function PublicBoardView({ board }: { board: PublicBoard }) {
           <h1 className="text-2xl font-semibold break-words">{board.name}</h1>
           <p className="mt-0.5 text-sm text-muted-foreground">
             {board.workspaceName} · {total} {total === 1 ? "card" : "cards"}
-            {board.updatedAt && <> · updated {new Date(board.updatedAt).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}</>}
+            {board.updatedAt && <> · updated <LocalTime iso={board.updatedAt} /></>}
           </p>
         </div>
         <div className="relative w-full sm:w-64">

@@ -20,6 +20,7 @@ import {
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
 import { SECTION_LABELS } from "@/lib/modules";
+import { SETTINGS_TABS } from "@/components/settings/settings-nav";
 
 // Detail pages register their entity's live name so the trailing crumb can show
 // it (the URL only carries an opaque id). Cleared automatically on unmount.
@@ -71,6 +72,40 @@ export function Breadcrumbs() {
 
   // Unknown top-level route — render nothing rather than a guess.
   if (!sectionLabel) return null;
+
+  // Settings pages are named by their tab, not by a page title.
+  if (section === "settings") {
+    const tab = SETTINGS_TABS.find((t) => t.href === `/settings/${segments[1]}`);
+    return (
+      <Breadcrumb>
+        <BreadcrumbList>
+          <BreadcrumbItem>
+            {tab ? (
+              <BreadcrumbLink asChild>
+                <Link href="/settings">{sectionLabel}</Link>
+              </BreadcrumbLink>
+            ) : (
+              <BreadcrumbPage>{sectionLabel}</BreadcrumbPage>
+            )}
+          </BreadcrumbItem>
+          {tab && (
+            <>
+              <BreadcrumbSeparator />
+              <BreadcrumbItem>
+                {segments.length > 2 ? (
+                  <BreadcrumbLink asChild>
+                    <Link href={tab.href}>{tab.label}</Link>
+                  </BreadcrumbLink>
+                ) : (
+                  <BreadcrumbPage>{tab.label}</BreadcrumbPage>
+                )}
+              </BreadcrumbItem>
+            </>
+          )}
+        </BreadcrumbList>
+      </Breadcrumb>
+    );
+  }
 
   const isDetail = segments.length > 1;
   // Sections that only have detail pages (/reviews/<id>) — never link to their bare

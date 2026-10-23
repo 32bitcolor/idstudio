@@ -13,8 +13,11 @@ function Select({ className, children, ...props }: React.ComponentProps<"select"
   // wants it sized to its content, so the wrapper must shrink too (otherwise every
   // inline `w-auto` dropdown silently stretched to a full row).
   const auto = /(^|\s)w-auto(\s|$)/.test(className ?? "")
+  // Width limits (w-48, max-w-xs, sm:w-56…) must size the wrapper too, or the
+  // chevron sits at the far edge of the row while the box stops short of it.
+  const widths = (className ?? "").split(/\s+/).filter((c) => /(^|:)(min-w|max-w|w)-/.test(c))
   return (
-    <div className={cn("relative inline-flex", auto ? "w-auto" : "w-full")}>
+    <div className={cn("relative inline-flex", auto ? "w-auto" : "w-full", widths)}>
       <select
         data-slot="select"
         className={cn(
