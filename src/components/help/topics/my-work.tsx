@@ -30,6 +30,10 @@ export default function MyWork() {
         <Def term="I'm waiting on">
           Open reviews <em>you</em> started: who&rsquo;s still reviewing, and when it&rsquo;s due.
         </Def>
+        <Def term="My intake requests">
+          Open intake requests assigned to you, with their status and needed-by date. Shown only when you
+          have some.
+        </Def>
         <Def term="My action items">Board cards assigned to you, with their board, column, and due date.</Def>
         <Def term="My subtasks">Open subtasks assigned to you, with the card they belong to.</Def>
         <Def term="Upcoming milestones">The next project milestones coming due, soonest first.</Def>

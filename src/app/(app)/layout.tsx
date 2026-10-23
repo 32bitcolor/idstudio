@@ -43,7 +43,10 @@ export default async function AppLayout({
       : Promise.resolve(0),
     membership
       ? prisma.intakeRequest.count({
-          where: { workspaceId: membership.workspaceId, status: { in: ["submitted", "triaging"] } },
+          // Admins and managers: everything awaiting triage. Members: what's assigned to them.
+          where: canViewTeam
+            ? { workspaceId: membership.workspaceId, status: { in: ["submitted", "triaging"] } }
+            : { workspaceId: membership.workspaceId, assignedToId: user.id, status: { in: ["submitted", "triaging", "needs_info"] } },
         })
       : Promise.resolve(0),
     membership

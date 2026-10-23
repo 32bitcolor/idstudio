@@ -20,7 +20,9 @@ function getTransport() {
   return transport;
 }
 
-export async function sendMail(msg: { to: string; subject: string; html: string; text: string }): Promise<void> {
+// replyTo lets a requester answer the person who wrote to them (intake "Ask for info"),
+// since the From address is a no-reply sender.
+export async function sendMail(msg: { to: string; subject: string; html: string; text: string; replyTo?: string }): Promise<void> {
   const t = getTransport();
   if (!t) return; // not configured — silent no-op, not an error
   await t.sendMail({ from: process.env.SMTP_FROM ?? "Tavoro <no-reply@haggabasin.com>", ...msg });

@@ -8,13 +8,15 @@ import { getCurrentUser, getActiveMembership } from "@/lib/dal";
 import { getIntakeRequestForUser } from "@/lib/authz";
 import { createProjectForWorkspace } from "@/lib/projects";
 import { checkIntakeThrottle } from "@/lib/intake-throttle";
-import { ticketLabel } from "@/lib/intake";
+import { canDecideIntake, canWorkIntake, isResolved, projectDescriptionFrom, ticketLabel, triageStatusFor } from "@/lib/intake";
 import { enqueueEmail } from "@/lib/queues";
 import {
   intakeSubmittedConfirmation,
   newIntakeRequestForAdmin,
   intakeApprovedNotification,
   intakeRejectedNotification,
+  intakeAssigned,
+  intakeInfoRequested,
   withLink,
 } from "@/lib/email-templates";
 import { appUrl } from "@/lib/app-url";
@@ -145,14 +147,45 @@ export async function submitIntakeRequest(
 }
 
 // ── Triage (authenticated) ──────────────────────────────────────────────────
+// Who may do what lives in lib/intake.ts (canDecideIntake / canWorkIntake).
+
+async function access(requestId: string) {
+  const request = await getIntakeRequestForUser(requestId);
+  if (!request) return null;
+  const me = await getCurrentUser();
+  if (!me) return null;
+  const membership = await prisma.membership.findFirst({
+    where: { userId: me.id, workspaceId: request.workspaceId, suspendedAt: null },
+    select: { role: true },
+  });
+  return {
+    request,
+    me,
+    decide: canDecideIntake(membership?.role),
+    work: canWorkIntake(membership?.role, me.id, request.assignedToId),
+  };
+}
+
+const NOT_FOUND = { error: "Request not found." };
+const DECIDE_ONLY = { error: "Only admins and managers can do that." };
+const WORK_ONLY = { error: "Only admins, managers and the assigned member can do that." };
+const RESOLVED = { error: "This request has already been decided." };
+
+function revalidateRequest(id: string) {
+  revalidateIntake();
+  revalidatePath(`/intake/${id}`);
+  revalidatePath("/my-work");
+}
 
 export async function scoreIntakeRequest(
   requestId: string,
   impact: number,
   effort: number,
 ): Promise<{ error: string } | undefined> {
-  const request = await getIntakeRequestForUser(requestId);
-  if (!request) return { error: "Request not found." };
+  const a = await access(requestId);
+  if (!a) return NOT_FOUND;
+  if (!a.work) return WORK_ONLY;
+  if (isResolved(a.request.status)) return RESOLVED;
   const impactParsed = Score.safeParse(impact);
   const effortParsed = Score.safeParse(effort);
   if (!impactParsed.success || !effortParsed.success) return { error: "Scores must be 1-5." };
@@ -162,56 +195,84 @@ export async function scoreIntakeRequest(
     data: {
       impactScore: impactParsed.data,
       effortScore: effortParsed.data,
-      status: request.status === "submitted" ? "triaging" : request.status,
+      status: a.request.status === "submitted" ? "triaging" : a.request.status,
     },
   });
-  revalidateIntake();
+  revalidateRequest(requestId);
 }
 
 export async function assignIntakeRequest(
   requestId: string,
   userId: string | null,
 ): Promise<{ error: string } | undefined> {
-  const request = await getIntakeRequestForUser(requestId);
-  if (!request) return { error: "Request not found." };
+  const a = await access(requestId);
+  if (!a) return NOT_FOUND;
+  if (!a.decide) return DECIDE_ONLY;
 
+  let assignee: { email: string; name: string | null } | null = null;
   if (userId) {
     const member = await prisma.membership.findFirst({
-      where: { userId, workspaceId: request.workspaceId, suspendedAt: null },
-      select: { id: true },
+      where: { userId, workspaceId: a.request.workspaceId, suspendedAt: null },
+      select: { user: { select: { email: true, name: true } } },
     });
     if (!member) return { error: "Must be a workspace member." };
+    assignee = member.user;
   }
 
   await prisma.intakeRequest.update({ where: { id: requestId }, data: { assignedToId: userId } });
-  revalidateIntake();
+
+  // Tell the new assignee, unless they assigned it to themselves.
+  if (assignee && userId !== a.me.id && userId !== a.request.assignedToId && (await notificationsEnabled(a.request.workspaceId, "assignment"))) {
+    await enqueueEmail({
+      to: assignee.email,
+      ...withLink(
+        intakeAssigned({
+          ticket: ticketLabel(a.request.number),
+          title: a.request.title,
+          requesterName: a.request.requesterName,
+          assignerName: a.me.name ?? a.me.email,
+        }),
+        appUrl(`/intake/${requestId}`),
+      ),
+    });
+  }
+  revalidateRequest(requestId);
 }
 
+const ApproveInput = z.object({
+  name: z.string().trim().min(1, "The project needs a name.").max(120),
+  methodology: z.enum(["ADDIE", "SAM", "CUSTOM"]),
+});
+
+/** Approve: create the project (named, with a methodology), carrying the request's
+ *  details into its description and its needed-by date as a milestone. */
 export async function approveIntakeRequest(
   requestId: string,
+  options?: { name?: string; methodology?: "ADDIE" | "SAM" | "CUSTOM" },
 ): Promise<{ error: string } | { project: { id: string } }> {
-  const request = await getIntakeRequestForUser(requestId);
-  if (!request) return { error: "Request not found." };
-  if (["approved", "converted", "rejected"].includes(request.status)) {
-    return { error: "This request has already been resolved." };
-  }
+  const a = await access(requestId);
+  if (!a) return NOT_FOUND;
+  if (!a.decide) return DECIDE_ONLY;
+  if (isResolved(a.request.status)) return RESOLVED;
+  const parsed = ApproveInput.safeParse({ name: options?.name ?? a.request.title, methodology: options?.methodology ?? "ADDIE" });
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid project." };
 
-  const project = await createProjectForWorkspace(request.workspaceId, request.title, "ADDIE");
+  const r = a.request;
+  const project = await createProjectForWorkspace(r.workspaceId, parsed.data.name, parsed.data.methodology, {
+    description: projectDescriptionFrom(r),
+    milestone: r.targetDate ? { name: `Needed by ${r.requesterName}`.slice(0, 120), dueDate: r.targetDate } : null,
+  });
   await prisma.intakeRequest.update({
     where: { id: requestId },
-    data: { status: "converted", convertedProjectId: project.id },
+    data: { status: "converted", convertedProjectId: project.id, decidedById: a.me.id, decidedAt: new Date(), rejectionReason: null },
   });
 
   await enqueueEmail({
-    to: request.requesterEmail,
-    ...intakeApprovedNotification({
-      ticket: ticketLabel(request.number),
-      title: request.title,
-      workspaceName: request.workspace.name,
-    }),
+    to: r.requesterEmail,
+    ...intakeApprovedNotification({ ticket: ticketLabel(r.number), title: r.title, workspaceName: r.workspace.name }),
   });
 
-  revalidateIntake();
+  revalidateRequest(requestId);
   revalidatePath("/projects");
   return { project };
 }
@@ -220,25 +281,79 @@ export async function rejectIntakeRequest(
   requestId: string,
   reason: string,
 ): Promise<{ error: string } | undefined> {
-  const request = await getIntakeRequestForUser(requestId);
-  if (!request) return { error: "Request not found." };
+  const a = await access(requestId);
+  if (!a) return NOT_FOUND;
+  if (!a.decide) return DECIDE_ONLY;
+  if (isResolved(a.request.status)) return RESOLVED;
   const rejectionReason = reason.trim() ? reason.trim().slice(0, 500) : null;
   await prisma.intakeRequest.update({
     where: { id: requestId },
-    data: { status: "rejected", rejectionReason },
+    data: { status: "rejected", rejectionReason, decidedById: a.me.id, decidedAt: new Date() },
   });
 
   await enqueueEmail({
-    to: request.requesterEmail,
+    to: a.request.requesterEmail,
     ...intakeRejectedNotification({
-      ticket: ticketLabel(request.number),
-      title: request.title,
-      workspaceName: request.workspace.name,
+      ticket: ticketLabel(a.request.number),
+      title: a.request.title,
+      workspaceName: a.request.workspace.name,
       reason: rejectionReason,
     }),
   });
 
-  revalidateIntake();
+  revalidateRequest(requestId);
+}
+
+/** Put a rejected request back in the queue. The requester isn't emailed: they hear
+ *  again when it's decided. */
+export async function reopenIntakeRequest(requestId: string): Promise<{ error: string } | undefined> {
+  const a = await access(requestId);
+  if (!a) return NOT_FOUND;
+  if (!a.decide) return DECIDE_ONLY;
+  if (a.request.status !== "rejected") return { error: "Only a rejected request can be reopened." };
+  await prisma.intakeRequest.update({
+    where: { id: requestId },
+    data: { status: triageStatusFor(a.request), rejectionReason: null, decidedById: null, decidedAt: null },
+  });
+  revalidateRequest(requestId);
+}
+
+/** Email the requester a question; the request waits in "Needs info" until someone
+ *  marks the answer received. Their reply comes back by email, to whoever asked. */
+export async function askIntakeRequester(requestId: string, question: string): Promise<{ error: string } | undefined> {
+  const a = await access(requestId);
+  if (!a) return NOT_FOUND;
+  if (!a.work) return WORK_ONLY;
+  if (isResolved(a.request.status)) return RESOLVED;
+  const q = question.trim().slice(0, 2000);
+  if (!q) return { error: "Write the question to send." };
+
+  await prisma.intakeRequest.update({
+    where: { id: requestId },
+    data: { status: "needs_info", infoQuestion: q, infoRequestedAt: new Date() },
+  });
+  await enqueueEmail({
+    to: a.request.requesterEmail,
+    replyTo: a.me.email,
+    ...intakeInfoRequested({
+      ticket: ticketLabel(a.request.number),
+      title: a.request.title,
+      workspaceName: a.request.workspace.name,
+      askerName: a.me.name ?? a.me.email,
+      question: q,
+    }),
+  });
+  revalidateRequest(requestId);
+}
+
+/** The requester answered: back to triage. */
+export async function resumeIntakeTriage(requestId: string): Promise<{ error: string } | undefined> {
+  const a = await access(requestId);
+  if (!a) return NOT_FOUND;
+  if (!a.work) return WORK_ONLY;
+  if (a.request.status !== "needs_info") return { error: "This request isn't waiting on the requester." };
+  await prisma.intakeRequest.update({ where: { id: requestId }, data: { status: triageStatusFor(a.request) } });
+  revalidateRequest(requestId);
 }
 
 // ── Settings ─────────────────────────────────────────────────────────────────

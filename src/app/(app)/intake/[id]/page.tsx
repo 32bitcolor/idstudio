@@ -1,32 +1,62 @@
 import { notFound, redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
-import { getActiveMembership } from "@/lib/dal";
+import { getActiveMembership, requireUser } from "@/lib/dal";
 import { getIntakeRequestForUser } from "@/lib/authz";
+import { canDecideIntake } from "@/lib/intake";
 import { PageContainer, PageHeader } from "@/components/shared/page";
 import { RequestDetail } from "@/components/intake/request-detail";
 
 export const metadata = { title: "Request · Tavoro" };
 
 export default async function IntakeRequestPage({ params }: { params: Promise<{ id: string }> }) {
+  const me = await requireUser();
   const membership = await getActiveMembership();
   if (!membership) redirect("/login");
+  const decide = canDecideIntake(membership.role);
 
   const { id } = await params;
   const request = await getIntakeRequestForUser(id);
   if (!request) notFound();
 
-  const members = await prisma.membership.findMany({
-    where: { workspaceId: membership.workspaceId, suspendedAt: null },
-    select: { user: { select: { id: true, name: true, email: true } } },
-  });
+  const [members, decidedBy] = await Promise.all([
+    prisma.membership.findMany({
+      where: { workspaceId: membership.workspaceId, suspendedAt: null },
+      select: { user: { select: { id: true, name: true, email: true } } },
+    }),
+    request.decidedById
+      ? prisma.user.findUnique({ where: { id: request.decidedById }, select: { name: true, email: true } })
+      : Promise.resolve(null),
+  ]);
 
   return (
     <PageContainer size="wide">
       <PageHeader title={request.title} />
       <div className="mt-6">
         <RequestDetail
-          request={{ ...request, targetDate: request.targetDate?.toISOString() ?? null }}
+          request={{
+            id: request.id,
+            number: request.number,
+            title: request.title,
+            description: request.description,
+            requesterName: request.requesterName,
+            // Requester emails are for admins and managers only.
+            requesterEmail: decide ? request.requesterEmail : null,
+            targetAudience: request.targetAudience,
+            targetDate: request.targetDate?.toISOString() ?? null,
+            impactScore: request.impactScore,
+            effortScore: request.effortScore,
+            status: request.status,
+            assignedToId: request.assignedToId,
+            rejectionReason: request.rejectionReason,
+            convertedProjectId: request.convertedProjectId,
+            infoQuestion: request.infoQuestion,
+            infoRequestedAt: request.infoRequestedAt?.toISOString() ?? null,
+            decidedAt: request.decidedAt?.toISOString() ?? null,
+            decidedBy: decidedBy ? (decidedBy.name ?? decidedBy.email) : null,
+            createdAt: request.createdAt.toISOString(),
+          }}
           members={members.map((m) => m.user)}
+          viewer={{ id: me.id, role: membership.role, decide }}
         />
       </div>
     </PageContainer>

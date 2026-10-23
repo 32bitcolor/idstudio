@@ -100,6 +100,45 @@ ${reason ? `<p>${esc(reason)}</p>` : ""}`,
   };
 }
 
+export function intakeAssigned(params: {
+  ticket: string;
+  title: string;
+  requesterName: string;
+  assignerName: string;
+}): Email {
+  const { ticket, title, requesterName, assignerName } = params;
+  return {
+    subject: `Assigned to you — ${ticket}: ${title}`,
+    html: layout(
+      "An intake request is yours",
+      `<p>${esc(assignerName)} assigned you <strong>${esc(ticket)}</strong>, from ${esc(requesterName)}.</p>
+<p>${esc(title)}</p>`,
+    ),
+    text: `${assignerName} assigned you ${ticket}, from ${requesterName}.\n${title}`,
+  };
+}
+
+export function intakeInfoRequested(params: {
+  ticket: string;
+  title: string;
+  workspaceName: string;
+  askerName: string;
+  question: string;
+}): Email {
+  const { ticket, title, workspaceName, askerName, question } = params;
+  return {
+    subject: `A question about your request — ${ticket}`,
+    html: layout(
+      "A question about your request",
+      `<p>Reference: <strong>${esc(ticket)}</strong> · ${esc(title)}</p>
+<p>${esc(askerName)} from the ${esc(workspaceName)} team asks:</p>
+<blockquote style="margin:12px 0;padding:8px 12px;border-left:3px solid #ccc;white-space:pre-wrap">${esc(question)}</blockquote>
+<p>Just reply to this email to answer.</p>`,
+    ),
+    text: `Reference: ${ticket} · ${title}\n\n${askerName} from the ${workspaceName} team asks:\n\n${question}\n\nJust reply to this email to answer.`,
+  };
+}
+
 export function subtaskAssigned(params: {
   assigneeName: string;
   subtaskText: string;

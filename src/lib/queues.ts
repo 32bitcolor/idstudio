@@ -15,7 +15,7 @@ if (process.env.NODE_ENV !== "production") globalForQueue.emailQueue = emailQueu
 // Fire-and-forget from the caller's perspective: a Redis hiccup while enqueuing
 // must never fail the underlying approve/reject/submit action, so failures here
 // are logged, not thrown — same fail-open posture as checkIntakeThrottle.
-export async function enqueueEmail(msg: { to: string; subject: string; html: string; text: string }): Promise<void> {
+export async function enqueueEmail(msg: { to: string; subject: string; html: string; text: string; replyTo?: string }): Promise<void> {
   try {
     await emailQueue.add("send", msg, { attempts: 3, backoff: { type: "exponential", delay: 5000 } });
   } catch (err) {

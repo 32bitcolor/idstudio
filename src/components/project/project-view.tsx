@@ -24,7 +24,9 @@ import {
 import type { RoundSummary } from "@/components/project/review-rounds";
 import { ProjectContextStrip, type ProjectContext } from "@/components/board/project-context-strip";
 import { useSetPageTitle } from "@/components/app-shell/breadcrumbs";
-import { ChevronUp, ChevronDown, X } from "lucide-react";
+import Link from "next/link";
+import { ChevronUp, ChevronDown, Inbox, X } from "lucide-react";
+import { ticketLabel } from "@/lib/intake";
 import { AddRowButton, ListPanel, PageContainer, PageHeader, ROW_ACTIONS, SectionHeader } from "@/components/shared/page";
 import { StatusDot, type StatusCategory } from "@/components/shared/work-item";
 import { cn } from "@/lib/utils";
@@ -60,6 +62,8 @@ type ProjectMeta = {
   methodology: string;
   status: string;
   sprintsEnabled: boolean;
+  /** The intake request this project was approved from, if any. */
+  fromRequest: { id: string; number: number } | null;
 };
 
 const NEXT_STATUS: Record<string, PhaseStatus> = {
@@ -214,6 +218,16 @@ export function ProjectView({
         actions={
           <>
             <StatusBadge tone="neutral">{project.methodology}</StatusBadge>
+            {project.fromRequest && (
+              <Link
+                href={`/intake/${project.fromRequest.id}`}
+                className="inline-flex h-6 items-center gap-1 rounded-full bg-muted px-2.5 text-xs font-semibold text-muted-foreground hover:text-foreground"
+                title="The intake request this project came from"
+              >
+                <Inbox className="size-3.5" aria-hidden="true" />
+                From {ticketLabel(project.fromRequest.number)}
+              </Link>
+            )}
             <label className="flex items-center gap-2 text-sm">
               <input
                 type="checkbox"
@@ -257,7 +271,7 @@ export function ProjectView({
         onChange={(e) => setDescription(e.target.value)}
         onBlur={() => updateProjectDescription(project.id, description)}
         placeholder="Add a project description…"
-        rows={2}
+        rows={Math.min(10, Math.max(2, description.split("\n").length))}
         className="mt-4 resize-none"
       />
 

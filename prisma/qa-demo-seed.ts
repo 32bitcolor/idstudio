@@ -1383,7 +1383,7 @@ async function main() {
 
   const INTAKE: {
     title: string; desc: string; requester: [string, string]; audience?: string; target?: number; status: string;
-    impact?: number; effort?: number; assignee?: string; reason?: string; project?: string; age: number; byMember?: string;
+    impact?: number; effort?: number; assignee?: string; reason?: string; project?: string; age: number; byMember?: string; question?: string;
   }[] = [
     {
       title: "Training on the new expense policy", desc: "Finance is rolling out new expense rules on the 1st. Can we get something short in front of everyone before then?",
@@ -1416,7 +1416,8 @@ async function main() {
     },
     {
       title: "Excel for analysts: pivot tables & lookups", desc: "Analysts keep asking the same Excel questions. A short self-paced path would save the BI team hours each week.",
-      requester: ["Omar Haddad", "omar.haddad@example.com"], audience: "Business analysts (~60)", target: 40, status: "approved", impact: 3, effort: 1, assignee: "sam", age: 11,
+      requester: ["Omar Haddad", "omar.haddad@example.com"], audience: "Business analysts (~60)", target: 40, status: "needs_info", impact: 3, effort: 1, assignee: "sam", age: 11,
+      question: "Which Excel version do the analysts use (Microsoft 365 or 2019)? And would a 30-minute live session work, or does it need to be self-paced?",
     },
   ];
   for (const [n, r] of INTAKE.entries()) {
@@ -1428,6 +1429,8 @@ async function main() {
         impactScore: r.impact ?? null, effortScore: r.effort ?? null, status: r.status,
         assignedToId: r.assignee ? users[r.assignee].id : null, rejectionReason: r.reason ?? null,
         convertedProjectId: r.project ?? null, createdAt: day(-r.age, 10), updatedAt: day(-Math.max(r.age - 2, 0), 11),
+        infoQuestion: r.question ?? null, infoRequestedAt: r.question ? day(-Math.max(r.age - 3, 0), 9) : null,
+        ...(r.status === "converted" || r.status === "rejected" ? { decidedById: users.maya.id, decidedAt: day(-Math.max(r.age - 2, 0), 11) } : {}),
       },
     });
   }

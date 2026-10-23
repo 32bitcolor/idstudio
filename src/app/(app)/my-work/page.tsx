@@ -1,12 +1,13 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { ClipboardCheck, Columns3, Flag, ListChecks, Send, Shapes } from "lucide-react";
+import { ClipboardCheck, Columns3, Flag, Inbox, ListChecks, Send, Shapes } from "lucide-react";
 
 import { prisma } from "@/lib/db";
 import { requireUser, getActiveMembership } from "@/lib/dal";
 import { projectVisibilityWhere, boardVisibilityWhere, whiteboardVisibilityWhere } from "@/lib/authz";
 import { dueMeta, dueToneClass } from "@/lib/due";
 import { REVIEW_STATUS_LABEL, type ReviewStatus } from "@/lib/methodology";
+import { INTAKE_STATUS_LABEL, OPEN_STATUSES, intakeStatusTone, ticketLabel, type IntakeStatus } from "@/lib/intake";
 import { SectionHeader } from "@/components/shared/page";
 import { EmptyState } from "@/components/shared/empty-state";
 import { StatusBadge } from "@/components/shared/status-badge";
@@ -33,7 +34,7 @@ export default async function MyWorkPage() {
     whiteboardVisibilityWhere(),
   ]);
 
-  const [toReview, requested, cards, subtasks, milestones, myWhiteboards] = await Promise.all([
+  const [toReview, requested, cards, subtasks, milestones, myWhiteboards, myRequests] = await Promise.all([
     prisma.reviewCycle.findMany({
       where: {
         reviewerId: me.id,
@@ -93,6 +94,12 @@ export default async function MyWorkPage() {
       orderBy: { updatedAt: "desc" },
       select: { id: true, title: true },
     }),
+    // Open intake requests assigned to me.
+    prisma.intakeRequest.findMany({
+      where: { workspaceId: wsId, assignedToId: me.id, status: { in: [...OPEN_STATUSES] } },
+      orderBy: [{ targetDate: "asc" }, { createdAt: "asc" }],
+      select: { id: true, number: true, title: true, status: true, targetDate: true, requesterName: true },
+    }),
   ]);
 
   const inbox: InboxReview[] = toReview.map((r) => ({
@@ -109,7 +116,8 @@ export default async function MyWorkPage() {
     link: artifactLink(r.deliverable),
   }));
 
-  const totalItems = inbox.length + requested.length + cards.length + subtasks.length + milestones.length + myWhiteboards.length;
+  const totalItems =
+    inbox.length + requested.length + myRequests.length + cards.length + subtasks.length + milestones.length + myWhiteboards.length;
 
   if (totalItems === 0) {
     return (
@@ -117,7 +125,7 @@ export default async function MyWorkPage() {
         className="mt-4"
         icon={ClipboardCheck}
         title="You're all caught up"
-        description="No open reviews, assigned cards or subtasks, upcoming milestones, or whiteboards right now."
+        description="No open reviews, intake requests, assigned cards or subtasks, upcoming milestones, or whiteboards right now."
       />
     );
   }
@@ -165,6 +173,31 @@ export default async function MyWorkPage() {
           </Card>
         )}
       </section>
+
+      {/* Intake requests assigned to me — only shown when there are some */}
+      {myRequests.length > 0 && (
+        <section>
+          <SectionHeader>My intake requests · {myRequests.length}</SectionHeader>
+          <Card className="divide-y divide-border p-0">
+            {myRequests.map((r) => {
+              const due = dueMeta(r.targetDate);
+              return (
+                <Link key={r.id} href={`/intake/${r.id}`} className="flex flex-wrap items-center gap-3 px-5 py-3 hover:bg-muted/50">
+                  <Inbox className="size-4 shrink-0 text-muted-foreground" />
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate font-medium">{r.title}</div>
+                    <div className="truncate text-sm text-muted-foreground">
+                      {ticketLabel(r.number)} · from {r.requesterName}
+                    </div>
+                  </div>
+                  <StatusBadge tone={intakeStatusTone(r.status)}>{INTAKE_STATUS_LABEL[r.status as IntakeStatus] ?? r.status}</StatusBadge>
+                  {due && <span className={`text-xs ${dueToneClass[due.tone]}`}>{due.label}</span>}
+                </Link>
+              );
+            })}
+          </Card>
+        </section>
+      )}
 
       {/* My action items — assigned cards */}
       <section>

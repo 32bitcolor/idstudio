@@ -179,7 +179,7 @@ export function registerProjectTools(server: McpServer) {
       input: {
         name: z.string().min(1).max(120),
         methodology: z.enum(["ADDIE", "SAM", "CUSTOM"]).default("ADDIE"),
-        description: z.string().max(2000).optional(),
+        description: z.string().max(5000).optional(),
       },
       kind: "write",
     },
@@ -199,7 +199,7 @@ export function registerProjectTools(server: McpServer) {
       input: {
         project_id: z.string().min(1),
         name: z.string().min(1).max(120).optional(),
-        description: z.string().max(2000).optional(),
+        description: z.string().max(5000).optional(),
         status: z.enum(PROJECT_STATUSES).optional(),
       },
       kind: "write",

@@ -1,4 +1,4 @@
-import { Lead, H2, H3, P, Steps, Callout, DefList, Def, UI, Screenshot } from "@/components/help/prose";
+import { Lead, H2, H3, P, Steps, Callout, DefList, Def, UI, Screenshot, Table } from "@/components/help/prose";
 
 export default function Intake() {
   return (
@@ -50,19 +50,42 @@ export default function Intake() {
       </Callout>
 
       <H2>The triage queue</H2>
-      <Screenshot name="intake-queue" alt="The Intake queue listing requests with their reference numbers, status, impact and effort scores, and quadrant" caption="The triage queue: unscored requests first, then by priority." />
+      <Screenshot name="intake-queue" alt="The Intake queue with Open, Converted and Rejected tabs, a search box, and requests showing their reference numbers, status, scores and quadrant" caption="The triage queue: open requests, unscored first, then by priority." />
       <P>
-        Everything that comes in appears on the <UI>Intake</UI> page in the sidebar. The queue sorts
-        itself so the work that needs attention floats up: untriaged requests come first, then
-        everything you&rsquo;ve scored, ordered by priority &mdash; highest first. Each row shows the
-        reference number, current status, an impact/effort quadrant once scored, and the{" "}
-        <UI>Needed by</UI> date (highlighted when it&rsquo;s close or past).
+        Everything that comes in appears on the <UI>Intake</UI> page in the sidebar. Three tabs split
+        the queue: <UI>Open</UI> (submitted, triaging, or waiting on the requester), <UI>Converted</UI>,
+        and <UI>Rejected</UI>, each with its count. On the Open tab the work that needs attention floats
+        up: untriaged requests first, then everything you&rsquo;ve scored, ordered by priority &mdash;
+        highest first. The other two tabs list the most recent decisions first.
       </P>
       <P>
-        Click a request&rsquo;s title to open its full detail page, where you&rsquo;ll find the whole
-        description, the audience, the requester&rsquo;s contact info, and the same triage controls
-        with room to reject.
+        Each row shows the reference number, current status, an impact/effort quadrant once scored, and
+        the <UI>Needed by</UI> date (highlighted when it&rsquo;s close or past). <UI>Search requests…</UI>{" "}
+        matches the title, the requester&rsquo;s name, or a reference like <UI>REQ-14</UI>, and{" "}
+        <UI>Assigned to me</UI> narrows the list to yours. Click a title to open the request&rsquo;s page:
+        the whole description, the audience, the requester, and every action.
       </P>
+      <P>
+        The <UI>Intake</UI> button in the header shows a count: for admins and managers, the requests
+        waiting to be triaged; for everyone else, the open requests assigned to them.
+      </P>
+
+      <H3>Who can do what</H3>
+      <P>
+        Every member can see the queue and every request. Deciding is for admins and managers, and the
+        person a request is assigned to can do the groundwork on it.
+      </P>
+      <Table
+        head={["", "Admins & managers", "Assigned member", "Other members"]}
+        rows={[
+          ["See requests", "Yes", "Yes", "Yes"],
+          ["See the requester\u2019s email", "Yes", "No", "No"],
+          ["Score impact and effort", "Yes", "Yes", "No"],
+          ["Ask the requester a question", "Yes", "Yes", "No"],
+          ["Assign", "Yes", "No", "No"],
+          ["Approve, reject, reopen", "Yes", "No", "No"],
+        ]}
+      />
 
       <H2>Scoring and assigning</H2>
       <P>
@@ -81,7 +104,10 @@ export default function Intake() {
         </Def>
         <Def term="Assigned to">
           Hand the request to a workspace member with the <UI>Assign to</UI> dropdown, or leave it{" "}
-          <UI>Unassigned</UI>. Assigning gives it an owner while it&rsquo;s still just a request.
+          <UI>Unassigned</UI>. Assigning gives it an owner while it&rsquo;s still just a request: they&rsquo;re
+          emailed a link (unless they assigned it to themselves, or <UI>Assignments</UI> emails are off in{" "}
+          <UI>Settings → Notifications</UI>), it shows under <UI>My intake requests</UI> in their My Work,
+          and they can score it and ask the requester questions.
         </Def>
       </DefList>
 
@@ -113,32 +139,78 @@ export default function Intake() {
           You&rsquo;ve started scoring it. A working state &mdash; it has an impact and effort read
           but no final decision.
         </Def>
+        <Def term="Needs info">
+          Someone asked the requester a question and is waiting for the answer. It stays on the Open tab
+          but out of the header count, since the next move is the requester&rsquo;s.
+        </Def>
         <Def term="Converted">
           Approved and turned into a real project. The request links straight to it.
         </Def>
         <Def term="Rejected">
-          Declined, with a reason captured for the record and for the requester.
+          Declined, with a reason captured for the record and for the requester. An admin or manager
+          can reopen it.
         </Def>
       </DefList>
 
-      <H2>Approving and rejecting</H2>
+      <H2>Asking the requester for more</H2>
       <P>
-        When a request is worth doing, use <UI>Approve &amp; create project</UI>. Tavoro spins up a
-        new <strong>ADDIE</strong> project from the request&rsquo;s title, marks the request as{" "}
-        <UI>Converted</UI>, and links the two so you can jump between them. You&rsquo;ll be dropped
-        straight onto the new project to start planning. You can also choose <UI>Approve</UI> right on
-        the queue row. (Approving asks you to confirm first, since it creates real work.)
+        Requests often arrive thin: no audience, no sense of what success looks like. Rather than guess,
+        ask.
+      </P>
+      <Steps>
+        <>
+          On the request&rsquo;s page, choose <UI>Ask the requester…</UI>, write your question, and{" "}
+          <UI>Send question</UI>.
+        </>
+        <>
+          The requester gets an email with your question. Their reply goes straight to <em>your</em>{" "}
+          inbox (the email&rsquo;s reply address is yours), and the request shows <UI>Needs info</UI> with
+          the question on its page.
+        </>
+        <>
+          When they&rsquo;ve answered, choose <UI>Answer received · back to triage</UI>. The request returns
+          to <UI>Triaging</UI> (or <UI>Submitted</UI>, if it hasn&rsquo;t been scored yet). Paste anything
+          worth keeping into the project description once it&rsquo;s approved.
+        </>
+      </Steps>
+
+      <H2>Approving and rejecting</H2>
+      <Screenshot name="intake-approve" alt="The Approve and create a project dialog, with the project name and a methodology choice of ADDIE, SAM or Custom" caption="Approving: name the project and pick its methodology." />
+      <P>
+        When a request is worth doing, use <UI>Approve &amp; create project</UI> on its page (or{" "}
+        <UI>Approve</UI> on the queue row). Name the project (it starts as the request&rsquo;s title) and
+        pick a methodology: <UI>ADDIE</UI>, <UI>SAM</UI>, or <UI>Custom</UI> with no phases yet. The new
+        project starts with what the requester told you:
+      </P>
+      <DefList>
+        <Def term="Description">
+          The request&rsquo;s description, its audience and needed-by date, and who asked (for example{" "}
+          <em>Requested by Dana Lee (REQ-14)</em>). Edit it freely afterwards.
+        </Def>
+        <Def term="Milestone">
+          When the request had a needed-by date, a milestone on that date called{" "}
+          <em>Needed by &lt;requester&gt;</em>.
+        </Def>
+        <Def term="Link back">
+          A <UI>From REQ-14</UI> tag beside the methodology on the project, which opens the request.
+        </Def>
+      </DefList>
+      <P>
+        The request becomes <UI>Converted</UI>, records who approved it and when, and you land on the new
+        project to start planning.
       </P>
       <P>
-        When a request isn&rsquo;t a fit, click <UI>Reject</UI>, add a short reason (optional, but
-        kind), and <UI>Confirm reject</UI>. The reason is saved on the request so the decision
-        stays transparent later. Approving or rejecting is final &mdash; a resolved request drops its
-        triage controls.
+        When a request isn&rsquo;t a fit, choose <UI>Reject…</UI>, add a short reason (optional, but
+        kind; it&rsquo;s emailed to the requester), and <UI>Confirm reject</UI>. The request records the
+        reason, who rejected it and when. If it was a mistake, or things change, an admin or manager can{" "}
+        <UI>Reopen</UI> it: it goes back to the queue without emailing the requester, who hears again when
+        it&rsquo;s decided. A converted request can&rsquo;t be reopened; its project carries the work.
       </P>
 
       <Callout tone="note" title="Emails go out automatically">
         The requester always gets a confirmation email the moment they submit, and a decision email
-        when you approve or reject &mdash; those are transactional and can&rsquo;t be switched off.
+        when you approve or reject, and any question you send them &mdash; those are transactional and
+        can&rsquo;t be switched off.
         Workspace admins can also get a heads-up email on each new request; that one respects the{" "}
         <UI>Intake</UI> toggle in <UI>Settings → Notifications</UI>. See the Notifications article for
         the full picture.
@@ -148,7 +220,7 @@ export default function Intake() {
       <P>
         Intake is the top of the funnel: it&rsquo;s where demand enters, gets weighed, and turns into
         committed work. Approved requests flow directly
-        into <em>Projects</em>, where the ADDIE methodology carries them from analysis through
+        into <em>Projects</em>, where their methodology carries them from analysis through
         evaluation. Think of Intake as deciding <em>whether</em> and <em>what</em>, and Projects as
         running the <em>how</em>.
       </P>

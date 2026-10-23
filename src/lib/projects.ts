@@ -10,6 +10,7 @@ export async function createProjectForWorkspace(
   workspaceId: string,
   name: string,
   methodology: Methodology = "ADDIE",
+  extra: { description?: string | null; milestone?: { name: string; dueDate: Date } | null } = {},
 ): Promise<{ id: string }> {
   const phaseNames = METHODOLOGY_PHASES[methodology];
   const positions = positionsAfter(null, phaseNames.length);
@@ -18,7 +19,11 @@ export async function createProjectForWorkspace(
       workspaceId,
       name,
       methodology,
+      description: extra.description ?? null,
       phases: { create: phaseNames.map((n, i) => ({ name: n, position: positions[i] })) },
+      ...(extra.milestone
+        ? { milestones: { create: { name: extra.milestone.name, dueDate: extra.milestone.dueDate, position: positionsAfter(null, 1)[0] } } }
+        : {}),
     },
     select: { id: true },
   });

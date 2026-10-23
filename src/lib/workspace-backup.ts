@@ -12,7 +12,7 @@ import { newGuestNonce } from "@/lib/review-guest-token";
 // can be restored into the same instance (a copy) or a fresh one (disaster
 // recovery). Media re-uploads to object storage under new keys.
 
-export const BACKUP_FORMAT = 8; // bump when the shape changes
+export const BACKUP_FORMAT = 9; // bump when the shape changes
 
 const WS = "__ws";
 const USER = "__user";
@@ -56,6 +56,14 @@ const SPECS: Spec[] = [
     where: (w) => ({ workspaceId: w }),
     fks: { workspaceId: WS, projectId: "project" },
     omit: ["publicNonce", "publicSharedAt", "publicSharedById"],
+  },
+  // Intake requests (after Project, for convertedProjectId). Numbers are per workspace,
+  // so a restored copy keeps its REQ-n tickets.
+  {
+    key: "intakeRequest",
+    model: "intakeRequest",
+    where: (w) => ({ workspaceId: w }),
+    fks: { workspaceId: WS, convertedProjectId: "project", requestedById: USER, assignedToId: USER, decidedById: USER },
   },
   { key: "column", model: "column", where: (w) => ({ board: { workspaceId: w } }), fks: { boardId: "board", statusId: "workspaceStatus" } },
   // A subtask is a Card with columnId null and parentCardId set — the OR clause

@@ -47,7 +47,7 @@ export async function updateProjectDescription(projectId: string, description: s
   if (!project) return { error: "Project not found." };
   await prisma.project.update({
     where: { id: projectId },
-    data: { description: description.trim() ? description.trim().slice(0, 2000) : null },
+    data: { description: description.trim() ? description.trim().slice(0, 5000) : null },
   });
   revalidatePath(projectPath(projectId));
 }

@@ -31,7 +31,7 @@ export default function Notifications() {
 
       <DefList>
         <Def term="Assignments">
-          When someone is assigned to a card or subtask, or named as an SME.
+          When someone is assigned to a card, subtask or intake request, or named as an SME.
         </Def>
         <Def term="Status changes">
           When a card moves to a new status, or a subtask is completed or reopened.
@@ -73,7 +73,8 @@ export default function Notifications() {
       <Callout tone="tip">
         Emails to external stakeholders who can&rsquo;t sign in (for example, an intake requester confirming
         their submission) skip the button, since there&rsquo;s nothing for them to open. Everyone with a
-        workspace account gets the link.
+        workspace account gets the link. When someone asks an intake requester a question, the email&rsquo;s
+        reply address is the asker&rsquo;s own, so the answer reaches a person rather than a no-reply inbox.
       </Callout>
 
       <H2>@-mentions in comments and descriptions</H2>

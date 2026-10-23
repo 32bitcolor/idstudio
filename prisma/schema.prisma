@@ -47,6 +47,7 @@ model User {
   ssoIdentities           SsoIdentity[]
   idpGroupMemberships     IdpGroupMember[]
   publicBoards            Board[]           @relation("BoardPublicSharer")
+  intakeDecisions         IntakeRequest[]   @relation("IntakeDecider")
 }
 
 model Workspace {
@@ -473,10 +474,16 @@ model IntakeRequest {
   impactScore Int? // 1-5, null until triaged
   effortScore Int? // 1-5, null until triaged
 
-  status             String  @default("submitted") // submitted / triaging / approved / rejected / converted
+  status             String    @default("submitted") // submitted / triaging / needs_info / rejected / converted (lib/intake.ts)
   assignedToId       String?
   rejectionReason    String?
-  convertedProjectId String? @unique
+  convertedProjectId String?   @unique
+  // Who approved or rejected it, and when (cleared when a rejected request is reopened).
+  decidedById        String?
+  decidedAt          DateTime?
+  // The last question sent to the requester ("Ask for info"); kept after triage resumes.
+  infoQuestion       String?
+  infoRequestedAt    DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -485,6 +492,7 @@ model IntakeRequest {
   requestedBy      User?     @relation("IntakeRequester", fields: [requestedById], references: [id], onDelete: SetNull)
   assignedTo       User?     @relation("IntakeAssignee", fields: [assignedToId], references: [id], onDelete: SetNull)
   convertedProject Project?  @relation(fields: [convertedProjectId], references: [id], onDelete: SetNull)
+  decidedBy        User?     @relation("IntakeDecider", fields: [decidedById], references: [id], onDelete: SetNull)
 
   @@unique([workspaceId, number])
   @@index([workspaceId, status])

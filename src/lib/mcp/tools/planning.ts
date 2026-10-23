@@ -3,9 +3,17 @@ import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { prisma } from "@/lib/db";
 import { boardVisibilityWhere, getIntakeRequestForUser } from "@/lib/authz";
-import { INTAKE_STATUSES, priorityScore, quadrantLabel, ticketLabel } from "@/lib/intake";
+import { canDecideIntake, INTAKE_STATUSES, priorityScore, quadrantLabel, ticketLabel } from "@/lib/intake";
 import { SPRINT_STATUSES } from "@/lib/sprint";
-import { approveIntakeRequest, assignIntakeRequest, rejectIntakeRequest, scoreIntakeRequest } from "@/app/actions/intake";
+import {
+  approveIntakeRequest,
+  askIntakeRequester,
+  assignIntakeRequest,
+  rejectIntakeRequest,
+  reopenIntakeRequest,
+  resumeIntakeTriage,
+  scoreIntakeRequest,
+} from "@/app/actions/intake";
 import { createSprint, renameSprint, setSprintDates, setSprintStatus } from "@/app/actions/sprints";
 import { check, day, link, parseDate, principal, tool, ToolError } from "@/lib/mcp/util";
 import { resolveMember, resolveSprint } from "@/lib/mcp/tools/cards";
@@ -23,7 +31,15 @@ async function resolveIntake(ref: string) {
   return req.id;
 }
 
-export async function loadIntake(id: string) {
+// Requester emails are for admins and managers, as in the app.
+async function seesRequesterEmail(): Promise<boolean> {
+  const p = principal();
+  const m = await prisma.membership.findFirst({ where: { userId: p.userId, workspaceId: p.workspaceId, suspendedAt: null }, select: { role: true } });
+  return canDecideIntake(m?.role);
+}
+
+export async function loadIntake(id: string, showEmail?: boolean) {
+  const withEmail = showEmail ?? (await seesRequesterEmail());
   const r = await prisma.intakeRequest.findUniqueOrThrow({
     where: { id },
     select: {
@@ -39,6 +55,10 @@ export async function loadIntake(id: string) {
       effortScore: true,
       status: true,
       rejectionReason: true,
+      infoQuestion: true,
+      infoRequestedAt: true,
+      decidedAt: true,
+      decidedBy: { select: { name: true, email: true } },
       createdAt: true,
       assignedTo: { select: { id: true, name: true, email: true } },
       convertedProject: { select: { id: true, name: true } },
@@ -50,7 +70,7 @@ export async function loadIntake(id: string) {
     title: r.title,
     status: r.status,
     description: r.description,
-    requester: { name: r.requesterName, email: r.requesterEmail },
+    requester: { name: r.requesterName, ...(withEmail ? { email: r.requesterEmail } : {}) },
     targetAudience: r.targetAudience,
     targetDate: day(r.targetDate),
     impact: r.impactScore,
@@ -59,9 +79,11 @@ export async function loadIntake(id: string) {
     quadrant: quadrantLabel(r.impactScore, r.effortScore),
     assignedTo: r.assignedTo,
     rejectionReason: r.rejectionReason,
+    question: r.infoQuestion ? { text: r.infoQuestion, asked: day(r.infoRequestedAt) } : null,
+    decided: r.decidedAt ? { on: day(r.decidedAt), by: r.decidedBy ? (r.decidedBy.name ?? r.decidedBy.email) : null } : null,
     project: r.convertedProject ? { ...r.convertedProject, url: link(`/projects/${r.convertedProject.id}`) } : null,
     submitted: day(r.createdAt),
-    url: link("/intake"),
+    url: link(`/intake/${r.id}`),
   };
 }
 
@@ -82,7 +104,8 @@ export function registerPlanningTools(server: McpServer) {
         take: 200,
         select: { id: true },
       });
-      return Promise.all(rows.map((r) => loadIntake(r.id).then(({ description, ...rest }) => ({ ...rest, description: description.slice(0, 300) }))));
+      const withEmail = await seesRequesterEmail();
+      return Promise.all(rows.map((r) => loadIntake(r.id, withEmail).then(({ description, ...rest }) => ({ ...rest, description: description.slice(0, 300) }))));
     },
   );
 
@@ -99,14 +122,17 @@ export function registerPlanningTools(server: McpServer) {
     {
       title: "Triage an intake request",
       description:
-        "Score (impact and effort, 1–5), assign (member id, email or name; empty string unassigns), approve (creates a project from it), or reject (with a reason) an intake request. Admins only.",
+        "Work an intake request. Admins, managers and the assigned member can score it (impact and effort, 1–5), ask the requester a question (emailed; the request waits in needs_info) and resume triage once they answer. Only admins and managers can assign it (member id, email or name; empty string unassigns), approve it (creates a project carrying the request's details; optional project_name and methodology), reject it (with a reason, emailed to the requester) or reopen a rejected one.",
       input: {
         request: z.string().min(1).describe("Request id or ticket such as REQ-4"),
         impact: z.number().int().min(1).max(5).optional(),
         effort: z.number().int().min(1).max(5).optional(),
         assign_to: z.string().optional(),
-        decision: z.enum(["approve", "reject"]).optional(),
+        decision: z.enum(["approve", "reject", "reopen", "ask", "resume"]).optional(),
         rejection_reason: z.string().max(500).optional(),
+        question: z.string().max(2000).optional().describe("For decision 'ask': the question emailed to the requester"),
+        project_name: z.string().max(120).optional().describe("For 'approve': defaults to the request title"),
+        methodology: z.enum(["ADDIE", "SAM", "CUSTOM"]).optional().describe("For 'approve': defaults to ADDIE"),
       },
       kind: "write",
     },
@@ -120,8 +146,11 @@ export function registerPlanningTools(server: McpServer) {
         check(await scoreIntakeRequest(id, impact, effort));
       }
       if (a.assign_to !== undefined) check(await assignIntakeRequest(id, a.assign_to ? (await resolveMember(a.assign_to)).id : null));
-      if (a.decision === "approve") check(await approveIntakeRequest(id));
+      if (a.decision === "approve") check(await approveIntakeRequest(id, { name: a.project_name, methodology: a.methodology }));
       if (a.decision === "reject") check(await rejectIntakeRequest(id, a.rejection_reason ?? ""));
+      if (a.decision === "reopen") check(await reopenIntakeRequest(id));
+      if (a.decision === "ask") check(await askIntakeRequester(id, a.question ?? ""));
+      if (a.decision === "resume") check(await resumeIntakeTriage(id));
       return loadIntake(id);
     },
   );

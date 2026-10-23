@@ -214,9 +214,11 @@ async function intakeDoc(id: string): Promise<Doc> {
     metadata: { type: "intake", status: r.status },
     text: lines(
       `# ${r.ticket}: ${r.title}`,
-      `Status: ${r.status} · From ${r.requester.name} <${r.requester.email}> · Submitted ${r.submitted}`,
+      `Status: ${r.status} · From ${r.requester.name}${"email" in r.requester ? ` <${r.requester.email}>` : ""} · Submitted ${r.submitted}`,
       `Audience: ${r.targetAudience ?? "—"} · Target date: ${r.targetDate ?? "—"}`,
       `Impact ${r.impact ?? "?"} / Effort ${r.effort ?? "?"}${r.quadrant ? ` (${r.quadrant})` : ""}`,
+      r.question ? `Question to the requester (${r.question.asked}): ${r.question.text}` : "",
+      r.decided ? `Decided ${r.decided.on}${r.decided.by ? ` by ${r.decided.by}` : ""}${r.rejectionReason ? `: ${r.rejectionReason}` : ""}` : "",
       "",
       r.description,
     ),

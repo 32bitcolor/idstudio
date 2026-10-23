@@ -6,7 +6,7 @@ export const NOTIFICATION_TYPES = [
   {
     key: "assignment",
     label: "Assignments",
-    description: "When someone is assigned to a card or subtask, or named as an SME.",
+    description: "When someone is assigned to a card, subtask or intake request, or named as an SME.",
   },
   {
     key: "status_change",
