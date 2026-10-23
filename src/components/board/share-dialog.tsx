@@ -122,7 +122,16 @@ export function ShareDialog({
                 disabled={pending}
                 onChange={(e) => {
                   const show = e.target.checked;
-                  run(() => setBoardShareAssignees(boardId, show));
+                  const before = share;
+                  setShare({ ...share, showAssignees: show });
+                  setError(null);
+                  startTransition(async () => {
+                    const res = await setBoardShareAssignees(boardId, show);
+                    if ("error" in res) {
+                      setShare(before);
+                      setError(res.error);
+                    } else setShare(res);
+                  });
                 }}
               />
               <span>
